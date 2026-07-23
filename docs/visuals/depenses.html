@@ -1,0 +1,232 @@
+<!DOCTYPE html><html lang="fr" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error-container": "#93000a",
+                        "secondary": "#4edea3",
+                        "error": "#ffb4ab",
+                        "secondary-container": "#00a572",
+                        "surface": "#131315",
+                        "on-secondary": "#003824",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "inverse-on-surface": "#313032",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#07006c",
+                        "surface-container": "#201f22",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "inverse-surface": "#e5e1e4",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-tertiary-container": "#5c0008",
+                        "outline-variant": "#464554",
+                        "on-primary": "#1000a9",
+                        "tertiary-container": "#ff5451",
+                        "on-tertiary": "#68000a",
+                        "primary-container": "#8083ff",
+                        "surface-tint": "#c0c1ff",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "secondary-fixed": "#6ffbbe",
+                        "surface-container-lowest": "#0e0e10",
+                        "on-surface": "#e5e1e4",
+                        "on-primary-container": "#0d0096",
+                        "surface-dim": "#131315",
+                        "surface-bright": "#39393b",
+                        "surface-container-high": "#2a2a2c",
+                        "on-error": "#690005",
+                        "primary-fixed": "#e1e0ff",
+                        "tertiary-fixed": "#ffdad7",
+                        "surface-container-low": "#1c1b1d",
+                        "on-secondary-fixed": "#002113",
+                        "primary": "#c0c1ff",
+                        "surface-container-highest": "#353437",
+                        "on-tertiary-fixed": "#410004",
+                        "outline": "#908fa0",
+                        "inverse-primary": "#494bd6",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-surface-variant": "#c7c4d7",
+                        "background": "#131315",
+                        "tertiary": "#ffb3ad",
+                        "on-secondary-container": "#00311f",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "on-background": "#e5e1e4",
+                        "surface-variant": "#353437"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        gutter: "16px",
+                        margin_desktop: "40px",
+                        margin_mobile: "20px",
+                        grid_columns: "12",
+                        bento_gap: "12px"
+                    },
+                    fontFamily: {
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "title-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "caption-xs": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "title-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "label-sm": ["13px", { lineHeight: "18px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "display-xl": ["48px", { lineHeight: "56px", letterSpacing: "-0.04em", fontWeight: "700" }],
+                        "caption-xs": ["12px", { lineHeight: "16px", fontWeight: "300" }]
+                    }
+                }
+            }
+        };
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="bg-background text-on-surface font-body-md antialiased min-h-screen">
+<!-- Top Navigation Area -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md border-b border-white/5 flex flex-col">
+<!-- TopAppBar Shared Component -->
+<div class="flex justify-between items-center px-margin_mobile h-16 w-full">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest shrink-0 border border-white/10">
+<img class="w-full h-full object-cover" data-alt="A striking profile portrait of a confident executive against a dark, minimalist architectural background. The high-contrast studio lighting creates a premium, high-net-worth aesthetic. Clean lines, deep blacks, and a polished, professional mood dominate the composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhPcAN3x5sFov24Sa9PKZvmNfwm9RyaCp-ElbcT3J7NxxcKoKxZYuplNAEw_P-VTpujIc1cKrbcd_V_lTI_D78kqvUphRBZCmxVV3xoq32Ef1ck2YPOOY4Tn5f9jdHY3OfiB57txNfso2qN7sHKFCmSesFuYMvJhq-1H6VM2NywOwBGiRLzbQg2oUEyWfqwye03lqYxGx7ONNOQPFWBA665ySzTWWOKx3keTR6iFxY4JUzI5H7VZ9IiE6nwOMZ0ibQAgpHTc6-LT0">
+</div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tighter">Finly</div>
+<button class="w-8 h-8 flex items-center justify-end text-on-surface hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+</div>
+<!-- Filter & Search Sub-Header -->
+<div class="px-margin_mobile pb-4 pt-2 flex flex-col gap-4">
+<!-- Search Bar -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[20px]" data-icon="search">search</span>
+<input class="w-full bg-[#18181b] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all shadow-sm" placeholder="Rechercher une transaction..." type="text">
+</div>
+<div class="flex justify-between items-center gap-2">
+<!-- Temporal Switch -->
+<div class="flex bg-[#18181b] p-1 rounded-xl border border-white/5">
+<button class="px-4 py-1.5 rounded-lg text-label-sm font-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Jour</button>
+<button class="px-4 py-1.5 rounded-lg bg-surface-container-highest border border-white/10 text-on-surface text-label-sm font-label-sm shadow-sm transition-colors">Mois</button>
+<button class="px-4 py-1.5 rounded-lg text-label-sm font-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Année</button>
+</div>
+<!-- Account Dropdown -->
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#18181b] border border-white/10 text-label-sm font-label-sm text-on-surface-variant hover:text-on-surface transition-colors shadow-sm">
+<span class="">Tous les comptes</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="expand_more">expand_more</span>
+</button><button class="flex items-center justify-center w-10 h-10 rounded-xl bg-[#18181b] border border-white/10 text-on-surface-variant hover:text-on-surface transition-colors shadow-sm active:scale-95"><span class="material-symbols-outlined text-[20px]">ios_share</span></button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-[164px] pb-[120px] px-margin_mobile md:px-margin_desktop max-w-3xl mx-auto flex flex-col gap-bento_gap">
+<!-- Section: Today -->
+<section>
+<h3 class="font-title-md text-title-md text-on-surface-variant mb-4 mt-4 px-1">Aujourd'hui</h3>
+<div class="bg-[#18181b] border border-white/10 rounded-xl overflow-hidden flex flex-col">
+<!-- Transaction Item -->
+<div class="flex items-center gap-4 p-4 hover:bg-surface-container-highest/40 transition-colors cursor-pointer active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full flex items-center justify-center bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20 shrink-0">
+<span class="material-symbols-outlined" data-icon="restaurant">restaurant</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">Le Meurice Alain Ducasse</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Compte Courant</span>
+<span class="w-1 h-1 rounded-full bg-white/20"></span>
+<span class="font-caption-xs text-caption-xs px-2 py-0.5 rounded-full bg-surface-container border border-white/5 text-on-surface-variant">Gastronomie</span>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold tracking-tight">-480,00 €</span>
+</div>
+</div>
+<div class="h-px bg-white/5 mx-4"></div>
+<!-- Transaction Item-->
+<div class="flex items-center gap-4 p-4 hover:bg-surface-container-highest/40 transition-colors cursor-pointer active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full flex items-center justify-center bg-secondary-container/10 text-secondary border border-secondary-container/20 shrink-0">
+<span class="material-symbols-outlined" data-icon="directions_car">directions_car</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">Blacklane Gmbh</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Carte Infinite</span>
+<span class="w-1 h-1 rounded-full bg-white/20"></span>
+<span class="font-caption-xs text-caption-xs px-2 py-0.5 rounded-full bg-surface-container border border-white/5 text-on-surface-variant">Transport</span>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold tracking-tight">-125,50 €</span>
+</div>
+</div>
+<div class="h-px bg-white/5 mx-4"></div>
+<!-- Transaction Item (Positive) -->
+<div class="flex items-center gap-4 p-4 hover:bg-surface-container-highest/40 transition-colors cursor-pointer active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full flex items-center justify-center bg-primary-container/10 text-primary border border-primary-container/20 shrink-0">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">Dividendes LVMH</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">PEA Fortune</span>
+<span class="w-1 h-1 rounded-full bg-white/20"></span>
+<span class="font-caption-xs text-caption-xs px-2 py-0.5 rounded-full bg-surface-container border border-white/5 text-on-surface-variant">Investissement</span>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-body-md text-body-md text-secondary font-semibold tracking-tight">+1 450,00 €</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Yesterday -->
+<section>
+<h3 class="font-title-md text-title-md text-on-surface-variant mb-4 mt-6 px-1">Hier</h3>
+<div class="bg-[#18181b] border border-white/10 rounded-xl overflow-hidden flex flex-col">
+<!-- Transaction Item -->
+<div class="flex items-center gap-4 p-4 hover:bg-surface-container-highest/40 transition-colors cursor-pointer active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full flex items-center justify-center bg-outline-variant/20 text-on-surface-variant border border-white/10 shrink-0">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">Galeries Lafayette</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Carte Infinite</span>
+<span class="w-1 h-1 rounded-full bg-white/20"></span>
+<span class="font-caption-xs text-caption-xs px-2 py-0.5 rounded-full bg-surface-container border border-white/5 text-on-surface-variant">Shopping</span>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold tracking-tight">-1 290,00 €</span>
+</div>
+</div>
+<div class="h-px bg-white/5 mx-4"></div>
+<!-- Transaction Item -->
+<div class="flex items-center gap-4 p-4 hover:bg-surface-container-highest/40 transition-colors cursor-pointer active:scale-[0.98]">
+<div class="w-12 h-12 rounded-full flex items-center justify-center bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20 shrink-0">
+<span class="material-symbols-outlined" data-icon="flight">flight</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">Air France</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Carte Infinite</span>
+<span class="w-1 h-1 rounded-full bg-white/20"></span>
+<span class="font-caption-xs text-caption-xs px-2 py-0.5 rounded-full bg-surface-container border border-white/5 text-on-surface-variant">Voyage</span>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-body-md text-body-md text-on-surface font-semibold tracking-tight">-4 850,00 €</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Area -->
+<nav class="fixed bottom-6 left-0 right-0 z-50 bg-surface/80 backdrop-blur-md border border-white/10 rounded-full mx-4 shadow-2xl flex justify-around items-center h-16 px-2 md:hidden"><button class="flex flex-col items-center justify-center text-on-surface-variant/40 hover:text-on-surface w-16 group transition-colors"><span class="material-symbols-outlined group-hover:scale-110 transition-transform">home</span><span class="font-label-sm text-label-sm mt-0.5">Synthèse</span></button><button class="flex flex-col items-center justify-center text-secondary font-bold hover:text-on-surface w-16 active:scale-90 transition-transform"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span><span class="font-label-sm text-label-sm mt-0.5">Dépenses</span></button><button class="flex flex-col items-center justify-center text-on-surface-variant/40 hover:text-on-surface w-16 group transition-colors"><span class="material-symbols-outlined group-hover:scale-110 transition-transform">track_changes</span><span class="font-label-sm text-label-sm mt-0.5">Projets</span></button></nav>
+<!-- Subtle top border separation logic for BottomNav without actual border class as per constraints (using gradient line) -->
+
+
+</body></html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error-container": "#93000a",
+                      "secondary": "#4edea3",
+                      "error": "#ffb4ab",
+                      "secondary-container": "#00a572",
+                      "surface": "#131315",
+                      "on-secondary": "#003824",
+                      "on-tertiary-fixed-variant": "#930013",
+                      "inverse-on-surface": "#313032",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-fixed": "#07006c",
+                      "surface-container": "#201f22",
+                      "primary-fixed-dim": "#c0c1ff",
+                      "inverse-surface": "#e5e1e4",
+                      "secondary-fixed-dim": "#4edea3",
+                      "on-tertiary-container": "#5c0008",
+                      "outline-variant": "#464554",
+                      "on-primary": "#1000a9",
+                      "tertiary-container": "#ff5451",
+                      "on-tertiary": "#68000a",
+                      "primary-container": "#8083ff",
+                      "surface-tint": "#c0c1ff",
+                      "on-primary-fixed-variant": "#2f2ebe",
+                      "secondary-fixed": "#6ffbbe",
+                      "surface-container-lowest": "#0e0e10",
+                      "on-surface": "#e5e1e4",
+                      "on-primary-container": "#0d0096",
+                      "surface-dim": "#131315",
+                      "surface-bright": "#39393b",
+                      "surface-container-high": "#2a2a2c",
+                      "on-error": "#690005",
+                      "primary-fixed": "#e1e0ff",
+                      "tertiary-fixed": "#ffdad7",
+                      "surface-container-low": "#1c1b1d",
+                      "on-secondary-fixed": "#002113",
+                      "primary": "#c0c1ff",
+                      "surface-container-highest": "#353437",
+                      "on-tertiary-fixed": "#410004",
+                      "outline": "#908fa0",
+                      "inverse-primary": "#494bd6",
+                      "on-secondary-fixed-variant": "#005236",
+                      "on-surface-variant": "#c7c4d7",
+                      "background": "#131315",
+                      "tertiary": "#ffb3ad",
+                      "on-secondary-container": "#00311f",
+                      "tertiary-fixed-dim": "#ffb3ad",
+                      "on-background": "#e5e1e4",
+                      "surface-variant": "#353437"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "margin_desktop": "40px",
+                      "margin_mobile": "20px",
+                      "grid_columns": "12",
+                      "bento_gap": "12px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "title-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "display-xl": [
+                              "Inter"
+                      ],
+                      "caption-xs": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "title-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "caption-xs": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "300"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    }catch(_e){}</script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><meta charset="utf-8"></head><body class="bg-background text-on-background font-body-md min-h-screen pt-safe selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md border-b border-white/10 flex justify-between items-center px-margin_mobile h-16 transition-all duration-300">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="A macro shot of a sleek, minimalist metallic sphere with subtle glowing indigo accents, resting on a dark matte surface in a high-tech modern studio lighting setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9E8hz0RGFOpPktRm_b3HWbcbvH110D-HK1f9y73F3frsONMVJhII8Q6JlDVqVQm12XDeB2N2o9sRsq7a9pCve9efT-yRr1tRy6sGTAR0YuSJ61jk4EHwYAUrcG6oB178VTLGeebxzRg5_im76rsVF3t1BKR-6VJEueElc9Q6n8cuFJ79XyLMj8YM0hTBSMnBucfYgW3HpA7TskoIwHmlePA-vynUpttILpaPjLQReKW_lWueov7DDHWSLzSjBi2ZaQJG4OSN3SiU">
+<div class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-secondary border border-background"></div>
+</div>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tighter">Finly</span>
+</div>
+<button aria-label="Toggle Balance Masking" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-primary">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+</header>
+<main class="pt-[88px] pb-[120px] px-margin_mobile md:px-margin_desktop max-w-7xl mx-auto flex flex-col gap-bento_gap md:grid md:grid-cols-12">
+<!-- Main Balance Card -->
+<section class="md:col-span-12 bg-surface-container rounded-xl p-[24px] border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"></div>
+<div class="z-10 w-full">
+<h2 class="font-title-md text-title-md text-on-surface-variant mb-2">Total Balance</h2>
+<div class="flex items-end gap-3 mb-1">
+<span class="font-display-xl text-display-xl text-on-surface tracking-tight" data-amount="12450.20">12 450,20 €</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1 bg-secondary-container/20 text-secondary px-2 py-1 rounded-full font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+                        +2.4% this month
+                    </span>
+<span class="font-caption-xs text-caption-xs text-on-surface-variant/60">Updated just now</span>
+</div>
+</div>
+<div class="z-10 shrink-0 self-start md:self-end">
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-sm text-label-sm font-semibold hover:opacity-90 transition-opacity active:scale-95 haptic-medium">
+                    Add Funds
+                </button>
+</div>
+</section>
+<!-- Connected Accounts Carousel -->
+<section class="md:col-span-12 -mx-margin_mobile md:mx-0">
+<div class="flex gap-bento_gap overflow-x-auto hide-scrollbar px-margin_mobile md:px-0 snap-x snap-mandatory">
+<!-- Account 1 -->
+<div class="snap-start shrink-0 w-[240px] bg-surface rounded-xl p-4 border border-white/10 hover:border-white/20 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">account_balance</span>
+</div>
+<span class="font-caption-xs text-caption-xs text-on-surface-variant">Checking</span>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface-variant mb-1">BoursoBank</h3>
+<p class="font-title-md text-title-md text-on-surface" data-amount="4200.00">4 200,00 €</p>
+</div>
+<!-- Account 2 -->
+<div class="snap-start shrink-0 w-[240px] bg-surface rounded-xl p-4 border border-white/10 hover:border-white/20 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface">credit_card</span>
+</div>
+<span class="font-caption-xs text-caption-xs text-on-surface-variant">Savings</span>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface-variant mb-1">Fortuneo</h3>
+<p class="font-title-md text-title-md text-on-surface" data-amount="8250.20">8 250,20 €</p>
+</div>
+<!-- Add Account -->
+<button class="snap-start shrink-0 w-[240px] bg-transparent rounded-xl p-4 border border-dashed border-white/20 hover:border-white/40 transition-colors flex flex-col items-center justify-center gap-2 text-on-surface-variant/60 hover:text-on-surface">
+<span class="material-symbols-outlined text-[32px]">add_circle</span>
+<span class="font-label-sm text-label-sm">Connect Account</span>
+</button>
+</div>
+</section>
+<!-- Chart Section -->
+<section class="md:col-span-12 lg:col-span-8 bg-surface rounded-xl p-[24px] border border-white/10">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-title-md text-title-md text-on-surface">Evolution</h3>
+<div class="flex bg-surface-container-high rounded-lg p-1">
+<button class="px-3 py-1 rounded-md font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">1J</button>
+<button class="px-3 py-1 rounded-md font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">1M</button>
+<button class="px-3 py-1 rounded-md bg-surface text-on-surface shadow-sm font-label-sm text-label-sm transition-colors">6M</button>
+<button class="px-3 py-1 rounded-md font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">1A</button>
+<button class="px-3 py-1 rounded-md font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">Tout</button>
+</div>
+</div>
+<div class="h-48 w-full relative">
+<!-- Mock Chart using a gradient div as placeholder -->
+<div class="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent opacity-50 rounded-b-lg"></div>
+<svg class="w-full h-full absolute inset-0" preserveAspectRatio="none" viewBox="0 0 100 100">
+<path d="M0,100 L0,50 Q25,60 50,30 T100,10 L100,100 Z" fill="url(#chartGrad)"></path>
+<path class="text-primary" d="M0,50 Q25,60 50,30 T100,10" fill="none" stroke="currentColor" stroke-width="2"></path>
+<defs>
+<linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
+<stop class="text-primary" offset="0%" stop-color="currentColor" stop-opacity="0.3"></stop>
+<stop class="text-primary" offset="100%" stop-color="currentColor" stop-opacity="0"></stop>
+</linearGradient>
+</defs>
+</svg>
+</div>
+</section>
+<!-- Bento Grid Widgets -->
+<div class="md:col-span-12 lg:col-span-4 flex flex-col md:grid md:grid-cols-2 lg:flex lg:flex-col gap-bento_gap">
+<!-- Top Expenses -->
+<section class="bg-surface rounded-xl p-[20px] border border-white/10 w-full">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-title-md text-title-md text-on-surface">Top Expenses</h3>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-on-surface">restaurant</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">Dining</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">-350,00 €</span>
+</div>
+<div class="h-[1px] w-full bg-white/5 mx-2"></div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-on-surface">directions_car</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">Transport</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">-120,50 €</span>
+</div>
+</div>
+</section>
+<!-- Project Progress -->
+<section class="bg-surface rounded-xl p-[20px] border border-white/10 w-full relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 opacity-5">
+<span class="material-symbols-outlined text-[100px]">track_changes</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-title-md text-title-md text-on-surface mb-1">Villa Project</h3>
+<p class="font-caption-xs text-caption-xs text-on-surface-variant mb-4">Goal: 50,000 €</p>
+<div class="w-full bg-surface-container-high rounded-full h-2 mb-2">
+<div class="bg-secondary h-2 rounded-full" style="width: 45%"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-secondary">45% Complete</span>
+<span class="font-label-sm text-label-sm text-on-surface">22,500 €</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-md border border-white/10 rounded-full mx-4 mb-6 shadow-2xl flex justify-around items-center h-16 px-4 md:hidden">
+<a class="flex flex-col items-center justify-center text-secondary font-bold hover:text-on-surface active:scale-90 transition-transform haptic-medium w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-label-sm">Synthèse</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/40 hover:text-on-surface transition-colors w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-sm text-label-sm">Dépenses</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/40 hover:text-on-surface transition-colors w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="track_changes">track_changes</span>
+<span class="font-label-sm text-label-sm">Projets</span>
+</a>
+
+</nav>
+<script>
+        // Simple balance masking logic
+        const maskToggle = document.querySelector('[aria-label="Toggle Balance Masking"]');
+        const amountElements = document.querySelectorAll('[data-amount]');
+        let isMasked = false;
+
+        maskToggle.addEventListener('click', () => {
+            isMasked = !isMasked;
+            const icon = maskToggle.querySelector('.material-symbols-outlined');
+            
+            if (isMasked) {
+                icon.textContent = 'visibility_off';
+                amountElements.forEach(el => {
+                    el.textContent = '•••••• €';
+                });
+            } else {
+                icon.textContent = 'visibility';
+                amountElements.forEach(el => {
+                    // In a real app, you'd format this properly based on locale
+                    const val = parseFloat(el.dataset.amount);
+                    el.textContent = val.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+                });
+            }
+            
+            // Trigger haptic if available
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(10);
+            }
+        });
+    </script>
+
+</body></html>
