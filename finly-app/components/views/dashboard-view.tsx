@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   TrendingUp,
   Building2,
@@ -12,7 +14,6 @@ import {
   ShieldCheck,
   ShoppingBag,
   Car,
-  Home as HomeIcon,
   Film,
   FileSpreadsheet,
 } from "lucide-react"
@@ -25,11 +26,8 @@ import { GoCardlessModal } from "@/components/modals/gocardless-modal"
 import { ExportDialog } from "@/components/modals/export-dialog"
 import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS, MOCK_PROJECTS } from "@/lib/data/mock-finance"
 
-interface DashboardViewProps {
-  onNavigate: (tab: string) => void
-}
-
-export function DashboardView({ onNavigate }: DashboardViewProps) {
+export function DashboardView() {
+  const router = useRouter()
   const { formatAmount } = usePrivacy()
   const [isGoCardlessOpen, setIsGoCardlessOpen] = useState<boolean>(false)
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
@@ -89,7 +87,7 @@ export function DashboardView({ onNavigate }: DashboardViewProps) {
           <div className="flex items-center gap-3 w-full md:w-auto">
             <Button
               className="flex-1 md:flex-none gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20"
-              onClick={() => onNavigate("transactions")}
+              onClick={() => router.push("/depenses")}
             >
               <Plus className="w-4 h-4" /> Nouvelle Dépense
             </Button>
@@ -157,14 +155,15 @@ export function DashboardView({ onNavigate }: DashboardViewProps) {
                 Comparatif des entrées et sorties sur les 30 derniers jours
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs border-white/10 bg-zinc-900 text-zinc-300"
-              onClick={() => onNavigate("transactions")}
-            >
-              Détails
-            </Button>
+            <Link href="/depenses">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs border-white/10 bg-zinc-900 text-zinc-300"
+              >
+                Détails
+              </Button>
+            </Link>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -203,14 +202,15 @@ export function DashboardView({ onNavigate }: DashboardViewProps) {
           <div>
             <div className="flex justify-between items-center mb-4">
               <CardTitle className="text-lg font-bold">Projets Actifs</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-indigo-400 hover:text-indigo-300 p-0"
-                onClick={() => onNavigate("projects")}
-              >
-                Voir tout
-              </Button>
+              <Link href="/projets">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 p-0"
+                >
+                  Voir tout
+                </Button>
+              </Link>
             </div>
 
             <div className="flex flex-col gap-4">
@@ -245,14 +245,15 @@ export function DashboardView({ onNavigate }: DashboardViewProps) {
               Flux récents agrégés depuis vos comptes
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs border-white/10 bg-zinc-900 text-zinc-300"
-            onClick={() => onNavigate("transactions")}
-          >
-            Fil complet
-          </Button>
+          <Link href="/depenses">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs border-white/10 bg-zinc-900 text-zinc-300"
+            >
+              Fil complet
+            </Button>
+          </Link>
         </div>
 
         <div className="flex flex-col divide-y divide-white/5">

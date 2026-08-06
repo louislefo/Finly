@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   Wallet,
-  User,
   Lock,
   Settings,
   LogOut,
@@ -36,28 +37,23 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 
-interface AppHeaderProps {
-  activeTab: string
-  setActiveTab: (tab: string) => void
-}
-
-export function AppHeader({ activeTab, setActiveTab }: AppHeaderProps) {
+export function AppHeader() {
+  const pathname = usePathname()
   const [isGoCardlessOpen, setIsGoCardlessOpen] = useState<boolean>(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState<boolean>(false)
   const [securityModalOpen, setSecurityModalOpen] = useState<boolean>(false)
 
-  // Standalone Export page removed; 3 core tabs
   const navItems = [
-    { id: "dashboard", label: "Accueil", icon: LayoutDashboard },
-    { id: "transactions", label: "Dépenses", icon: Receipt },
-    { id: "projects", label: "Projets", icon: Target },
+    { href: "/", label: "Accueil", icon: LayoutDashboard },
+    { href: "/depenses", label: "Dépenses", icon: Receipt },
+    { href: "/projets", label: "Projets", icon: Target },
   ]
 
   return (
     <>
       <header className="sticky top-0 z-40 w-full bg-[#09090B]/90 backdrop-blur-md border-b border-white/10 px-4 md:px-8 h-16 flex items-center justify-between transition-all">
         {/* Brand Logo & Title */}
-        <div className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center shadow-md shadow-indigo-500/20">
             <Wallet className="w-5 h-5 text-white" />
           </div>
@@ -69,18 +65,18 @@ export function AppHeader({ activeTab, setActiveTab }: AppHeaderProps) {
               </span>
             </span>
           </div>
-        </div>
+        </Link>
 
-        {/* Desktop Top Header Navigation Links (No Sidebar!) */}
+        {/* Desktop Top Header Navigation Links (App Router / Next.js Links) */}
         <nav className="hidden md:flex items-center gap-1 bg-zinc-900/60 p-1.5 rounded-xl border border-white/10">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = activeTab === item.id
+            const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
 
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
+              <Link
+                key={item.href}
+                href={item.href}
                 className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   isActive
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
@@ -89,7 +85,7 @@ export function AppHeader({ activeTab, setActiveTab }: AppHeaderProps) {
               >
                 <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
-              </button>
+              </Link>
             )
           })}
         </nav>

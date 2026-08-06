@@ -7,14 +7,12 @@ import {
   Car,
   Home as HomeIcon,
   Film,
-  Utensils,
   ArrowDownRight,
   ChevronRight,
   Building2,
   Tag,
   Clock,
   FileSpreadsheet,
-  Download,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { Card } from "@/components/ui/card"
@@ -41,9 +39,7 @@ export function TransactionsView() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
 
-  const transactionsData = MOCK_TRANSACTIONS
-
-  const filteredTransactions = transactionsData.filter((tx) => {
+  const filteredTransactions = MOCK_TRANSACTIONS.filter((tx) => {
     const matchesSearch =
       tx.merchant.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -52,45 +48,37 @@ export function TransactionsView() {
     return matchesSearch && matchesAccount
   })
 
-  // Group by date
   const groupedByDate: Record<string, Transaction[]> = {}
   filteredTransactions.forEach((tx) => {
-    if (!groupedByDate[tx.date]) {
-      groupedByDate[tx.date] = []
-    }
+    if (!groupedByDate[tx.date]) groupedByDate[tx.date] = []
     groupedByDate[tx.date].push(tx)
   })
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "Alimentation":
-        return ShoppingBag
-      case "Transports":
-        return Car
-      case "Logement":
-        return HomeIcon
-      case "Abonnements":
-        return Film
-      case "Revenus":
-        return ArrowDownRight
-      default:
-        return ShoppingBag
+      case "Alimentation": return ShoppingBag
+      case "Transports": return Car
+      case "Logement": return HomeIcon
+      case "Abonnements": return Film
+      case "Revenus": return ArrowDownRight
+      default: return ShoppingBag
     }
   }
 
+  const accounts = ["all", "BoursoBank", "Revolut", "BNP Paribas"]
+
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Header Controls */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">Fil des Dépenses</h1>
           <p className="text-xs text-zinc-400">
-            Historique complet et catégorisé des transactions
+            Historique complet et catégorisé de vos transactions
           </p>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
-          {/* Integrated Excel Export Button */}
           <Button
             onClick={() => setIsExportOpen(true)}
             variant="outline"
@@ -101,9 +89,8 @@ export function TransactionsView() {
             <span>Exporter en Excel</span>
           </Button>
 
-          {/* Granularity Tabs */}
-          <Tabs value={period} onValueChange={setPeriod} className="w-full md:w-auto">
-            <TabsList className="w-full md:w-auto grid grid-cols-3">
+          <Tabs value={period} onValueChange={setPeriod}>
+            <TabsList className="grid grid-cols-3">
               <TabsTrigger value="day">Jour</TabsTrigger>
               <TabsTrigger value="month">Mois</TabsTrigger>
               <TabsTrigger value="year">Année</TabsTrigger>
@@ -112,7 +99,7 @@ export function TransactionsView() {
         </div>
       </div>
 
-      {/* Search and Filters bar */}
+      {/* Search & Filters */}
       <Card className="p-4 border-white/10 bg-[#18181B] flex flex-col md:flex-row items-center gap-3">
         <div className="relative w-full flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -121,39 +108,29 @@ export function TransactionsView() {
             placeholder="Rechercher un marchand, catégorie..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-zinc-900/80 border-white/10 text-white text-sm placeholder:text-zinc-500 focus-visible:ring-indigo-500"
+            className="pl-9 bg-zinc-900/80 border-white/10 text-white text-sm placeholder:text-zinc-500"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <Button
-            variant={selectedAccount === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedAccount("all")}
-            className={selectedAccount === "all" ? "bg-indigo-600 text-white" : "border-white/10 bg-zinc-900 text-zinc-300"}
-          >
-            Tous les comptes
-          </Button>
-          <Button
-            variant={selectedAccount === "BoursoBank" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedAccount("BoursoBank")}
-            className={selectedAccount === "BoursoBank" ? "bg-indigo-600 text-white" : "border-white/10 bg-zinc-900 text-zinc-300"}
-          >
-            BoursoBank
-          </Button>
-          <Button
-            variant={selectedAccount === "Revolut" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedAccount("Revolut")}
-            className={selectedAccount === "Revolut" ? "bg-indigo-600 text-white" : "border-white/10 bg-zinc-900 text-zinc-300"}
-          >
-            Revolut
-          </Button>
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+          {accounts.map((acc) => (
+            <Button
+              key={acc}
+              variant={selectedAccount === acc ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedAccount(acc)}
+              className={selectedAccount === acc
+                ? "bg-indigo-600 text-white"
+                : "border-white/10 bg-zinc-900 text-zinc-300"
+              }
+            >
+              {acc === "all" ? "Tous les comptes" : acc}
+            </Button>
+          ))}
         </div>
       </Card>
 
-      {/* Grouped Transactions List */}
+      {/* Grouped Transactions */}
       <div className="flex flex-col gap-6">
         {Object.keys(groupedByDate).length === 0 ? (
           <Card className="p-12 text-center border-white/10 bg-[#18181B]">
@@ -167,7 +144,7 @@ export function TransactionsView() {
                   {dateStr}
                 </span>
                 <span className="text-xs text-zinc-500 font-mono">
-                  {items.length} opérations
+                  {items.length} opération{items.length > 1 ? "s" : ""}
                 </span>
               </div>
 
@@ -183,13 +160,11 @@ export function TransactionsView() {
                       className="flex justify-between items-center p-4 hover:bg-white/[0.03] transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3.5">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            isPositive
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : "bg-zinc-900 text-zinc-300 border border-white/5"
-                          }`}
-                        >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          isPositive
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-zinc-900 text-zinc-300 border border-white/5"
+                        }`}>
                           <Icon className="w-5 h-5" />
                         </div>
                         <div className="flex flex-col">
@@ -211,13 +186,10 @@ export function TransactionsView() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`text-base font-bold font-mono ${
-                            isPositive ? "text-emerald-400" : "text-white"
-                          }`}
-                        >
-                          {isPositive ? "+" : ""}
-                          {formatAmount(tx.amount)}
+                        <span className={`text-base font-bold font-mono ${
+                          isPositive ? "text-emerald-400" : "text-white"
+                        }`}>
+                          {isPositive ? "+" : ""}{formatAmount(tx.amount)}
                         </span>
                         <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
                       </div>
@@ -230,7 +202,7 @@ export function TransactionsView() {
         )}
       </div>
 
-      {/* Embedded Export Dialog */}
+      {/* Export Dialog */}
       <ExportDialog
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
@@ -238,7 +210,7 @@ export function TransactionsView() {
         title="Exporter les Transactions (Excel / CSV)"
       />
 
-      {/* Transaction Detail Sheet / Drawer (iOS style) */}
+      {/* Transaction Detail Bottom Sheet (iOS style) */}
       <Sheet open={!!selectedTx} onOpenChange={() => setSelectedTx(null)}>
         <SheetContent side="bottom" className="bg-[#18181B] border-t border-white/10 text-white rounded-t-3xl p-6 max-w-2xl mx-auto">
           {selectedTx && (
@@ -255,7 +227,10 @@ export function TransactionsView() {
                       Détails de la transaction bancaire GoCardless
                     </SheetDescription>
                   </div>
-                  <Badge variant={selectedTx.amount > 0 ? "secondary" : "destructive"} className="text-sm px-3 py-1 font-mono">
+                  <Badge
+                    variant={selectedTx.amount > 0 ? "secondary" : "destructive"}
+                    className="text-sm px-3 py-1 font-mono"
+                  >
                     {selectedTx.amount > 0 ? "+" : ""}{formatAmount(selectedTx.amount)}
                   </Badge>
                 </div>
@@ -295,7 +270,11 @@ export function TransactionsView() {
                 <Button className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium">
                   Rattacher à un Projet
                 </Button>
-                <Button variant="outline" className="border-white/10 bg-zinc-900 text-zinc-300" onClick={() => setSelectedTx(null)}>
+                <Button
+                  variant="outline"
+                  className="border-white/10 bg-zinc-900 text-zinc-300"
+                  onClick={() => setSelectedTx(null)}
+                >
                   Fermer
                 </Button>
               </div>

@@ -14,6 +14,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 
+import { MessageScroller } from "@shadcn/react/message-scroller"
+
 export default function Page() {
   return (
     <SidebarProvider>

@@ -1,7 +1,7 @@
 # Spécifications Techniques & Fonctionnelles — Projet Finance (PWA)
 
 ## 1. Présentation Générale du Projet
-- **Nom du projet :** App de suivi financier personnel (ex: Saldo / Finly / Vaulto).
+- **Nom du projet :** App de suivi financier personnel  Finly.
 - **Type d'application :** Web Application / Progressive Web App (PWA) hébergée en mode Self-Hosted.
 - **Philosophie UI/UX :** Mobile-First, ressenti iOS natif (Finary, Bankin', Revolut), Dark Mode par défaut, responsive pour écran PC.
 - **Périmètre fonctionnel :** Agrégation bancaire multi-comptes, suivi quotidien des dépenses (Jour/Mois/Année), gestion de projets budgétaires, génération d'exports Excel dynamiques.
@@ -23,22 +23,20 @@
 - **PWA :** Manifest.json natif ou `next-pwa` (installation sur écran d'accueil sans barre d'adresse)
 
 ### B. Backend, API & Traitement de Données
-- **Environnement Serveur :** Node.js (Fastify, Express ou Next.js API Routes) ou Python (FastAPI)
-- **Base de Données :** PostgreSQL ou SQLite
-- **ORM / Query Builder :** Prisma / Drizzle ORM (TypeScript) ou Peewee / SQLAlchemy (Python)
+- **Environnement Serveur :** Next.js API Routes ou FastAPI
+- **Base de Données :** SQLite
 - **Planification de Tâches :** `node-cron` (Node.js) ou `APScheduler` (Python) pour l'aspiration bancaire
 - **Génération Excel :** `exceljs` (Node.js) ou `openpyxl` (Python) pour la création de fichiers `.xlsx` avec formules natives
 
 ### C. Infrastructure & Déploiement Self-Hosted
 - **Conteneurisation :** Docker et Docker Compose
-- **Accès Distant Sécurisé :** VPN personnel (Tailscale / WireGuard) ou Reverse Proxy (Nginx / Traefik / Caddy)
 - **Gestion des Secrets :** Fichier de variables d'environnement (`.env`)
 
 ---
 
 ## 3. Intégration Bancaire & Réglementation
 
-- **Agrégateur Bancaire :** GoCardless Bank Account Data API (ex-Nordigen)
+- **Agrégateur Bancaire :** GoCardless Bank Account Data API (ex-Nordigen) ou woob
 - **Norme Légale :** Directive Européenne DSP2 (Authentification Forte / SCA)
 - **Durée de Consentement :** 180 jours maximum avant renouvellement obligatoire via l'application de la banque
 - **Pipeline d'Aspiration :**
@@ -84,16 +82,18 @@
 - Barre de recherche instantanée par nom de commerçant ou catégorie.
 - Liste chronologique groupée par date.
 - Ouverture d'une fiche détaillée en **Bottom Sheet iOS** au clic sur une transaction.
+  
+Integration d'un Centre d'Exportation Excel
+- Sélection de plages de dates personnalisées et sélection des comptes.
+- Prévisualisation du tableau de données avant téléchargement.
+- Génération d'un fichier `.xlsx` contenant des formules dynamiques (SOMME, SOMME.SI) réparties sur plusieurs onglets.
 
 ### Module 3 : Projets & Prévisions Budgétaires
 - Création de projets personnalisés avec attribution d'un budget prévisionnel.
 - Association manuelle ou automatique des dépenses à un projet.
 - Calcul en temps réel du restant disponible et barres de progression visuelles.
 
-### Module 4 : Centre d'Exportation Excel
-- Sélection de plages de dates personnalisées et sélection des comptes.
-- Prévisualisation du tableau de données avant téléchargement.
-- Génération d'un fichier `.xlsx` contenant des formules dynamiques (SOMME, SOMME.SI) réparties sur plusieurs onglets.
+
 
 ---
 
@@ -110,4 +110,7 @@
   - Micro-interactions visuelles sur chaque bouton.
 - **Dispositions :**
   - Mobile : Colonne unique scrollable, navigation par Bottom Bar fixe.
-  - PC / Tablette : Disposition en grille Bento Grid, navigation par Sidebar latérale.
+  - PC / Tablette : Disposition en grille Bento Grid, navigation par sidebar latérale.
+
+
+ 

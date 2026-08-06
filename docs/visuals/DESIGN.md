@@ -171,4 +171,4 @@ The shape language is sophisticated and friendly, utilizing large corner radii t
 
 ## Utilisation des visuels d'exemples
 
-pour les exemples de visuel, j'ai creer des pages html qui pourront etre utilisé comme exemple mais sans copier totalement les information qui sont en general fausse. les pages se trouvent ici : docs\visuals
+Pour les exemples de visuel, j'ai creer des pages html qui pourront etre utilisé comme exemple mais sans copier totalement les information qui sont en general fausse. les pages se trouvent ici : docs\visuals
