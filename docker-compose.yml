@@ -15,7 +15,8 @@ services:
     environment:
       - DATABASE_URL=sqlite:///./data/finly.db
       - SYNC_INTERVAL_HOURS=6
-      - CORS_ORIGINS=http://localhost:3000
+      - CORS_ORIGINS=*
+      - SECRET_KEY=${SECRET_KEY:-finly-default-secret-key-change-me-in-prod}
 
   frontend:
     build:
@@ -26,7 +27,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL=/api/v1
+      - BACKEND_INTERNAL_URL=http://backend:8000
     depends_on:
       - backend
 
