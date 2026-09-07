@@ -28,6 +28,12 @@ def auto_migrate_sqlite():
             cols = [r[1] for r in res]
             if "user_id" not in cols:
                 conn.execute(text("ALTER TABLE accounts ADD COLUMN user_id TEXT"))
+            if "created_at" not in cols:
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN created_at DATETIME"))
+            if "updated_at" not in cols:
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN updated_at DATETIME"))
+            if "color" not in cols:
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN color TEXT DEFAULT 'from-indigo-600 to-blue-600'"))
 
             # Check transactions
             res = conn.execute(text("PRAGMA table_info(transactions)")).fetchall()
@@ -40,12 +46,30 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN is_user_classified BOOLEAN DEFAULT 0"))
             if "is_excluded_from_budget" not in cols:
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN is_excluded_from_budget BOOLEAN DEFAULT 0"))
+            if "project_id" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN project_id TEXT"))
+            if "logo_url" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN logo_url TEXT"))
 
             # Check projects
             res = conn.execute(text("PRAGMA table_info(projects)")).fetchall()
             cols = [r[1] for r in res]
             if "user_id" not in cols:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN user_id TEXT"))
+            if "project_type" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN project_type TEXT DEFAULT 'savings'"))
+            if "monthly_contribution" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN monthly_contribution FLOAT DEFAULT 0.0"))
+            if "linked_account_id" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN linked_account_id TEXT"))
+            if "real_estate_data" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN real_estate_data TEXT"))
+
+            # Check merchant_rules
+            res = conn.execute(text("PRAGMA table_info(merchant_rules)")).fetchall()
+            cols = [r[1] for r in res]
+            if "logo_url" not in cols:
+                conn.execute(text("ALTER TABLE merchant_rules ADD COLUMN logo_url TEXT"))
 
             conn.commit()
     except Exception as e:
