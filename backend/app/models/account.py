@@ -16,4 +16,5 @@ class Account(Base):
     currency = Column(String, default="EUR")
     bank_name = Column(String, default="Banque")
     color = Column(String, default="from-indigo-600 to-blue-600")
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
