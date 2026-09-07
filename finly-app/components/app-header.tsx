@@ -16,6 +16,7 @@ import {
   PieChart,
   CreditCard,
   Landmark,
+  Plus,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -84,14 +85,13 @@ export function AppHeader() {
     <>
       <header className="sticky top-0 z-40 w-full bg-[#09090B]/90 backdrop-blur-md border-b border-white/10 px-4 md:px-8 h-16 flex items-center justify-between transition-all">
         {/* Brand Logo & Title */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="relative w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-zinc-900/80 border border-white/10 shadow-sm transition-transform duration-200 group-hover:scale-105">
             <Image
               src="/logo_sombre.png"
               alt="Finly"
-              width={32}
-              height={32}
-              style={{ width: "auto", height: "auto" }}
+              width={28}
+              height={28}
               className="object-contain"
               priority
             />
@@ -166,27 +166,27 @@ export function AppHeader() {
 
                 <DropdownMenuGroup>
                   <DropdownMenuItem
+                    onClick={() => router.push("/patrimoine")}
+                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
+                  >
+                    <Landmark className="w-4 h-4 text-emerald-400" />
+                    <span>Patrimoine & Actifs</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
                     onClick={() => router.push("/compte")}
                     className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
                   >
-                    <UserIcon className="w-4 h-4 text-zinc-400" />
-                    <span>Mon compte & sécurité</span>
+                    <Building2 className="w-4 h-4 text-indigo-400" />
+                    <span>Banques & Comptes</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
                     onClick={() => setIsWoobOpen(true)}
                     className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 cursor-pointer"
                   >
-                    <Landmark className="w-4 h-4 text-indigo-400" />
+                    <Plus className="w-4 h-4 text-indigo-400" />
                     <span>Connecter une banque</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={handleOpenConnectedAccounts}
-                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  >
-                    <CreditCard className="w-4 h-4 text-zinc-400" />
-                    <span>Gestion des comptes</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
 

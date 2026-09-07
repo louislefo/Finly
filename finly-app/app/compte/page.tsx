@@ -1,8 +1,8 @@
 import { AccountView } from "@/components/views/account-view"
 
 export const metadata = {
-  title: "Mon Compte — Finly",
-  description: "Paramètres de votre profil et sécurité d'accès",
+  title: "Banques & Comptes — Finly",
+  description: "Gestion des établissements bancaires connectés, sous-comptes et paramètres de sécurité",
 }
 
 export default function AccountPage() {

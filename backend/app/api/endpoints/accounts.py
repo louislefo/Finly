@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -10,6 +13,11 @@ from app.core.security import get_current_user
 from app.services.woob_service import woob_service
 
 router = APIRouter()
+
+class UpdateAccountRequest(BaseModel):
+    name: Optional[str] = None
+    account_type: Optional[str] = None
+    color: Optional[str] = None
 
 @router.get("/")
 def get_accounts(
@@ -127,3 +135,42 @@ def delete_account(
     woob_service.log(f"Compte {account_id} de {current_user.email} supprimé.")
 
     return {"status": "success", "message": "Compte supprimé de votre profil"}
+
+@router.patch("/{account_id}")
+def update_account(
+    account_id: str,
+    payload: UpdateAccountRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    acc = db.query(Account).filter(
+        (Account.id == account_id) & (Account.user_id == current_user.id)
+    ).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Compte bancaire non trouvé")
+
+    if payload.name is not None and payload.name.strip():
+        acc.name = payload.name.strip()
+    if payload.account_type is not None and payload.account_type.strip():
+        acc.account_type = payload.account_type.strip()
+    if payload.color is not None and payload.color.strip():
+        acc.color = payload.color.strip()
+
+    acc.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(acc)
+
+    return {
+        "status": "success",
+        "account": {
+            "id": acc.id,
+            "bank": acc.bank_name,
+            "name": acc.name,
+            "type": acc.account_type,
+            "iban": acc.iban,
+            "balance": acc.balance,
+            "currency": acc.currency,
+            "color": acc.color,
+            "updated_at": acc.updated_at.isoformat() if acc.updated_at else None,
+        }
+    }

@@ -15,7 +15,12 @@ export const metadata: Metadata = {
   title: "Finly - Suivi Financier & Agrégation Bancaire",
   description: "Agrégation bancaire multi-comptes Woob, suivi des dépenses et gestion de projets budgétaires.",
   icons: {
-    icon: "/logo_sombre.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo_sombre.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
   },
 }
 

@@ -1,279 +1,325 @@
 # Finly
 
-Application web progressive (PWA) d'agrégation et de gestion financière personnelle, 100% self-hosted, sécurisée et axée sur la confidentialité de vos données.
+Finly is a modern, self-hosted personal finance management progressive web app (PWA) designed with a privacy-first architecture. It combines automated bank synchronization, envelope budgeting, net worth tracking, and transaction classification in an ultra-clean, OLED-inspired dark interface.
+
+<p align="center">
+  <img src="Documents/images/Budget.png" alt="Finly Budget Dashboard" width="100%" />
+</p>
 
 ---
 
-## Sommaire
+## Table of Contents
 
-- [Apercu](#apercu)
-- [Fonctionnalites Principales](#fonctionnalites-principales)
-- [Architecture Technique](#architecture-technique)
-- [Pre-requis](#pre-requis)
-- [Demarrage Rapide avec Docker Compose](#demarrage-rapide-avec-docker-compose)
-- [Installation Manuelle pour le Developpement](#installation-manuelle-pour-le-developpement)
-- [Configuration des Variables d'Environnement](#configuration-des-variables-denvironnement)
-- [Gestion des Connecteurs Bancaires (Woob)](#gestion-des-connecteurs-bancaires-woob)
-- [Securite et Confidentialite](#securite-et-confidentialite)
-- [Structure du Projet](#structure-du-projet)
-- [Licence](#licence)
-
----
-
-## Apercu
-
-Finly est une plateforme complete de gestion de finances personnelles concue pour fonctionner integralement en local ou sur votre propre serveur. Elle combine une interface moderne et epuree (inspiree des standards Linear, Apple et Finary en mode sombre exclusif) avec un moteur d'agregation bancaire autonome base sur Woob.
-
-Contrairement aux solutions traditionnelles en mode SaaS, aucune donnee bancaire, aucun mot de passe et aucune transaction ne transitent par des serveurs tiers.
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Technology Stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Quick Start with Docker](#quick-start-with-docker)
+- [Manual Setup for Development](#manual-setup-for-development)
+  - [Backend Setup (FastAPI)](#backend-setup-fastapi)
+  - [Frontend Setup (Next.js)](#frontend-setup-nextjs)
+- [User Guide and Workflow](#user-guide-and-workflow)
+- [Environment Variables](#environment-variables)
+- [Banking Connectors (Woob)](#banking-connectors-woob)
+- [Security and Data Privacy](#security-and-data-privacy)
+- [Project Structure](#project-structure)
+- [License](#license)
 
 ---
 
-## Fonctionnalites Principales
+## Overview
 
-### 1. Dashboard et Vue Consolidee
-- Calcul et affichage en temps reel du patrimoine net consolide.
-- Mode confidentialite pour masquer les soldes d'un clic.
-- Repartition par compte (comptes courants, epargne, placements).
-- Graphiques d'evolution du solde et de la dynamique mensuelle.
+Finly is built for individuals who want complete control over their financial data without relying on third-party SaaS cloud platforms.
 
-### 2. Gestion et Categorisation des Transactions
-- Filtrage multi-echelle : Jour, Mois, Annee.
-- Nettoyage et normalisation automatique des libelles bancaires bruts.
-- Systeme de categories et sous-categories dynamiques avec regles de classification par mots-cles.
-- Possibilite de modifier et classifier manuellement chaque transaction via une fiche detaillee.
-
-### 3. Budgets et Enveloppes
-- Definition de budgets previsionnels mensuels par categorie.
-- Calcul en direct des depenses realisees et du montant restant disponible.
-- Alertes et jauges de progression visuelles.
-
-### 4. Projets et Objectifs d'Epargne
-- Creation d'objectifs d'epargne personnalises avec date cible.
-- Association de transactions specifiques aux projets.
-- Suivi du taux d'avancement et du reste a financer.
-
-### 5. Centre d'Exportation Excel Dynamique
-- Generation de rapports `.xlsx` avances avec formules natives (SOMME, SOMME.SI).
-- Separation par onglets (Synthese, Operations detaillees, Categories).
-- Selection personnalisee des plages de dates et des comptes.
-
-### 6. Agregation Bancaire Directe (Woob)
-- Connexion directe aux etablissements bancaires europeens sans passerelle tierce.
-- Synchronisation automatique planifiee en arriere-plan.
-- Chiffrement symetrique AES-256 (Fernet) de l'ensemble des identifiants bancaires.
+- **100% Self-Hosted & Private:** All account details, credentials, and transactions remain strictly on your local machine or server.
+- **Direct Bank Sync:** Automated data retrieval via Woob without intermediaries or external aggregators.
+- **Minimalist Aesthetic:** Focused interface inspired by Linear and Apple, featuring pure dark mode, clean typography, and zero unnecessary visual clutter.
 
 ---
 
-## Architecture Technique
+## Key Features
+
+### 1. Net Worth and Asset Tracking
+- Consolidated real-time calculation of your total net worth.
+- Breakdown across checking accounts, savings, investments, and real estate assets.
+- One-click privacy mode to mask account balances.
+- Historical net worth evolution and monthly trajectory charts.
+
+### 2. Envelope Budgeting
+- Category-based monthly budget envelopes with configurable spending targets.
+- Real-time tracking of consumed amounts and remaining disposable funds.
+- Progress bars and overspending warnings.
+
+### 3. Transaction Management and Auto-Categorization
+- Filter transactions by day, month, or custom date ranges.
+- Automated normalization and cleanup of raw bank transaction labels.
+- Dynamic rule-based category matcher based on keywords.
+- Detailed transaction drawer for manual categorization and notes.
+
+### 4. Savings Goals and Projects
+- Custom savings goals with target amounts and deadlines.
+- Associate specific transactions or savings accounts with active projects.
+- Visual milestone indicators and remaining balance tracking.
+
+### 5. Bank Aggregation Engine
+- Direct connection to hundreds of European banks using open-source Woob modules.
+- Scheduled background synchronization jobs via APScheduler.
+- AES-256 (Fernet) symmetric encryption for all stored banking credentials.
+
+### 6. Dynamic Excel Export
+- Generate structured `.xlsx` workbooks with native Excel formulas (`SUM`, `SUMIF`).
+- Dedicated tabs for executive summary, granular transactions, and category breakdowns.
+
+---
+
+## Technology Stack
 
 ### Frontend
-- **Framework :** Next.js 16 (App Router, React 19, TypeScript)
-- **Design System :** Tailwind CSS, composants personnalises Shadcn UI / Radix UI / Base UI
-- **Visualisation :** Recharts, Lucide Icons
-- **Moteur d'Export :** xlsx, xlsx-js-style
+- **Framework:** Next.js 16 (App Router, React 19, TypeScript)
+- **Styling:** Tailwind CSS, custom Shadcn UI / Radix UI components
+- **Charts:** Recharts, Lucide Icons
+- **Export Engine:** xlsx, xlsx-js-style
 
 ### Backend
-- **API Framework :** FastAPI (Python 3.11+)
-- **Base de Donnees :** SQLite avec SQLAlchemy ORM
-- **Authentification :** JWT (JSON Web Tokens) avec hashage bcrypt
-- **Securite :** Cryptography (AES-256 Fernet pour les identifiants)
-- **Agregation :** Woob (Web Outside of Browsers)
-- **Planification :** APScheduler pour les synchronisations automatiques
+- **API Framework:** FastAPI (Python 3.11+)
+- **Database:** SQLite with SQLAlchemy ORM
+- **Authentication:** JWT (JSON Web Tokens) with bcrypt password hashing
+- **Data Protection:** Cryptography (AES-256 Fernet)
+- **Banking Driver:** Woob (Web Outside of Browsers)
+- **Task Scheduler:** APScheduler
 
 ### Infrastructure
-- Conteneurs Docker isoles avec Docker Compose et persistance sur volumes locaux.
+- Multi-container architecture via Docker and Docker Compose with persistent volumes.
 
 ---
 
-## Pre-requis
+## Prerequisites
 
-Avant d'installer Finly, assurez-vous de disposer des outils suivants :
+Ensure the following tools are installed on your environment:
 
-- **Option Docker (Recommandee) :** Docker Engine (20.10+) et Docker Compose (2.0+)
-- **Option Manuelle :**
-  - Node.js 20+ et npm
-  - Python 3.11+ et pip
+- **Docker Approach (Recommended):**
+  - Docker Engine 20.10+
+  - Docker Compose 2.0+
+- **Manual Development Approach:**
+  - Node.js 20+ and npm
+  - Python 3.11+ and pip
 
 ---
 
-## Demarrage Rapide avec Docker Compose
+## Quick Start with Docker
 
-C'est la methode la plus simple pour executer Finly en production ou en self-hosting.
+The fastest way to deploy Finly in a local or self-hosted production environment.
 
-### 1. Cloner le depot
+### 1. Clone the repository
 ```bash
-git clone https://github.com/votre-compte/finly.git
-cd finly
+git clone https://github.com/louislefo/Finly.git
+cd Finly
 ```
 
-### 2. Configurer les variables d'environnement
-Copiez le fichier d'exemple dans le dossier backend :
+### 2. Configure backend environment
+Copy the template configuration:
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Generez une cle secrete pour `SECRET_KEY` :
+Generate a secure secret key:
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
-Renseignez cette valeur dans le fichier `backend/.env`.
+Paste this value into `SECRET_KEY` inside `backend/.env`.
 
-### 3. Lancer les conteneurs
+### 3. Build and launch containers
 ```bash
 docker compose up -d --build
 ```
 
-### 4. Acceder aux services
-- **Application Web :** [http://localhost:3000](http://localhost:3000)
-- **Documentation API (Swagger) :** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Verification de l'API :** [http://localhost:8000/health](http://localhost:8000/health)
+### 4. Access the application
+- Web Application: [http://localhost:3000](http://localhost:3000)
+- REST API Interactive Docs (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
+- Health Check: [http://localhost:8000/health](http://localhost:8000/health)
 
-### 5. Arreter les conteneurs
+### 5. Stop containers
 ```bash
 docker compose down
 ```
 
 ---
 
-## Installation Manuelle pour le Developpement
+## Manual Setup for Development
 
-Si vous souhaitez travailler sur le code sans passer par Docker :
+If you wish to contribute or develop locally without Docker:
 
-### A. Lancement du Backend (FastAPI)
+### Backend Setup (FastAPI)
 
-1. Ouvrir un terminal et acceder au dossier backend :
-```bash
-cd backend
-```
+1. Open a terminal and navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
 
-2. Creer et activer un environnement virtuel :
-```bash
-# Sous Linux / macOS
-python3 -m venv .venv
-source .venv/bin/activate
+2. Create and activate a Python virtual environment:
+   ```bash
+   # On Linux / macOS
+   python3 -m venv .venv
+   source .venv/bin/activate
 
-# Sous Windows (PowerShell)
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+   # On Windows (PowerShell)
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
 
-3. Installer les dependances Python :
-```bash
-pip install -r requirements.txt
-```
+3. Install required Python packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. Creer le fichier `.env` a partir du modele :
-```bash
-cp .env.example .env
-```
+4. Create your local environment configuration:
+   ```bash
+   cp .env.example .env
+   ```
 
-5. Lancer le serveur FastAPI avec rechargement a chaud :
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+5. Start the FastAPI development server with hot-reload:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-### B. Lancement du Frontend (Next.js)
+### Frontend Setup (Next.js)
 
-1. Ouvrir un second terminal et acceder au dossier `finly-app` :
-```bash
-cd finly-app
-```
+1. Open a second terminal and navigate to the frontend directory:
+   ```bash
+   cd finly-app
+   ```
 
-2. Installer les dependances Node.js :
-```bash
-npm install
-```
+2. Install Node dependencies:
+   ```bash
+   npm install
+   ```
 
-3. Lancer le serveur de developpement Next.js :
-```bash
-npm run dev
-```
+3. Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
 
-4. L'application est disponible sur [http://localhost:3000](http://localhost:3000).
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Configuration des Variables d'Environnement
+## User Guide and Workflow
 
-Le backend necessite certaines variables pour fonctionner. Voici les parametres disponibles dans `backend/.env.example` :
+### Step 1: Initial Setup & Account Creation
+- Open [http://localhost:3000](http://localhost:3000) and register your local administrator credentials.
+- All subsequent sessions use secure JWT tokens stored client-side.
 
-| Variable | Description | Valeur par defaut |
+### Step 2: Connecting Bank Accounts or Manual Entry
+- Navigate to the **Accounts** section.
+- **Automated Sync:** Select your banking institution from the Woob connector catalog, enter your credentials, and validate any multi-factor authentication (MFA) prompts.
+- **Manual Accounts:** Create offline checking, savings, or investment accounts and record manual balances.
+- **Real Estate:** Add real estate properties to include property value and remaining loan balances in your net worth calculation.
+
+### Step 3: Setting Up Monthly Budgets
+- Navigate to the **Budget** tab.
+- Define monthly spending envelopes for your primary expense categories (e.g., Housing, Groceries, Transport, Subscriptions).
+- Review progress bars and remaining allowances throughout the month.
+
+### Step 4: Reviewing and Categorizing Expenses
+- Check the **Expenses / Transactions** section to inspect recent transactions synced from your accounts.
+- Set up automatic categorization rules to match transaction descriptions with target categories.
+- Manually edit any transaction details or notes as needed.
+
+### Step 5: Tracking Savings Goals & Projects
+- Go to the **Projects** tab.
+- Define short-term or long-term financial targets (e.g., Emergency Fund, Vacation, Down Payment).
+- Track funding percentages and allocate capital towards your milestones.
+
+### Step 6: Exporting Reports
+- Export your consolidated financial history into Excel (`.xlsx`) workbooks containing native formulas for bookkeeping or tax preparation.
+
+---
+
+## Environment Variables
+
+The backend configuration is managed through environment variables located in `backend/.env`.
+
+| Variable | Description | Default Value |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | URL de connexion a la base SQLite | `sqlite:///./finly.db` |
-| `SECRET_KEY` | Cle pour le chiffrement AES-256 et JWT | A generer aleatoirement |
-| `CORS_ORIGINS` | Origines autorisees pour les requetes | `http://localhost:3000` |
-| `SYNC_INTERVAL_HOURS` | Intervalle de synchronisation bancaire automatique | `6` |
+| `DATABASE_URL` | SQLAlchemy connection string for SQLite database | `sqlite:///./finly.db` |
+| `SECRET_KEY` | Secret key used for JWT signing and AES-256 credential encryption | Required |
+| `CORS_ORIGINS` | Permitted origins for Cross-Origin Resource Sharing | `http://localhost:3000` |
+| `SYNC_INTERVAL_HOURS` | Frequency of automated background bank synchronizations (in hours) | `6` |
 
 ---
 
-## Gestion des Connecteurs Bancaires (Woob)
+## Banking Connectors (Woob)
 
-Finly s'appuie sur la suite libre Woob pour communiquer avec les interfaces bancaires.
+Finly relies on the open-source Woob engine to communicate directly with banking APIs and portals.
 
-### Mise a jour des modules bancaires
-Les interfaces bancaires evoluant regulierement, il est conseille de mettre a jour les modules Woob :
+### Updating Bank Connector Modules
+Because banking web interfaces change over time, keep connector modules up to date:
 ```bash
 woob config update
 ```
 
-### Lister les banques supportees
+### Listing Supported Institutions
 ```bash
 woob bank
 ```
 
 ---
 
-## Securite et Confidentialite
+## Security and Data Privacy
 
-1. **Isolation complete :** Finly n'envoie aucune donnee a des serveurs externes. Vos comptes et transactions restent stockes dans votre base de donnees locale SQLite.
-2. **Chiffrement des identifiants :** Les mots de passe et identifiants bancaires necessaires aux synchronisations sont chiffres en base de donnees a l'aide de l'algorithme AES-256 (Fernet).
-3. **Mots de passe utilisateurs :** Les mots de passe d'acces a l'application sont haches avec l'algorithme securise bcrypt.
-4. **Controle total :** Vous pouvez a tout moment supprimer vos connexions bancaires, vos comptes ou exporter l'integralite de vos donnees au format Excel.
+1. **Zero External Telemetry:** Finly never transmits financial data, account numbers, or credentials to external servers.
+2. **Encrypted Credentials:** Bank connection credentials and authentication tokens stored in the database are encrypted with symmetric AES-256 encryption (Fernet).
+3. **Password Security:** User authentication passwords are protected using industry-standard bcrypt hashes.
+4. **Data Ownership:** You maintain full ownership over your database. Backups can be made by copying the SQLite database file.
 
 ---
 
-## Structure du Projet
+## Project Structure
 
 ```text
-finly/
-|-- backend/                     # API FastAPI & Moteur Python
+Finly/
+|-- backend/                     # FastAPI backend application
 |   |-- app/
-|   |   |-- api/                 # Endpoints REST (auth, accounts, transactions, etc.)
-|   |   |-- core/                # Configurations, securite, base de donnees
-|   |   |-- models/              # Modeles SQLAlchemy
-|   |   |-- scheduler/           # Planification des synchronisations
-|   |   |-- services/            # Services metiers (Woob, export Excel, chiffrement)
-|   |   `-- main.py              # Point d'entree FastAPI
-|   |-- Dockerfile               # Image Docker Backend
-|   |-- requirements.txt         # Dependances Python
-|   `-- .env.example             # Modele de configuration
+|   |   |-- api/                 # REST API routes (accounts, budgets, sync, etc.)
+|   |   |-- core/                # Configuration, security, database models
+|   |   |-- models/              # SQLAlchemy database entities
+|   |   |-- scheduler/           # Background sync task scheduler
+|   |   |-- services/            # Business logic (Woob engine, Excel export)
+|   |   `-- main.py              # Application entrypoint
+|   |-- Dockerfile               # Backend container configuration
+|   |-- requirements.txt         # Python dependencies
+|   `-- .env.example             # Environment template
 |
-|-- finly-app/                   # Application Frontend Next.js
-|   |-- app/                     # Routes et pages (App Router)
-|   |-- components/              # Composants UI React
-|   |-- hooks/                   # Hooks personnalises
-|   |-- lib/                     # Utilitaires et clients API
-|   |-- Dockerfile               # Image Docker Frontend
-|   `-- package.json             # Dependances Node.js
+|-- finly-app/                   # Next.js frontend application
+|   |-- app/                     # App router pages (budget, compte, depenses, etc.)
+|   |-- components/              # UI components (cards, dialogs, charts)
+|   |-- hooks/                   # Custom React hooks
+|   |-- lib/                     # API client and formatting utilities
+|   |-- Dockerfile               # Frontend container configuration
+|   `-- package.json             # Node.js dependencies
 |
-|-- docker-compose.yml           # Orchestration complete
-`-- README.md                    # Documentation principale
+|-- Documents/                   # Documentation and visual assets
+|   `-- images/
+|       `-- Budget.png           # Dashboard and budget screenshot
+|
+|-- docker-compose.yml           # Multi-container orchestration
+`-- README.md                    # Project documentation
 ```
 
 ---
 
-## Contribution
+## Contributing
 
-Les contributions, signalements de bugs et suggestions d'ameliorations sont les bienvenus. Pour contribuer :
+Contributions, bug reports, and feature requests are welcome:
 
-1. Forkez le projet.
-2. Creez une branche deduite (`git checkout -b feature/amelioration-nom`).
-3. Commitez vos modifications (`git commit -m "Ajout d'une nouvelle fonctionnalite"`).
-4. Poussez votre branche (`git push origin feature/amelioration-nom`).
-5. Ouvrez une Pull Request.
+1. Fork the repository.
+2. Create a dedicated branch: `git checkout -b feature/new-feature-name`.
+3. Commit your changes: `git commit -m "Add new feature"`.
+4. Push to the branch: `git push origin feature/new-feature-name`.
+5. Open a Pull Request.
 
 ---
 
-## Licence
+## License
 
-Ce projet est distribue sous licence MIT. Consultez le fichier `LICENSE` pour plus d'informations.
+This project is licensed under the MIT License. See the `LICENSE` file for details.

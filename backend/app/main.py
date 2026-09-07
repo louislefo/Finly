@@ -38,6 +38,8 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN subcategory TEXT"))
             if "is_user_classified" not in cols:
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN is_user_classified BOOLEAN DEFAULT 0"))
+            if "is_excluded_from_budget" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN is_excluded_from_budget BOOLEAN DEFAULT 0"))
 
             # Check projects
             res = conn.execute(text("PRAGMA table_info(projects)")).fetchall()
@@ -51,14 +53,24 @@ def auto_migrate_sqlite():
 
 auto_migrate_sqlite()
 
+from app.scheduler.cron_jobs import start_scheduler, shutdown_scheduler
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     print("[Startup] Initialisation de Finly API (Categories dynamiques + Sous-categories)...")
     auto_migrate_sqlite()
+    try:
+        start_scheduler()
+    except Exception as e:
+        print(f"[Scheduler Startup Error]: {e}")
     yield
     # Shutdown
     print("[Shutdown] Fermeture de Finly API.")
+    try:
+        shutdown_scheduler()
+    except Exception as e:
+        print(f"[Scheduler Shutdown Error]: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

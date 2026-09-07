@@ -10,4 +10,5 @@ class MerchantRule(Base):
     merchant_pattern = Column(String, nullable=False, index=True)
     category = Column(String, nullable=False)
     subcategory = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

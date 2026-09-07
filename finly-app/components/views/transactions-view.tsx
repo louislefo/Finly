@@ -30,6 +30,10 @@ import {
   MapPin,
   Briefcase,
   Hash,
+  RotateCcw,
+  Trash2,
+  Camera,
+  ImageOff,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { Card } from "@/components/ui/card"
@@ -56,6 +60,7 @@ import { WoobModal } from "@/components/modals/woob-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Transaction, Project, Account, CategoryItem } from "@/lib/types/finance"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
+import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 
 export function TransactionsView() {
   const { formatAmount } = usePrivacy()
@@ -75,6 +80,8 @@ export function TransactionsView() {
   const [isAssigningProject, setIsAssigningProject] = useState<boolean>(false)
   const [isEditingCategory, setIsEditingCategory] = useState<boolean>(false)
   const [isCreatingCategory, setIsCreatingCategory] = useState<boolean>(false)
+  const [isEditingLogo, setIsEditingLogo] = useState<boolean>(false)
+  const [customLogoInput, setCustomLogoInput] = useState<string>("")
   const [selectedMainCat, setSelectedMainCat] = useState<string>("")
   const [selectedSubCat, setSelectedSubCat] = useState<string>("")
   const [newCatName, setNewCatName] = useState<string>("")
@@ -249,6 +256,70 @@ export function TransactionsView() {
       setIsCreatingCategory(false)
     } catch (err) {
       console.error("Erreur creation categorie:", err)
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    if (!selectedTx) return
+    try {
+      await FinlyAPI.updateTransactionLogo(selectedTx.id, {
+        logo_url: "none",
+        apply_to_all_merchant: true,
+      })
+      setSelectedTx({ ...selectedTx, logo_url: "none" })
+      setTransactionsList((prev) =>
+        prev.map((t) => (t.merchant === selectedTx.merchant ? { ...t, logo_url: "none" } : t))
+      )
+      setIsEditingLogo(false)
+      setFeedbackMessage(`Logo retiré pour ${selectedTx.merchant}`)
+      setTimeout(() => setFeedbackMessage(null), 3000)
+    } catch (err) {
+      console.error("Erreur suppression logo:", err)
+    }
+  }
+
+  const handleResetDefaultLogo = async () => {
+    if (!selectedTx) return
+    try {
+      await FinlyAPI.updateTransactionLogo(selectedTx.id, {
+        logo_url: null,
+        apply_to_all_merchant: true,
+      })
+      setSelectedTx({ ...selectedTx, logo_url: undefined })
+      setTransactionsList((prev) =>
+        prev.map((t) => (t.merchant === selectedTx.merchant ? { ...t, logo_url: undefined } : t))
+      )
+      setIsEditingLogo(false)
+      setFeedbackMessage(`Logo par défaut rétabli pour ${selectedTx.merchant}`)
+      setTimeout(() => setFeedbackMessage(null), 3000)
+    } catch (err) {
+      console.error("Erreur reset logo:", err)
+    }
+  }
+
+  const handleSetCustomLogo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedTx || !customLogoInput.trim()) return
+    const raw = customLogoInput.trim()
+    const formatted = raw.startsWith("http")
+      ? raw
+      : `https://www.google.com/s2/favicons?domain=${raw.replace(/^https?:\/\//, "")}&sz=128`
+
+    try {
+      await FinlyAPI.updateTransactionLogo(selectedTx.id, {
+        logo_url: formatted,
+        apply_to_all_merchant: true,
+      })
+      setSelectedTx({ ...selectedTx, logo_url: formatted })
+      setTransactionsList((prev) =>
+        prev.map((t) => (t.merchant === selectedTx.merchant ? { ...t, logo_url: formatted } : t))
+      )
+      setIsEditingLogo(false)
+      setCustomLogoInput("")
+      setFeedbackMessage(`Logo personnalisé enregistré pour ${selectedTx.merchant}`)
+      setTimeout(() => setFeedbackMessage(null), 3000)
+    } catch (err) {
+      console.error("Erreur custom logo:", err)
     }
   }
 
@@ -554,10 +625,8 @@ export function TransactionsView() {
 
               <Card className="border-white/10 bg-[#18181B] divide-y divide-white/5 overflow-hidden">
                 {items.map((tx: any) => {
-                  const Icon = getCategoryIcon(tx.category)
                   const isPositive = tx.amount > 0
                   const rawBankLabel = tx.rawLabel || tx.raw_label || ""
-                  const brandLogo = getBrandLogoUrl(tx.merchant, rawBankLabel)
 
                   return (
                     <div
@@ -571,27 +640,14 @@ export function TransactionsView() {
                       className="flex justify-between items-center p-3.5 hover:bg-white/[0.03] transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
-                          brandLogo
-                            ? "bg-zinc-900 border border-white/10 p-1.5"
-                            : isPositive
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : "bg-zinc-900 text-zinc-300 border border-white/5"
-                        }`}>
-                          {brandLogo ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={brandLogo}
-                              alt=""
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = "none"
-                              }}
-                            />
-                          ) : (
-                            <Icon className="w-4 h-4" />
-                          )}
-                        </div>
+                        <MerchantAvatar
+                          merchantName={tx.merchant}
+                          rawLabel={rawBankLabel}
+                          logoUrl={tx.logo_url}
+                          category={tx.category}
+                          isPositive={isPositive}
+                          className="w-9 h-9 rounded-xl"
+                        />
                         <div className="flex flex-col min-w-0 pr-2">
                           <span className="text-sm font-medium text-white group-hover:text-indigo-300 transition-colors truncate">
                             {tx.merchant}
@@ -658,27 +714,32 @@ export function TransactionsView() {
               <DialogHeader className="p-0 text-left">
                 <div className="flex justify-between items-start pr-6">
                   <div className="flex items-center gap-3 min-w-0 pr-2">
-                    {/* Company Logo / Favicon */}
-                    {companyInfo?.logo_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={companyInfo.logo_url}
-                        alt=""
-                        className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 object-contain p-1 shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = "none"
-                        }}
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 text-zinc-400">
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                    )}
+                    <MerchantAvatar
+                      merchantName={selectedTx.merchant}
+                      rawLabel={selectedTx.rawLabel || selectedTx.raw_label}
+                      logoUrl={selectedTx.logo_url !== undefined ? selectedTx.logo_url : companyInfo?.logo_url}
+                      category={selectedTx.category}
+                      isPositive={selectedTx.amount > 0}
+                      className="w-10 h-10 rounded-xl"
+                      iconClassName="w-5 h-5"
+                      editable={true}
+                      onClick={() => setIsEditingLogo(!isEditingLogo)}
+                    />
 
                     <div className="flex flex-col min-w-0">
-                      <DialogTitle className="text-lg font-bold text-white truncate">
-                        {selectedTx.merchant}
-                      </DialogTitle>
+                      <div className="flex items-center gap-1.5">
+                        <DialogTitle className="text-lg font-bold text-white truncate">
+                          {selectedTx.merchant}
+                        </DialogTitle>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingLogo(!isEditingLogo)}
+                          className="text-zinc-500 hover:text-indigo-300 transition-colors p-0.5 rounded cursor-pointer"
+                          title="Gérer le logo du commerçant"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                       <span className="text-xs text-zinc-400">
                         {selectedTx.date} à {selectedTx.time}
                       </span>
@@ -696,6 +757,73 @@ export function TransactionsView() {
                   </span>
                 </div>
               </DialogHeader>
+
+              {/* Logo Editing Panel */}
+              {isEditingLogo && (
+                <div className="p-3.5 rounded-2xl bg-zinc-900/95 border border-white/10 flex flex-col gap-3 animate-in fade-in duration-150">
+                  <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-indigo-400" />
+                      Gestion du logo de l&apos;enseigne
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingLogo(false)}
+                      className="text-zinc-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px] text-zinc-400">
+                      Préférence mémorisée pour toutes les opérations de <strong className="text-white">{selectedTx.merchant}</strong>.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-2 mt-0.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveLogo}
+                        className="text-xs border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-white h-9 rounded-xl gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Supprimer le logo</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetDefaultLogo}
+                        className="text-xs border-white/10 bg-zinc-800 text-zinc-300 hover:text-white h-9 rounded-xl gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Logo par défaut</span>
+                      </Button>
+                    </div>
+
+                    <form onSubmit={handleSetCustomLogo} className="flex gap-2 mt-1">
+                      <Input
+                        type="text"
+                        placeholder="Domaine (ex: monoprix.fr)"
+                        value={customLogoInput}
+                        onChange={(e) => setCustomLogoInput(e.target.value)}
+                        className="bg-zinc-950 border-white/10 text-white text-xs h-9 rounded-xl flex-1 font-mono"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!customLogoInput.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 rounded-xl px-3 cursor-pointer"
+                      >
+                        Valider
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+              )}
 
               {/* Info Card */}
               <div className="flex flex-col gap-2.5 p-3.5 rounded-2xl bg-zinc-900/60 border border-white/5 text-xs">
@@ -862,7 +990,7 @@ export function TransactionsView() {
                   <div className="flex justify-between items-center pb-2 border-b border-white/5">
                     <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                      Informations Établissement
+                      {companyInfo.is_matching_etablissement ? "Établissement Local" : "Informations Entreprise"}
                     </span>
                     {companyInfo.siren && (
                       <a
@@ -908,11 +1036,20 @@ export function TransactionsView() {
                     {companyInfo.adresse && (
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-zinc-400 shrink-0 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> Siège
+                          <MapPin className="w-3 h-3" /> {companyInfo.is_matching_etablissement ? "Établissement" : "Siège"}
                         </span>
-                        <span className="text-right text-zinc-300 line-clamp-2">
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            companyInfo.latitude && companyInfo.longitude
+                              ? `${companyInfo.latitude},${companyInfo.longitude}`
+                              : companyInfo.adresse
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-right text-indigo-300 hover:text-indigo-200 hover:underline line-clamp-2"
+                        >
                           {companyInfo.adresse}
-                        </span>
+                        </a>
                       </div>
                     )}
                   </div>

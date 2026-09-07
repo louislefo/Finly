@@ -43,6 +43,7 @@ import { BankDetailSheet } from "@/components/modals/bank-detail-sheet"
 import { ExportDialog } from "@/components/modals/export-dialog"
 import { EvolutionChart } from "@/components/charts/evolution-chart"
 import { BankLogo } from "@/components/ui/bank-icons"
+import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Account, Transaction, Project } from "@/lib/types/finance"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
@@ -436,33 +437,21 @@ export function DashboardView() {
             </div>
           ) : (
             recentTransactions.map((tx) => {
-              const Icon = getTxIcon(tx.category)
               const isPositive = tx.amount > 0
               const rawText = tx.rawLabel || (tx as any).raw_label || ""
-              const brandLogo = getBrandLogoUrl(tx.merchant, rawText)
 
               return (
                 <div key={tx.id} className="flex justify-between items-center py-3 hover:bg-white/[0.02] px-1 rounded-lg transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
-                      brandLogo
-                        ? "bg-zinc-900 border border-white/10 p-1.5"
-                        : "bg-zinc-900 border border-white/5 text-zinc-300"
-                    }`}>
-                      {brandLogo ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={brandLogo}
-                          alt=""
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = "none"
-                          }}
-                        />
-                      ) : (
-                        <Icon className="w-4 h-4" />
-                      )}
-                    </div>
+                    <MerchantAvatar
+                      merchantName={tx.merchant}
+                      rawLabel={rawText}
+                      logoUrl={tx.logo_url}
+                      category={tx.category}
+                      isPositive={isPositive}
+                      className="w-8 h-8 rounded-xl"
+                      iconClassName="w-3.5 h-3.5"
+                    />
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-white">{tx.merchant}</span>
                       <span className="text-[11px] text-zinc-400">{tx.category} • {tx.date}</span>

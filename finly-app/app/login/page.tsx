@@ -50,13 +50,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md flex flex-col gap-6 relative z-10">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="relative w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-zinc-900 border border-white/10 shadow-xl">
+          <div className="relative w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-zinc-900/90 border border-white/10 shadow-2xl">
             <Image
               src="/logo_sombre.png"
               alt="Finly"
-              width={40}
-              height={40}
-              style={{ width: "auto", height: "auto" }}
+              width={42}
+              height={42}
               className="object-contain"
               priority
             />

@@ -28,6 +28,11 @@ import {
   ArrowLeftRight,
   Wallet,
   Layers,
+  EyeOff,
+  Eye,
+  Trash2,
+  AlertCircle,
+  RotateCcw,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -42,8 +47,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { BudgetPieChart } from "@/components/charts/budget-pie-chart"
+import { CashflowSankeyChart } from "@/components/charts/cashflow-sankey-chart"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { BudgetSummary, BudgetItem, CategoryItem } from "@/lib/types/finance"
+import { BudgetSummary, BudgetItem, CategoryItem, Account } from "@/lib/types/finance"
+import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
 
 type BudgetTxItem = BudgetItem["transactions"][number]
@@ -57,30 +64,32 @@ export function BudgetView() {
   const { formatAmount } = usePrivacy()
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null)
   const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([])
+  const [accountsList, setAccountsList] = useState<Account[]>([])
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("all")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isSetBudgetOpen, setIsSetBudgetOpen] = useState<boolean>(false)
   const [budgetFormCat, setBudgetFormCat] = useState<string>("")
   const [budgetFormLimit, setBudgetFormLimit] = useState<string>("")
   const [viewTransactionsCat, setViewTransactionsCat] = useState<BudgetItem | null>(null)
+  const [isExcludedListModalOpen, setIsExcludedListModalOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   // Period / Time states
   const [periodMode, setPeriodMode] = useState<"month" | "last_30_days">("month")
   const [selectedMonth, setSelectedMonth] = useState<string>(getInitialMonth())
 
-  // Account Scope & Transfer filter states
-  const [accountScope, setAccountScope] = useState<"checking" | "all">("checking")
-  const [excludeTransfers, setExcludeTransfers] = useState<boolean>(true)
-
   const currentRealMonth = useMemo(() => getInitialMonth(), [])
+  const isCurrentMonthActive = periodMode === "month" && selectedMonth === currentRealMonth
 
   // Transaction Edit states
   const [editingTx, setEditingTx] = useState<BudgetTxItem | null>(null)
   const [editCategory, setEditCategory] = useState<string>("")
   const [editSubcategory, setEditSubcategory] = useState<string>("")
+  const [editIsExcluded, setEditIsExcluded] = useState<boolean>(false)
   const [applyToAllMerchant, setApplyToAllMerchant] = useState<boolean>(false)
   const [isSavingTx, setIsSavingTx] = useState<boolean>(false)
   const [txEditFeedback, setTxEditFeedback] = useState<string | null>(null)
+  const [isExcludingTxId, setIsExcludingTxId] = useState<string | null>(null)
 
   const formatMonthName = useCallback((monthKey: string) => {
     if (monthKey === "last_30_days") return "30 derniers jours"
@@ -120,26 +129,46 @@ export function BudgetView() {
     setSelectedMonth(currentRealMonth)
   }
 
-  const isCurrentMonthActive = periodMode === "month" && selectedMonth === currentRealMonth
+  const depositAccounts = useMemo(() => {
+    return accountsList.filter((a) => {
+      const t = (a.type || "").toLowerCase()
+      const name = (a.name || "").toLowerCase()
+      if (["livret", "epargne", "épargne", "ldd", "lep", "pea", "assurance", "titre", "placement"].some((k) => t.includes(k) || name.includes(k))) {
+        return false
+      }
+      return true
+    })
+  }, [accountsList])
 
   const loadBudgets = useCallback(async () => {
     setIsLoading(true)
     try {
       const activeParam = periodMode === "last_30_days" ? "last_30_days" : selectedMonth
-      const [summary, cats] = await Promise.all([
+      const [summary, cats, accsRes] = await Promise.all([
         FinlyAPI.getBudgets({
           month: activeParam,
-          account_type: accountScope,
-          exclude_transfers: excludeTransfers,
+          account_type: "checking",
+          account_id: selectedAccountId !== "all" ? selectedAccountId : undefined,
+          exclude_transfers: true,
         }),
         FinlyAPI.getCategories(),
+        FinlyAPI.getAccounts().catch(() => ({ total_balance: 0, accounts: [] })),
       ])
       setBudgetSummary(summary)
       setCategoriesList(cats)
+      setAccountsList(accsRes?.accounts || [])
+
+      // Sync active viewTransactionsCat if open
+      if (viewTransactionsCat) {
+        const updatedCat = summary.items.find((i) => i.category === viewTransactionsCat.category)
+        if (updatedCat) {
+          setViewTransactionsCat(updatedCat)
+        }
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [periodMode, selectedMonth, accountScope, excludeTransfers])
+  }, [periodMode, selectedMonth, selectedAccountId, viewTransactionsCat])
 
   useEffect(() => {
     loadBudgets()
@@ -153,7 +182,7 @@ export function BudgetView() {
 
   const handleSaveBudget = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!budgetFormCat || !budgetFormLimit) return
+    if (!budgetFormCat) return
 
     try {
       await FinlyAPI.setBudget({
@@ -167,10 +196,35 @@ export function BudgetView() {
     }
   }
 
+  const handleDeleteBudget = async (catName: string) => {
+    try {
+      await FinlyAPI.deleteBudget(catName)
+      await loadBudgets()
+      setIsSetBudgetOpen(false)
+    } catch (err) {
+      console.error("Erreur suppression budget:", err)
+    }
+  }
+
+  // Toggle single transaction exclusion from budget
+  const handleToggleExcludeTx = async (txId: string, currentExcludedState: boolean, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setIsExcludingTxId(txId)
+    try {
+      await FinlyAPI.toggleExcludeTransactionFromBudget(txId, !currentExcludedState)
+      await loadBudgets()
+    } catch (err) {
+      console.error("Erreur exclusion budget:", err)
+    } finally {
+      setIsExcludingTxId(null)
+    }
+  }
+
   const handleOpenEditTx = (tx: BudgetTxItem) => {
     setEditingTx(tx)
     setEditCategory(tx.category || "Divers")
     setEditSubcategory(tx.subcategory || "")
+    setEditIsExcluded(Boolean(tx.is_excluded_from_budget))
     setApplyToAllMerchant(false)
     setTxEditFeedback(null)
   }
@@ -183,36 +237,22 @@ export function BudgetView() {
     setTxEditFeedback(null)
 
     try {
+      // 1. Update category & subcategory
       await FinlyAPI.updateTransactionCategory(editingTx.id, {
         category: editCategory,
         subcategory: editSubcategory.trim() || undefined,
         apply_to_all_merchant: applyToAllMerchant,
       })
 
-      // Refresh budgets immediately
-      await loadBudgets()
-
-      // Update current modal transactions list
-      if (viewTransactionsCat) {
-        if (editCategory === viewTransactionsCat.category) {
-          setViewTransactionsCat({
-            ...viewTransactionsCat,
-            transactions: viewTransactionsCat.transactions.map((t) =>
-              t.id === editingTx.id
-                ? { ...t, category: editCategory, subcategory: editSubcategory.trim() || undefined }
-                : t
-            ),
-          })
-        } else {
-          setViewTransactionsCat({
-            ...viewTransactionsCat,
-            spent: viewTransactionsCat.spent - Math.abs(editingTx.amount),
-            transactions: viewTransactionsCat.transactions.filter((t) => t.id !== editingTx.id),
-          })
-        }
+      // 2. Update exclusion state if changed
+      if (Boolean(editingTx.is_excluded_from_budget) !== editIsExcluded) {
+        await FinlyAPI.toggleExcludeTransactionFromBudget(editingTx.id, editIsExcluded)
       }
 
-      setTxEditFeedback("Catégorie mise à jour avec succès.")
+      // 3. Reload budgets
+      await loadBudgets()
+
+      setTxEditFeedback("Opération mise à jour avec succès.")
       setTimeout(() => {
         setEditingTx(null)
         setTxEditFeedback(null)
@@ -247,7 +287,22 @@ export function BudgetView() {
   const totalBudget = budgetSummary?.total_budget || 0
   const totalSpent = budgetSummary?.total_spent || 0
   const remainingBudget = budgetSummary?.remaining_budget || 0
+  const totalExcludedAmount = budgetSummary?.total_excluded_amount || 0
+  const excludedTxCount = budgetSummary?.excluded_transactions_count || 0
   const globalPercentage = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0
+
+  // All excluded transactions of the selected month
+  const allMonthExcludedTransactions = useMemo(() => {
+    const list: BudgetTxItem[] = []
+    for (const item of items) {
+      for (const tx of item.transactions) {
+        if (tx.is_excluded_from_budget) {
+          list.push(tx)
+        }
+      }
+    }
+    return list
+  }, [items])
 
   // Subcategories available for currently selected category in edit modal
   const activeCategoryObj = categoriesList.find((c) => c.name === editCategory)
@@ -261,11 +316,31 @@ export function BudgetView() {
           <h1 className="text-xl font-bold text-white tracking-tight">Budgets & Répartition</h1>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className="text-xs text-zinc-400">
-              {accountScope === "checking" ? "Compte de Dépôt uniquement" : "Tous les comptes"} • {periodMode === "last_30_days" ? "30 derniers jours" : formatMonthName(selectedMonth)}
+              {periodMode === "last_30_days" ? "30 derniers jours" : formatMonthName(selectedMonth)}
             </span>
-            {excludeTransfers && (
-              <Badge variant="outline" className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-[10px] py-0 px-2">
-                Virements internes exclus
+            {depositAccounts.length > 1 && (
+              <>
+                <span className="text-zinc-600">•</span>
+                <div className="flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-indigo-400" />
+                  <select
+                    value={selectedAccountId}
+                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                    className="bg-zinc-900 text-zinc-200 border border-white/10 rounded-lg text-xs px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="all">Tous les comptes de dépôt ({depositAccounts.length})</option>
+                    {depositAccounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.bank ? `${acc.bank} - ` : ""}{acc.name || "Compte de dépôt"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            {excludedTxCount > 0 && (
+              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300 text-[10px] py-0 px-2">
+                {excludedTxCount} opération{excludedTxCount > 1 ? "s" : ""} exclue{excludedTxCount > 1 ? "s" : ""}
               </Badge>
             )}
           </div>
@@ -280,7 +355,7 @@ export function BudgetView() {
               onClick={() => setPeriodMode("month")}
               className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
                 periodMode === "month"
-                  ? "bg-indigo-600 text-white shadow-sm"
+                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
@@ -291,7 +366,7 @@ export function BudgetView() {
               onClick={() => setPeriodMode("last_30_days")}
               className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
                 periodMode === "last_30_days"
-                  ? "bg-indigo-600 text-white shadow-sm"
+                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
@@ -342,7 +417,7 @@ export function BudgetView() {
           <Button
             onClick={() => handleOpenSetBudget()}
             size="sm"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-3.5 gap-1.5 rounded-2xl cursor-pointer shadow-md shadow-indigo-600/20"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-3.5 gap-1.5 rounded-2xl cursor-pointer shadow-md shadow-indigo-600/20 font-semibold"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Définir un Budget</span>
@@ -350,51 +425,27 @@ export function BudgetView() {
         </div>
       </div>
 
-      {/* Account & Transfer Filter Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-950/70 border border-white/5 text-xs">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-indigo-400 shrink-0" />
-          <span className="text-zinc-400 font-medium">Périmètre du compte :</span>
-          <div className="flex items-center p-0.5 rounded-xl bg-zinc-900 border border-white/10">
-            <button
-              type="button"
-              onClick={() => setAccountScope("checking")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                accountScope === "checking"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Compte de Dépôt
-            </button>
-            <button
-              type="button"
-              onClick={() => setAccountScope("all")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                accountScope === "all"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Tous les comptes
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={excludeTransfers}
-              onChange={(e) => setExcludeTransfers(e.target.checked)}
-              className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-0 cursor-pointer"
-            />
-            <span className="text-zinc-300 font-medium">
-              Exclure les virements internes et l&apos;épargne
+      {/* Excluded Transactions Banner (Month by Month) */}
+      {excludedTxCount > 0 && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+              <EyeOff className="w-4 h-4" />
+            </div>
+            <span className="leading-relaxed">
+              <strong className="text-white font-semibold">{excludedTxCount} opération{excludedTxCount > 1 ? "s" : ""}</strong> exclue{excludedTxCount > 1 ? "s" : ""} du calcul de budget en {periodMode === "last_30_days" ? "30 derniers jours" : formatMonthName(selectedMonth)} (soit <span className="font-mono font-bold text-white">{formatAmount(totalExcludedAmount)}</span> ignorés).
             </span>
-          </label>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsExcludedListModalOpen(true)}
+            className="h-8 px-3 text-xs border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 rounded-xl cursor-pointer shrink-0 font-medium"
+          >
+            Gérer les exclusions
+          </Button>
         </div>
-      </div>
+      )}
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -417,8 +468,13 @@ export function BudgetView() {
           <p className="text-xl font-bold font-mono text-white mt-1">
             {formatAmount(totalSpent)}
           </p>
-          <div className="mt-2 text-[11px] text-zinc-500">
-            {globalPercentage}% du budget utilisé (hors virements internes)
+          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
+            <span>{globalPercentage}% du budget utilisé</span>
+            {totalExcludedAmount > 0 && (
+              <span className="text-amber-400 font-mono text-[10px]">
+                (-{formatAmount(totalExcludedAmount)} exclu)
+              </span>
+            )}
           </div>
         </Card>
 
@@ -463,6 +519,8 @@ export function BudgetView() {
             const hasLimit = item.monthly_limit > 0
             const isExceeded = hasLimit && item.spent > item.monthly_limit
             const isNearLimit = hasLimit && item.percentage >= 80 && !isExceeded
+            const activeTxCount = item.transactions.filter((t) => !t.is_excluded_from_budget).length
+            const excludedCount = item.transactions.filter((t) => t.is_excluded_from_budget).length
 
             return (
               <Card
@@ -478,9 +536,12 @@ export function BudgetView() {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-white">{item.category}</span>
-                      <span className="text-[11px] text-zinc-400">
-                        {item.transactions.length} opération{item.transactions.length > 1 ? "s" : ""}
-                      </span>
+                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                        <span>{activeTxCount} opération{activeTxCount > 1 ? "s" : ""}</span>
+                        {excludedCount > 0 && (
+                          <span className="text-amber-400 text-[10px]">({excludedCount} exclue{excludedCount > 1 ? "s" : ""})</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -563,6 +624,14 @@ export function BudgetView() {
         </div>
       </div>
 
+      {/* Cashflow Sankey Diagram (Incomes -> Hub -> Categories -> Subcategories & Savings) */}
+      <CashflowSankeyChart
+        budgetSummary={budgetSummary}
+        selectedMonth={selectedMonth}
+        periodMode={periodMode}
+        formatMonthName={formatMonthName}
+      />
+
       {/* Set / Edit Budget Dialog */}
       <Dialog open={isSetBudgetOpen} onOpenChange={setIsSetBudgetOpen}>
         <DialogContent className="max-w-md p-6 bg-[#18181B] border-white/10 text-white rounded-3xl">
@@ -578,7 +647,13 @@ export function BudgetView() {
               <label className="text-xs font-semibold text-zinc-300">Catégorie</label>
               <select
                 value={budgetFormCat}
-                onChange={(e) => setBudgetFormCat(e.target.value)}
+                onChange={(e) => {
+                  setBudgetFormCat(e.target.value)
+                  const existingItem = items.find((i) => i.category === e.target.value)
+                  if (existingItem) {
+                    setBudgetFormLimit(existingItem.monthly_limit > 0 ? existingItem.monthly_limit.toString() : "")
+                  }
+                }}
                 className="bg-zinc-950 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none cursor-pointer"
               >
                 {categoriesList.map((cat, idx) => (
@@ -613,6 +688,17 @@ export function BudgetView() {
                 <Check className="w-4 h-4 mr-1.5" />
                 Enregistrer le budget
               </Button>
+              {items.some((i) => i.category === budgetFormCat && i.monthly_limit > 0) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDeleteBudget(budgetFormCat)}
+                  className="border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs h-10 rounded-xl cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Effacer
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -638,13 +724,20 @@ export function BudgetView() {
                       Opérations : {viewTransactionsCat.category}
                     </DialogTitle>
                     <span className="text-xs text-zinc-400">
-                      {viewTransactionsCat.transactions.length} opération{viewTransactionsCat.transactions.length > 1 ? "s" : ""} • Cliquez sur une ligne pour la modifier
+                      {viewTransactionsCat.transactions.length} opération{viewTransactionsCat.transactions.length > 1 ? "s" : ""} pour {periodMode === "last_30_days" ? "30 jours" : formatMonthName(selectedMonth)}
                     </span>
                   </div>
 
-                  <span className="text-base font-bold font-mono text-white">
-                    {formatAmount(viewTransactionsCat.spent)}
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-base font-bold font-mono text-white">
+                      {formatAmount(viewTransactionsCat.spent)}
+                    </span>
+                    {viewTransactionsCat.transactions.some((t) => t.is_excluded_from_budget) && (
+                      <span className="text-[10px] text-amber-400 font-mono">
+                        (hors opérations exclues)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </DialogHeader>
 
@@ -656,14 +749,22 @@ export function BudgetView() {
                 ) : (
                   viewTransactionsCat.transactions.map((tx) => {
                     const brandLogo = getBrandLogoUrl(tx.merchant, tx.raw_label)
+                    const isExcluded = Boolean(tx.is_excluded_from_budget)
+                    const isExcluding = isExcludingTxId === tx.id
 
                     return (
                       <div
                         key={tx.id}
-                        onClick={() => handleOpenEditTx(tx)}
-                        className="p-3 flex justify-between items-center hover:bg-white/5 transition-colors cursor-pointer group"
+                        className={`p-3 flex justify-between items-center transition-colors group ${
+                          isExcluded
+                            ? "bg-zinc-950/30 opacity-60 hover:opacity-90"
+                            : "hover:bg-white/5"
+                        }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div
+                          onClick={() => handleOpenEditTx(tx)}
+                          className="flex items-center gap-3 min-w-0 pr-2 cursor-pointer flex-1"
+                        >
                           <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/10 p-1 flex items-center justify-center shrink-0 overflow-hidden">
                             {brandLogo ? (
                               /* eslint-disable-next-line @next/next/no-img-element */
@@ -681,9 +782,18 @@ export function BudgetView() {
                           </div>
 
                           <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">
-                              {tx.merchant}
-                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-xs font-semibold group-hover:text-indigo-300 transition-colors truncate ${
+                                isExcluded ? "line-through text-zinc-400" : "text-white"
+                              }`}>
+                                {tx.merchant}
+                              </span>
+                              {isExcluded && (
+                                <Badge variant="outline" className="text-[9px] py-0 px-1.5 border-amber-500/30 bg-amber-500/10 text-amber-300">
+                                  Exclue du budget
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-[10px] text-zinc-400">{tx.date}</span>
                               {tx.subcategory && (
@@ -695,13 +805,52 @@ export function BudgetView() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs font-bold font-mono text-white">
+                        {/* Amount & Exclusion Action */}
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className={`text-xs font-bold font-mono ${
+                            isExcluded ? "line-through text-zinc-500" : "text-white"
+                          }`}>
                             -{formatAmount(Math.abs(tx.amount))}
                           </span>
-                          <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 group-hover:text-white group-hover:bg-indigo-600 transition-all">
+
+                          {/* Quick Toggle Exclude Button */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={isExcluding}
+                            onClick={(e) => handleToggleExcludeTx(tx.id, isExcluded, e)}
+                            title={isExcluded ? "Réintégrer cette opération dans le budget" : "Exclure cette opération du calcul de budget"}
+                            className={`h-7 px-2 text-xs gap-1 rounded-xl cursor-pointer ${
+                              isExcluded
+                                ? "bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300"
+                                : "text-zinc-400 hover:text-amber-300 hover:bg-amber-500/10"
+                            }`}
+                          >
+                            {isExcluding ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : isExcluded ? (
+                              <>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline text-[11px]">Réintégrer</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline text-[11px]">Exclure</span>
+                              </>
+                            )}
+                          </Button>
+
+                          {/* Edit Category Button */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenEditTx(tx)}
+                            title="Modifier la catégorie"
+                            className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl cursor-pointer"
+                          >
                             <Edit2 className="w-3 h-3" />
-                          </div>
+                          </Button>
                         </div>
                       </div>
                     )
@@ -723,7 +872,115 @@ export function BudgetView() {
         </DialogContent>
       </Dialog>
 
-      {/* Single Transaction Edit Dialog (Category & Subcategory) */}
+      {/* Month Excluded Transactions Manager Modal */}
+      <Dialog open={isExcludedListModalOpen} onOpenChange={setIsExcludedListModalOpen}>
+        <DialogContent className="max-w-xl p-6 bg-[#18181B] border-white/10 text-white rounded-3xl max-h-[85vh] overflow-y-auto">
+          <div className="flex flex-col gap-4">
+            <DialogHeader className="p-0 text-left">
+              <div className="flex justify-between items-start pr-6">
+                <div>
+                  <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                    <EyeOff className="w-4 h-4 text-amber-400" />
+                    Opérations Exclues du Budget
+                  </DialogTitle>
+                  <span className="text-xs text-zinc-400">
+                    {periodMode === "last_30_days" ? "30 derniers jours" : formatMonthName(selectedMonth)} • {allMonthExcludedTransactions.length} opération{allMonthExcludedTransactions.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <span className="text-base font-bold font-mono text-amber-300">
+                  {formatAmount(totalExcludedAmount)}
+                </span>
+              </div>
+            </DialogHeader>
+
+            <div className="flex flex-col divide-y divide-white/5 border border-white/5 rounded-2xl bg-zinc-950/60 overflow-hidden">
+              {allMonthExcludedTransactions.length === 0 ? (
+                <div className="p-8 text-center text-xs text-zinc-500">
+                  Aucune opération exclue sur ce mois.
+                </div>
+              ) : (
+                allMonthExcludedTransactions.map((tx) => {
+                  const brandLogo = getBrandLogoUrl(tx.merchant, tx.raw_label)
+                  const isExcluding = isExcludingTxId === tx.id
+
+                  return (
+                    <div
+                      key={tx.id}
+                      className="p-3 flex justify-between items-center hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/10 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                          {brandLogo ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={brandLogo}
+                              alt=""
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none"
+                              }}
+                            />
+                          ) : (
+                            <CreditCard className="w-4 h-4 text-zinc-400" />
+                          )}
+                        </div>
+
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-semibold text-white truncate">
+                            {tx.merchant}
+                          </span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-zinc-400">{tx.date}</span>
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 border-white/10 text-zinc-400">
+                              {tx.category}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs font-bold font-mono text-zinc-400 line-through">
+                          -{formatAmount(Math.abs(tx.amount))}
+                        </span>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isExcluding}
+                          onClick={() => handleToggleExcludeTx(tx.id, true)}
+                          className="h-7 px-2.5 text-xs border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-200 rounded-xl cursor-pointer gap-1"
+                        >
+                          {isExcluding ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <>
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Réintégrer</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsExcludedListModalOpen(false)}
+                className="border-white/10 bg-zinc-900 text-zinc-300 text-xs h-9 rounded-xl cursor-pointer"
+              >
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Single Transaction Edit Dialog (Category, Subcategory, Exclusion) */}
       <Dialog open={!!editingTx} onOpenChange={() => setEditingTx(null)}>
         <DialogContent className="max-w-md p-6 bg-[#18181B] border-white/10 text-white rounded-3xl">
           {editingTx && (
@@ -731,7 +988,7 @@ export function BudgetView() {
               <DialogHeader className="p-0 text-left">
                 <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
                   <Edit2 className="w-4 h-4 text-indigo-400" />
-                  Modifier la Catégorie
+                  Modifier l&apos;Opération
                 </DialogTitle>
               </DialogHeader>
 
@@ -756,6 +1013,25 @@ export function BudgetView() {
                   <span>{txEditFeedback}</span>
                 </div>
               )}
+
+              {/* Exclusion from Budget Checkbox */}
+              <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-zinc-950/70 border border-amber-500/20 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editIsExcluded}
+                  onChange={(e) => setEditIsExcluded(e.target.checked)}
+                  className="mt-0.5 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-0 cursor-pointer"
+                />
+                <div className="flex flex-col text-[11px] leading-relaxed">
+                  <span className="font-semibold text-amber-300 flex items-center gap-1">
+                    <EyeOff className="w-3.5 h-3.5" />
+                    Exclure cette opération du calcul de budget
+                  </span>
+                  <span className="text-zinc-400 mt-0.5">
+                    Cette dépense ponctuelle ne sera pas comptabilisée dans votre budget de ce mois.
+                  </span>
+                </div>
+              </label>
 
               {/* Category Selection */}
               <div className="flex flex-col gap-1.5">
@@ -818,7 +1094,7 @@ export function BudgetView() {
                   className="mt-0.5 rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-0 cursor-pointer"
                 />
                 <span className="text-[11px] text-zinc-300 leading-relaxed">
-                  Appliquer automatiquement cette catégorie à tous les futurs achats chez <strong className="text-white">{editingTx.merchant}</strong>
+                  Appliquer automatiquement cette catégorie à tous les achats chez <strong className="text-white">{editingTx.merchant}</strong>
                 </span>
               </label>
 

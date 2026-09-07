@@ -3,7 +3,8 @@
 import React, { useState } from "react"
 
 interface BankLogoProps {
-  bankId: string
+  bankId?: string
+  bankName?: string
   className?: string
   size?: number
 }
@@ -33,16 +34,17 @@ const BANK_DOMAINS: Record<string, string> = {
   hellobank: "hellobank.fr",
 }
 
-export function BankLogo({ bankId, className = "w-10 h-10", size = 128 }: BankLogoProps) {
+export function BankLogo({ bankId, bankName, className = "w-10 h-10", size = 128 }: BankLogoProps) {
   const [hasError, setHasError] = useState(false)
-  const normalizedId = bankId.toLowerCase().replace(/[^a-z0-9_]/g, "")
-  const domain = BANK_DOMAINS[normalizedId] || (bankId.includes(".") ? bankId : `${normalizedId}.fr`)
+  const targetId = bankId || bankName || "bank"
+  const normalizedId = targetId.toLowerCase().replace(/[^a-z0-9_]/g, "")
+  const domain = BANK_DOMAINS[normalizedId] || (targetId.includes(".") ? targetId : `${normalizedId}.fr`)
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`
 
   if (hasError) {
     return (
       <div className={`rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-white text-xs ${className}`}>
-        {bankId.slice(0, 3).toUpperCase()}
+        {targetId.slice(0, 3).toUpperCase()}
       </div>
     )
   }
@@ -52,7 +54,7 @@ export function BankLogo({ bankId, className = "w-10 h-10", size = 128 }: BankLo
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={faviconUrl}
-        alt={`${bankId} logo`}
+        alt={`${targetId} logo`}
         className="w-full h-full object-contain rounded-lg"
         onError={() => setHasError(true)}
       />

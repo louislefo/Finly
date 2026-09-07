@@ -1,4 +1,15 @@
-import { Account, Transaction, Project, User, CategoryItem, BudgetSummary } from "@/lib/types/finance"
+import {
+  Account,
+  BankConnection,
+  Transaction,
+  Project,
+  User,
+  CategoryItem,
+  BudgetSummary,
+  MortgageRatesSummary,
+  AddressSearchResult,
+  RealEstateEstimate,
+} from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "/api/v1")
@@ -198,6 +209,22 @@ export const FinlyAPI = {
     }
   },
 
+  async updateAccount(
+    accountId: string,
+    params: { name?: string; account_type?: string; color?: string }
+  ): Promise<{ status: string; account: Account }> {
+    const res = await fetch(`${API_BASE_URL}/accounts/${accountId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour du compte.")
+    }
+    return await res.json()
+  },
+
   async deleteAccount(accountId: string): Promise<{ status: string }> {
     const res = await fetch(`${API_BASE_URL}/accounts/${accountId}`, {
       method: "DELETE",
@@ -213,6 +240,31 @@ export const FinlyAPI = {
       headers: getAuthHeaders(),
     })
     if (!res.ok) throw new Error("Erreur suppression banque")
+    return await res.json()
+  },
+
+  async getBankConnections(): Promise<BankConnection[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/woob/connections`, {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      })
+      if (!res.ok) return []
+      return await res.json()
+    } catch {
+      return []
+    }
+  },
+
+  async deleteBankConnection(connId: string): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/woob/connections/${connId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la suppression de la connexion bancaire.")
+    }
     return await res.json()
   },
 
@@ -254,6 +306,38 @@ export const FinlyAPI = {
     return await res.json()
   },
 
+  async toggleExcludeTransactionFromBudget(
+    txId: string,
+    isExcluded: boolean
+  ): Promise<{ status: string; transaction_id: string; is_excluded_from_budget: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/transactions/${txId}/exclude-budget`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ is_excluded: isExcluded }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la modification de l'exclusion de budget.")
+    }
+    return await res.json()
+  },
+
+  async updateTransactionLogo(
+    txId: string,
+    params: { logo_url: string | null; apply_to_all_merchant?: boolean }
+  ): Promise<{ status: string; transaction_id: string; merchant?: string; logo_url?: string; updated_count: number }> {
+    const res = await fetch(`${API_BASE_URL}/transactions/${txId}/logo`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour du logo.")
+    }
+    return await res.json()
+  },
+
   async getCompanyInfo(txId: string): Promise<{
     found: boolean
     nom_complet?: string
@@ -278,20 +362,6 @@ export const FinlyAPI = {
       return await res.json()
     } catch {
       return { found: false }
-    }
-  },
-
-  // 5. Projects
-  async getProjects(): Promise<Project[]> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/`, {
-        headers: getAuthHeaders(),
-        cache: "no-store",
-      })
-      if (!res.ok) return []
-      return await res.json()
-    } catch {
-      return []
     }
   },
 
@@ -341,7 +411,20 @@ export const FinlyAPI = {
     }
   },
 
-  // 8. Import JSON Backup
+  // 8. Import and Export JSON Backup
+  async exportJsonBackup(): Promise<Record<string, any>> {
+    const res = await fetch(`${API_BASE_URL}/sync/export-json`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'exportation des données.")
+    }
+    return await res.json()
+  },
+
   async importJsonBackup(payload: Record<string, any>): Promise<{
     status: string
     message: string
@@ -350,6 +433,8 @@ export const FinlyAPI = {
       transactions: number
       projects: number
       budgets: number
+      categories?: number
+      rules?: number
     }
   }> {
     const res = await fetch(`${API_BASE_URL}/sync/import-json`, {
@@ -360,6 +445,183 @@ export const FinlyAPI = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.detail || "Erreur lors de l'import de la sauvegarde JSON.")
+    }
+    return await res.json()
+  },
+
+  // 9. Projects API
+  async getProjects(): Promise<Project[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/`, {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      })
+      if (!res.ok) return []
+      return await res.json()
+    } catch {
+      return []
+    }
+  },
+
+  async createProject(payload: Partial<Project>): Promise<Project> {
+    const body: Record<string, any> = {
+      name: payload.name,
+      target_amount: payload.targetAmount,
+      current_amount: payload.currentAmount || 0,
+      monthly_contribution: payload.monthlyContribution || 0,
+      deadline: payload.deadline,
+      category: payload.category || "Général",
+      project_type: payload.projectType || "savings",
+      status: payload.status || "in_progress",
+      linked_account_id: payload.linkedAccountId || null,
+      real_estate_data: payload.realEstateData || null,
+      description: payload.description || null,
+    }
+
+    const res = await fetch(`${API_BASE_URL}/projects/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la création du projet.")
+    }
+    return await res.json()
+  },
+
+  async updateProject(projectId: string, payload: Partial<Project>): Promise<Project> {
+    const body: Record<string, any> = {}
+    if (payload.name !== undefined) body.name = payload.name
+    if (payload.targetAmount !== undefined) body.target_amount = payload.targetAmount
+    if (payload.currentAmount !== undefined) body.current_amount = payload.currentAmount
+    if (payload.monthlyContribution !== undefined) body.monthly_contribution = payload.monthlyContribution
+    if (payload.deadline !== undefined) body.deadline = payload.deadline
+    if (payload.category !== undefined) body.category = payload.category
+    if (payload.projectType !== undefined) body.project_type = payload.projectType
+    if (payload.status !== undefined) body.status = payload.status
+    if (payload.linkedAccountId !== undefined) body.linked_account_id = payload.linkedAccountId
+    if (payload.realEstateData !== undefined) body.real_estate_data = payload.realEstateData
+    if (payload.description !== undefined) body.description = payload.description
+
+    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la modification du projet.")
+    }
+    return await res.json()
+  },
+
+  async addFundsToProject(projectId: string, amount: number, sourceAccountId?: string): Promise<Project> {
+    const res = await fetch(`${API_BASE_URL}/projects/${projectId}/funds`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ amount, source_account_id: sourceAccountId }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'ajout de fonds.")
+    }
+    return await res.json()
+  },
+
+  async deleteProject(projectId: string): Promise<{ status: string }> {
+    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) throw new Error("Erreur lors de la suppression du projet.")
+    return await res.json()
+  },
+
+  // 10. Rates API (Mortgage & Market rates)
+  async getMortgageRates(): Promise<MortgageRatesSummary | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/rates/mortgage`, {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      })
+      if (!res.ok) return null
+      return await res.json()
+    } catch {
+      return null
+    }
+  },
+
+  // 11. Real Estate API (Valuation, Address Autocomplete & Amortization)
+  async searchAddress(query: string): Promise<AddressSearchResult[]> {
+    if (!query || query.trim().length < 2) return []
+    try {
+      const res = await fetch(`${API_BASE_URL}/real-estate/search-address?q=${encodeURIComponent(query)}`, {
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) return []
+      const data = await res.json()
+      return data.results || []
+    } catch {
+      return []
+    }
+  },
+
+  async estimateRealEstate(params: {
+    address?: string
+    postal_code?: string
+    city?: string
+    surface_m2: number
+    property_type?: string
+    lat?: number
+    lon?: number
+  }): Promise<RealEstateEstimate | null> {
+    try {
+      const q = new URLSearchParams()
+      if (params.address) q.set("address", params.address)
+      if (params.postal_code) q.set("postal_code", params.postal_code)
+      if (params.city) q.set("city", params.city)
+      q.set("surface_m2", params.surface_m2.toString())
+      if (params.property_type) q.set("property_type", params.property_type)
+      if (params.lat) q.set("lat", params.lat.toString())
+      if (params.lon) q.set("lon", params.lon.toString())
+
+      const res = await fetch(`${API_BASE_URL}/real-estate/estimate?${q.toString()}`, {
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) return null
+      return await res.json()
+    } catch {
+      return null
+    }
+  },
+
+  async computeLoanAmortization(params: {
+    loan_amount: number
+    duration_years: number
+    interest_rate: number
+    insurance_rate?: number
+    start_date?: string
+  }): Promise<{
+    monthly_payment: number
+    monthly_principal_interest: number
+    monthly_insurance: number
+    total_interest: number
+    total_insurance: number
+    total_cost: number
+    elapsed_months: number
+    remaining_months: number
+    remaining_loan_balance: number
+    capital_amortized: number
+  }> {
+    const res = await fetch(`${API_BASE_URL}/real-estate/amortization`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors du calcul d'amortissement.")
     }
     return await res.json()
   },
