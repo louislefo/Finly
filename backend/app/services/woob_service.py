@@ -221,13 +221,33 @@ class WoobService:
         w = self._get_woob_instance()
 
         for conn in connections:
-            if not conn.password or not conn.login:
+            if not conn.login:
+                self.log(f"Connexion {conn.bank_name} ({conn.module_name}) ignoree: identifiant manquant.")
+                continue
+
+            if not conn.password:
+                self.log(f"Connexion {conn.bank_name} ({conn.module_name}) ignoree: mot de passe non renseigne en base (reconnexion requise via l'interface).")
                 continue
 
             decrypted_pwd = decrypt_bank_password(conn.password)
             if not decrypted_pwd:
-                self.log(f"Mot de passe non disponible pour {conn.bank_name}.")
+                self.log(f"Mot de passe non dechiffrable pour {conn.bank_name}. Reconnexion requise via l'interface.")
                 continue
+
+            # Ensure official module is installed and loaded
+            try:
+                if not w.modules_loader.module_exists(conn.module_name):
+                    self.log(f"Module {conn.module_name} absent en local. Recherche dans le depot officiel Woob...")
+                    minfo = w.repositories.get_module_info(conn.module_name)
+                    if not minfo:
+                        w.repositories.update()
+                        minfo = w.repositories.get_module_info(conn.module_name)
+                    if minfo:
+                        self.log(f"Installation du module certifie {conn.module_name}...")
+                        w.repositories.install(minfo)
+                    w.modules_loader.load_module(conn.module_name)
+            except Exception as mod_err:
+                self.log(f"Note chargement module {conn.module_name}: {mod_err}")
 
             # Remove previous backend instance if present
             w.backend_instances.pop(conn.backend_name, None)

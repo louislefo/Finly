@@ -23,6 +23,7 @@ from app.services.categorizer_service import CategorizerService
 router = APIRouter()
 
 @router.post("/")
+@router.post("", include_in_schema=False)
 async def trigger_manual_sync(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -601,6 +602,22 @@ async def import_json_backup(
 
         db.commit()
 
+        # Return pending connections that require user credentials for live Woob sync
+        pending_conns = []
+        for c in raw_conns:
+            b_name = c.get("backend_name")
+            m_name = c.get("module_name", "generic")
+            b_label = c.get("bank_name") or (m_name.upper() if m_name else "Banque")
+            l_val = c.get("login", "")
+            if m_name and m_name != "generic":
+                pending_conns.append({
+                    "id": c.get("id"),
+                    "backend_name": b_name,
+                    "module_name": m_name,
+                    "bank_name": b_label,
+                    "login": l_val,
+                })
+
         return {
             "status": "success",
             "message": "Sauvegarde JSON importée avec succès",
@@ -612,6 +629,7 @@ async def import_json_backup(
                 "categories": imported_categories,
                 "rules": imported_rules,
             },
+            "pending_connections": pending_conns,
         }
     except Exception as e:
         db.rollback()

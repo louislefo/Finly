@@ -65,7 +65,20 @@ async def connect_bank(
                 bank_name = b["name"]
                 break
 
-        backend_name = f"{req.module}_{uuid.uuid4().hex[:8]}"
+        # Check if existing connection exists for this user with same module or backend_name
+        existing_conn = None
+        if req.custom_params and req.custom_params.get("backend_name"):
+            existing_conn = db.query(BankConnection).filter(
+                (BankConnection.user_id == current_user.id) &
+                (BankConnection.backend_name == req.custom_params.get("backend_name"))
+            ).first()
+        if not existing_conn:
+            existing_conn = db.query(BankConnection).filter(
+                (BankConnection.user_id == current_user.id) &
+                (BankConnection.module_name == req.module)
+            ).first()
+
+        backend_name = existing_conn.backend_name if existing_conn else f"{req.module}_{uuid.uuid4().hex[:8]}"
 
         result = woob_service.setup_backend(
             module_name=req.module,
@@ -79,22 +92,31 @@ async def connect_bank(
             # Encrypt password with AES-256 Fernet before storing
             encrypted_password = encrypt_bank_password(req.password)
 
-            # 1. Persist connection in SQLite
-            connection = BankConnection(
-                id=f"conn_{uuid.uuid4().hex[:12]}",
-                user_id=current_user.id,
-                module_name=req.module,
-                bank_name=bank_name,
-                login=req.login,
-                password=encrypted_password,  # Chiffre en AES-256
-                backend_name=backend_name,
-                status=result.get("status", "connected"),
-                last_synced_at=datetime.utcnow(),
-            )
-            db.add(connection)
-            db.commit()
+            if existing_conn:
+                existing_conn.login = req.login
+                existing_conn.password = encrypted_password
+                existing_conn.bank_name = bank_name
+                existing_conn.module_name = req.module
+                existing_conn.backend_name = backend_name
+                existing_conn.status = result.get("status", "connected")
+                existing_conn.last_synced_at = datetime.utcnow()
+                db.commit()
+            else:
+                connection = BankConnection(
+                    id=f"conn_{uuid.uuid4().hex[:12]}",
+                    user_id=current_user.id,
+                    module_name=req.module,
+                    bank_name=bank_name,
+                    login=req.login,
+                    password=encrypted_password,
+                    backend_name=backend_name,
+                    status=result.get("status", "connected"),
+                    last_synced_at=datetime.utcnow(),
+                )
+                db.add(connection)
+                db.commit()
 
-            # 2. If status is connected, synchronize data immediately
+            # If status is connected, synchronize data immediately
             if result.get("status") == "connected":
                 sync_res = await sync_service.sync_all_active_accounts(
                     db,

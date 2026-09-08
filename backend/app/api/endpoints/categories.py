@@ -75,6 +75,7 @@ class CreateCategoryRequest(BaseModel):
     color: Optional[str] = "#818cf8"
 
 @router.get("/")
+@router.get("", include_in_schema=False)
 def list_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

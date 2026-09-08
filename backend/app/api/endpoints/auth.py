@@ -120,6 +120,11 @@ def change_password(
 
     return {"status": "success", "message": "Mot de passe modifié avec succès."}
 
+class UpdateSyncSettingsRequest(BaseModel):
+    auto_sync_enabled: bool
+    sync_interval_hours: Optional[int] = 12
+    sync_time: Optional[str] = "08:00"
+
 @router.get("/me")
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return {
@@ -127,6 +132,31 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "full_name": current_user.full_name,
         "role": current_user.role,
+        "auto_sync_enabled": bool(getattr(current_user, "auto_sync_enabled", False)),
+        "sync_interval_hours": int(getattr(current_user, "sync_interval_hours", 12) or 12),
+        "sync_time": str(getattr(current_user, "sync_time", "08:00") or "08:00"),
+    }
+
+@router.patch("/sync-settings")
+def update_sync_settings(
+    req: UpdateSyncSettingsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user.auto_sync_enabled = req.auto_sync_enabled
+    if req.sync_interval_hours is not None:
+        current_user.sync_interval_hours = req.sync_interval_hours
+    if req.sync_time is not None:
+        current_user.sync_time = req.sync_time
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "status": "success",
+        "message": "Préférences de synchronisation enregistrées.",
+        "auto_sync_enabled": current_user.auto_sync_enabled,
+        "sync_interval_hours": current_user.sync_interval_hours,
+        "sync_time": current_user.sync_time,
     }
 
 @router.post("/logout")

@@ -29,6 +29,7 @@ class SetBudgetRequest(BaseModel):
     monthly_limit: float
 
 @router.get("/")
+@router.get("", include_in_schema=False)
 def get_budgets_summary(
     month: Optional[str] = None, # format YYYY-MM or 'last_30_days'
     account_type: Optional[str] = "checking", # 'checking' (Compte Courant / Dépôt) or 'all'

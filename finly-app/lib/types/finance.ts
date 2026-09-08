@@ -3,6 +3,9 @@ export interface User {
   email: string
   full_name: string
   role?: string
+  auto_sync_enabled?: boolean
+  sync_interval_hours?: number
+  sync_time?: string
 }
 
 export interface CategoryItem {

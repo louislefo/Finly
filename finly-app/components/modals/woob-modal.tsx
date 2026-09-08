@@ -61,6 +61,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     projects: number
     budgets: number
   } | null>(null)
+  const [pendingImportedBanks, setPendingImportedBanks] = useState<any[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -122,6 +123,9 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
 
         const res = await FinlyAPI.importJsonBackup(parsed)
         setImportSummary(res.imported)
+        if (res.pending_connections && res.pending_connections.length > 0) {
+          setPendingImportedBanks(res.pending_connections)
+        }
         setStep("success_import")
         if (onBankConnected) {
           onBankConnected()
@@ -531,12 +535,36 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
               </div>
             )}
 
-            <Button
-              onClick={handleReset}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
-            >
-              Terminer et voir mon tableau de bord
-            </Button>
+            {pendingImportedBanks.length > 0 ? (
+              <div className="w-full max-w-xs flex flex-col gap-2 my-2">
+                <Button
+                  onClick={() => {
+                    const first = pendingImportedBanks[0]
+                    setSelectedBank(first.module_name)
+                    setLogin(first.login || "")
+                    setPassword("")
+                    setStep("credentials")
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
+                >
+                  Activer la synchronisation ({pendingImportedBanks[0].bank_name})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  className="w-full border-white/10 bg-zinc-900 text-zinc-400 hover:text-white text-xs h-9 rounded-xl cursor-pointer"
+                >
+                  Terminer sans synchronisation directe
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleReset}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
+              >
+                Terminer et voir mon tableau de bord
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>

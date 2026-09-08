@@ -88,6 +88,23 @@ export const FinlyAPI = {
     return await res.json()
   },
 
+  async updateSyncSettings(params: {
+    auto_sync_enabled: boolean
+    sync_interval_hours?: number
+    sync_time?: string
+  }): Promise<{ status: string; message: string; auto_sync_enabled: boolean; sync_interval_hours: number; sync_time: string }> {
+    const res = await fetch(`${API_BASE_URL}/auth/sync-settings`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'enregistrement des préférences.")
+    }
+    return await res.json()
+  },
+
   logout(): void {
     if (typeof window !== "undefined") {
       localStorage.removeItem("finly_token")
@@ -436,6 +453,13 @@ export const FinlyAPI = {
       categories?: number
       rules?: number
     }
+    pending_connections?: Array<{
+      id?: string
+      backend_name?: string
+      module_name: string
+      bank_name: string
+      login: string
+    }>
   }> {
     const res = await fetch(`${API_BASE_URL}/sync/import-json`, {
       method: "POST",

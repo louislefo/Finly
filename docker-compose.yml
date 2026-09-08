@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  backend:
+  finly:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    container_name: finly-backend
+    container_name: finly
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "3000:3000"
     volumes:
       - finly_data:/app/data
       - finly_woob:/app/woob_data
@@ -17,20 +17,10 @@ services:
       - SYNC_INTERVAL_HOURS=6
       - CORS_ORIGINS=*
       - SECRET_KEY=${SECRET_KEY:-finly-default-secret-key-change-me-in-prod}
-
-  frontend:
-    build:
-      context: ./finly-app
-      dockerfile: Dockerfile
-    container_name: finly-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
+      - BACKEND_INTERNAL_URL=http://127.0.0.1:8000
       - NEXT_PUBLIC_API_URL=/api/v1
-      - BACKEND_INTERNAL_URL=http://backend:8000
-    depends_on:
-      - backend
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
 
 volumes:
   finly_data:

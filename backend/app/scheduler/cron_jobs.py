@@ -1,6 +1,7 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.models.user import User
 from app.services.sync_service import sync_service
 
 scheduler = AsyncIOScheduler()
@@ -8,9 +9,15 @@ scheduler = AsyncIOScheduler()
 async def scheduled_bank_sync():
     db = SessionLocal()
     try:
-        print("[Scheduler] Lancement de la synchronisation bancaire automatique...")
-        result = await sync_service.sync_all_active_accounts(db)
-        print(f"[Scheduler] Synchronisation terminée : {result}")
+        active_users = db.query(User).filter(User.auto_sync_enabled == True).all()
+        if not active_users:
+            print("[Scheduler] Synchronisation automatique inactive (option non activée dans les paramètres).")
+            return
+
+        for u in active_users:
+            print(f"[Scheduler] Synchronisation automatique en cours pour {u.email} (intervalle: {u.sync_interval_hours}h)...")
+            res = await sync_service.sync_all_active_accounts(db, user_id=u.id)
+            print(f"[Scheduler] Résultat pour {u.email} : {res}")
     except Exception as e:
         print(f"[Scheduler] Erreur pendant la synchronisation : {str(e)}")
     finally:
@@ -26,7 +33,7 @@ def start_scheduler():
         replace_existing=True,
     )
     scheduler.start()
-    print(f"[Scheduler] Planificateur activé : synchronisation toutes les {interval_hours} heures.")
+    print("[Scheduler] Planificateur démarré (synchronisation automatique selon préférences utilisateurs).")
 
 def shutdown_scheduler():
     scheduler.shutdown()

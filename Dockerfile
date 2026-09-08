@@ -17,6 +17,7 @@ WORKDIR /app
 # Install system dependencies, curl, nodejs and supervisor
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    git \
     build-essential \
     supervisor \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \

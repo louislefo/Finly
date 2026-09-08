@@ -71,6 +71,16 @@ def auto_migrate_sqlite():
             if "logo_url" not in cols:
                 conn.execute(text("ALTER TABLE merchant_rules ADD COLUMN logo_url TEXT"))
 
+            # Check users
+            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            cols = [r[1] for r in res]
+            if "auto_sync_enabled" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN auto_sync_enabled BOOLEAN DEFAULT 0"))
+            if "sync_interval_hours" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN sync_interval_hours INTEGER DEFAULT 12"))
+            if "sync_time" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN sync_time TEXT DEFAULT '08:00'"))
+
             conn.commit()
     except Exception as e:
         print(f"[Auto-Migrate] Note: {e}")

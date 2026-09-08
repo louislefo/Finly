@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dialog"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
+import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Account, BankConnection } from "@/lib/types/finance"
 
@@ -100,6 +101,15 @@ export function AccountView() {
     projects: number
     budgets: number
   } | null>(null)
+  // Sync Settings States
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(false)
+  const [syncInterval, setSyncInterval] = useState<number>(12)
+  const [syncTime, setSyncTime] = useState<string>("08:00")
+  const [isSavingSyncSettings, setIsSavingSyncSettings] = useState<boolean>(false)
+  const [syncSettingsSuccessMsg, setSyncSettingsSuccessMsg] = useState<string | null>(null)
+
+  const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState<boolean>(false)
+  const [pendingBankConnections, setPendingBankConnections] = useState<PendingBankConnection[]>([])
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
   // Load Data
@@ -309,6 +319,35 @@ export function AccountView() {
     }
   }
 
+  // Populate user sync preferences
+  useEffect(() => {
+    if (user) {
+      if (user.auto_sync_enabled !== undefined) setAutoSyncEnabled(Boolean(user.auto_sync_enabled))
+      if (user.sync_interval_hours) setSyncInterval(user.sync_interval_hours)
+      if (user.sync_time) setSyncTime(user.sync_time)
+    }
+  }, [user])
+
+  // Save Auto-Sync Settings
+  const handleSaveSyncSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSavingSyncSettings(true)
+    setSyncSettingsSuccessMsg(null)
+    try {
+      await FinlyAPI.updateSyncSettings({
+        auto_sync_enabled: autoSyncEnabled,
+        sync_interval_hours: Number(syncInterval),
+        sync_time: syncTime,
+      })
+      setSyncSettingsSuccessMsg("Préférences de synchronisation enregistrées.")
+      setTimeout(() => setSyncSettingsSuccessMsg(null), 3500)
+    } catch {
+      // Error handling
+    } finally {
+      setIsSavingSyncSettings(false)
+    }
+  }
+
   // Export JSON Backup
   const handleExportJSON = async () => {
     setIsExportingJSON(true)
@@ -362,6 +401,12 @@ export function AccountView() {
         setImportSummary(res.imported)
         setImportSuccessMsg("Sauvegarde intégrale restaurée avec succès.")
         await loadData()
+
+        if (res.pending_connections && res.pending_connections.length > 0) {
+          setPendingBankConnections(res.pending_connections)
+          setIsCredentialsModalOpen(true)
+        }
+
         setTimeout(() => setImportSuccessMsg(null), 8000)
       } catch (err: any) {
         setImportErrorMsg(err.message || "Fichier JSON invalide ou corrompu.")
@@ -807,6 +852,81 @@ export function AccountView() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Auto-Sync Settings Card */}
+          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-indigo-400" />
+                <span>Synchronisation automatique</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <form onSubmit={handleSaveSyncSettings} className="flex flex-col gap-4">
+                {syncSettingsSuccessMsg && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span>{syncSettingsSuccessMsg}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-950 border border-white/5">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-white">Actualisation périodique</span>
+                    <span className="text-[11px] text-zinc-500">
+                      Synchronise automatiquement les soldes et opérations bancaires en arrière-plan.
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoSyncEnabled}
+                      onChange={(e) => setAutoSyncEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {autoSyncEnabled && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-zinc-400">Fréquence de synchronisation</label>
+                      <select
+                        value={syncInterval}
+                        onChange={(e) => setSyncInterval(Number(e.target.value))}
+                        className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-9 px-3 outline-none focus:border-indigo-500 cursor-pointer"
+                      >
+                        <option value={6}>Toutes les 6 heures</option>
+                        <option value={12}>Toutes les 12 heures</option>
+                        <option value={24}>Une fois par jour (24h)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-zinc-400">Heure de référence</label>
+                      <Input
+                        type="time"
+                        value={syncTime}
+                        onChange={(e) => setSyncTime(e.target.value)}
+                        className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end mt-2">
+                  <Button
+                    type="submit"
+                    disabled={isSavingSyncSettings}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+                  >
+                    {isSavingSyncSettings ? "Enregistrement..." : "Enregistrer les préférences"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1040,6 +1160,14 @@ export function AccountView() {
         isOpen={isWoobOpen}
         onClose={() => setIsWoobOpen(false)}
         onBankConnected={loadData}
+      />
+
+      {/* Post-Import Bank Credentials Modal */}
+      <ImportCredentialsModal
+        isOpen={isCredentialsModalOpen}
+        onClose={() => setIsCredentialsModalOpen(false)}
+        pendingConnections={pendingBankConnections}
+        onSuccess={loadData}
       />
     </div>
   )

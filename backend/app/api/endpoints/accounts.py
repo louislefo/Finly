@@ -20,6 +20,7 @@ class UpdateAccountRequest(BaseModel):
     color: Optional[str] = None
 
 @router.get("/")
+@router.get("", include_in_schema=False)
 def get_accounts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
