@@ -74,6 +74,7 @@ def serialize_project(p: Project, accounts_map: Dict[str, Account] = None) -> Di
     }
 
 @router.get("/")
+@router.get("", include_in_schema=False)
 def list_projects(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -85,6 +86,7 @@ def list_projects(
     return [serialize_project(p, accounts_map) for p in projects]
 
 @router.post("/")
+@router.post("", include_in_schema=False)
 def create_project(
     req: CreateProjectRequest,
     db: Session = Depends(get_db),

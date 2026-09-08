@@ -30,6 +30,7 @@ class UpdateLogoRequest(BaseModel):
     apply_to_all_merchant: Optional[bool] = True
 
 @router.get("/")
+@router.get("", include_in_schema=False)
 def list_transactions(
     account_id: Optional[str] = None,
     account_type: Optional[str] = None,
