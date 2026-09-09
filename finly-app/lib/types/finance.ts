@@ -3,9 +3,11 @@ export interface User {
   email: string
   full_name: string
   role?: string
+  is_active?: boolean
   auto_sync_enabled?: boolean
   sync_interval_hours?: number
   sync_time?: string
+  created_at?: string
 }
 
 export interface CategoryItem {
@@ -234,3 +236,42 @@ export interface ExportOptions {
   includeFormulas: boolean
   scope: "all" | "transactions" | "projects" | "summary"
 }
+
+export interface AdminStats {
+  system: {
+    version: string
+    project_name: string
+    database_size_bytes: number
+    database_size_mb: number
+    scheduler_running: boolean
+    sync_interval_hours: number
+  }
+  metrics: {
+    total_users: number
+    active_users: number
+    admin_users: number
+    total_bank_connections: number
+    total_accounts: number
+    total_transactions: number
+    total_budgets: number
+    total_projects: number
+    total_balance: number
+  }
+}
+
+export interface AdminUserItem {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  is_active: boolean
+  auto_sync_enabled: boolean
+  sync_interval_hours: number
+  sync_time: string
+  created_at: string | null
+  accounts_count: number
+  bank_connections_count: number
+  transactions_count: number
+  total_balance: number
+}
+

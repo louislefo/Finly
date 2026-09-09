@@ -76,6 +76,8 @@ def auto_migrate_sqlite():
             # Check users
             res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
             cols = [r[1] for r in res]
+            if "is_active" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
             if "auto_sync_enabled" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN auto_sync_enabled BOOLEAN DEFAULT 0"))
             if "sync_interval_hours" not in cols:
@@ -90,12 +92,17 @@ def auto_migrate_sqlite():
 auto_migrate_sqlite()
 
 from app.scheduler.cron_jobs import start_scheduler, shutdown_scheduler
+from app.core.seed import init_db_superuser
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("[Startup] Initialisation de Finly API (Categories dynamiques + Sous-categories)...")
+    print("[Startup] Initialisation de Finly API (Categories dynamiques + Superuser)...")
     auto_migrate_sqlite()
+    try:
+        init_db_superuser()
+    except Exception as e:
+        print(f"[Seed Error]: {e}")
     try:
         start_scheduler()
     except Exception as e:
