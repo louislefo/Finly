@@ -77,7 +77,8 @@ export function TransactionsView() {
   const [isLoadingCompany, setIsLoadingCompany] = useState<boolean>(false)
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
-  const [isAssigningProject, setIsAssigningProject] = useState<boolean>(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false)
+  const [isDeletingTx, setIsDeletingTx] = useState<boolean>(false)
   const [isEditingCategory, setIsEditingCategory] = useState<boolean>(false)
   const [isCreatingCategory, setIsCreatingCategory] = useState<boolean>(false)
   const [isEditingLogo, setIsEditingLogo] = useState<boolean>(false)
@@ -115,6 +116,7 @@ export function TransactionsView() {
     if (selectedTx) {
       setSelectedMainCat(selectedTx.category || "Divers")
       setSelectedSubCat(selectedTx.subcategory || "")
+      setShowDeleteConfirm(false)
       setCompanyInfo(null)
       setIsLoadingCompany(true)
 
@@ -171,13 +173,23 @@ export function TransactionsView() {
     return map
   }, [filteredTransactions])
 
-  const handleAttachProject = async (projectName: string) => {
+  const handleDeleteTransaction = async () => {
     if (!selectedTx) return
-    setTransactionsList((prev) =>
-      prev.map((t) => (t.id === selectedTx.id ? { ...t, project: projectName } : t))
-    )
-    setSelectedTx((prev) => (prev ? { ...prev, project: projectName } : null))
-    setIsAssigningProject(false)
+    setIsDeletingTx(true)
+    try {
+      await FinlyAPI.deleteTransaction(selectedTx.id)
+      setTransactionsList((prev) => prev.filter((t) => t.id !== selectedTx.id))
+      setSelectedTx(null)
+      setShowDeleteConfirm(false)
+      setFeedbackMessage("Transaction supprimée avec succès")
+      setTimeout(() => setFeedbackMessage(null), 3000)
+    } catch (err) {
+      console.error("Erreur suppression transaction:", err)
+      setFeedbackMessage("Erreur lors de la suppression de la transaction")
+      setTimeout(() => setFeedbackMessage(null), 3000)
+    } finally {
+      setIsDeletingTx(false)
+    }
   }
 
   // Subcategories available for selected main category
@@ -633,7 +645,7 @@ export function TransactionsView() {
                       key={tx.id}
                       onClick={() => {
                         setSelectedTx(tx)
-                        setIsAssigningProject(false)
+                        setShowDeleteConfirm(false)
                         setIsEditingCategory(false)
                         setIsCreatingCategory(false)
                       }}
@@ -831,7 +843,7 @@ export function TransactionsView() {
                 <div
                   onClick={() => {
                     setIsEditingCategory(!isEditingCategory)
-                    setIsAssigningProject(false)
+                    setShowDeleteConfirm(false)
                   }}
                   className="flex justify-between items-center p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                 >
@@ -1056,37 +1068,7 @@ export function TransactionsView() {
                 </div>
               )}
 
-              {/* 3. Assign to Project Panel */}
-              {isAssigningProject && (
-                <div className="flex flex-col gap-2.5 p-3.5 rounded-2xl bg-zinc-900 border border-white/10 animate-in fade-in duration-150">
-                  <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                    <span className="text-xs font-semibold text-white">
-                      Associer à un projet
-                    </span>
-                    <button onClick={() => setIsAssigningProject(false)} className="text-zinc-400 hover:text-white cursor-pointer">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {projectsList.map((proj) => (
-                      <button
-                        key={proj.id}
-                        onClick={() => handleAttachProject(proj.name)}
-                        className={`flex items-center justify-between p-2.5 rounded-xl text-xs text-left transition-all cursor-pointer ${
-                          selectedTx.project === proj.name
-                            ? "bg-indigo-600 text-white font-medium"
-                            : "bg-zinc-950/60 border border-white/5 text-zinc-300 hover:bg-white/5"
-                        }`}
-                      >
-                        <span>{proj.name}</span>
-                        {selectedTx.project === proj.name && <Check className="w-3.5 h-3.5" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 4. Raw Label Card with High Contrast & Copy Button */}
+              {/* Raw Label Card with High Contrast & Copy Button */}
               {(() => {
                 const rawLabelText = selectedTx.rawLabel || (selectedTx as any).raw_label || ""
                 return (
@@ -1120,37 +1102,66 @@ export function TransactionsView() {
               })()}
 
               {/* Bottom Actions */}
-              <div className="flex gap-2.5 mt-1">
-                {!isEditingCategory && !isAssigningProject && (
-                  <>
-                    <Button
-                      onClick={() => setIsEditingCategory(true)}
-                      className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-medium text-xs py-4 cursor-pointer"
-                    >
-                      <Tag className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
-                      Modifier Catégorie
-                    </Button>
-                    <Button
-                      onClick={() => setIsAssigningProject(true)}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-4 cursor-pointer"
-                    >
-                      <Target className="w-3.5 h-3.5 mr-1.5" />
-                      {selectedTx.project ? "Changer Projet" : "Rattacher Projet"}
-                    </Button>
-                  </>
-                )}
-                {(isEditingCategory || isAssigningProject) && (
-                  <Button
-                    variant="outline"
-                    className="w-full border-white/10 bg-zinc-900 text-zinc-300 text-xs py-4 cursor-pointer"
-                    onClick={() => {
-                      setIsEditingCategory(false)
-                      setIsAssigningProject(false)
-                      setIsCreatingCategory(false)
-                    }}
-                  >
-                    Terminé
-                  </Button>
+              <div className="flex flex-col gap-2 mt-1">
+                {showDeleteConfirm ? (
+                  <div className="flex flex-col gap-2.5 p-3.5 rounded-2xl bg-red-950/20 border border-red-500/20 animate-in fade-in duration-150">
+                    <p className="text-xs text-red-200 font-medium text-center">
+                      Êtes-vous sûr de vouloir supprimer cette transaction ?
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={isDeletingTx}
+                        className="flex-1 border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs py-3 cursor-pointer"
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleDeleteTransaction}
+                        disabled={isDeletingTx}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-medium text-xs py-3 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                        {isDeletingTx ? "Suppression..." : "Confirmer"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2.5">
+                    {!isEditingCategory && (
+                      <>
+                        <Button
+                          onClick={() => setIsEditingCategory(true)}
+                          className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-medium text-xs py-4 cursor-pointer"
+                        >
+                          <Tag className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                          Modifier Catégorie
+                        </Button>
+                        <Button
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 font-medium text-xs py-4 cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                          Supprimer
+                        </Button>
+                      </>
+                    )}
+                    {isEditingCategory && (
+                      <Button
+                        variant="outline"
+                        className="w-full border-white/10 bg-zinc-900 text-zinc-300 text-xs py-4 cursor-pointer"
+                        onClick={() => {
+                          setIsEditingCategory(false)
+                          setIsCreatingCategory(false)
+                        }}
+                      >
+                        Terminé
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

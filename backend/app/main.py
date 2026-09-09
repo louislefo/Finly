@@ -50,6 +50,8 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN project_id TEXT"))
             if "logo_url" not in cols:
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN logo_url TEXT"))
+            if "status" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'confirmed'"))
 
             # Check projects
             res = conn.execute(text("PRAGMA table_info(projects)")).fetchall()

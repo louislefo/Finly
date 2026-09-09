@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from app.core.database import get_db
 from app.models.transaction import Transaction
@@ -11,8 +11,24 @@ from app.models.user import User
 from app.models.merchant_rule import MerchantRule
 from app.core.security import get_current_user
 from app.services.merchant_enrichment import fetch_company_info
+from app.services.csv_parser_service import csv_parser_service
+from app.services.cleaner_service import CleanerService
+from app.services.categorizer_service import CategorizerService
+from app.services.reconciliation_service import ReconciliationService
 
 router = APIRouter()
+
+class PreviewCsvRequest(BaseModel):
+    csv_text: str
+    custom_mapping: Optional[Dict[str, Any]] = None
+
+class ImportCsvRequest(BaseModel):
+    account_id: Optional[str] = None
+    account_name: Optional[str] = None
+    account_type: Optional[str] = None
+    csv_text: Optional[str] = None
+    custom_mapping: Optional[Dict[str, Any]] = None
+    transactions: Optional[List[Dict[str, Any]]] = None
 
 class AssignProjectRequest(BaseModel):
     project_id: Optional[str] = None
@@ -98,6 +114,7 @@ def list_transactions(
                 "account_id": t.account_id,
                 "account_type": account_type_map.get(t.account_id, "Compte Courant"),
                 "bank": account_bank_map.get(t.account_id, "Banque"),
+                "status": getattr(t, "status", "confirmed") or "confirmed",
                 "project_id": t.project_id,
                 "logo_url": t.logo_url if t.logo_url is not None else merchant_logo_rules.get(t.merchant_name),
             }
@@ -292,3 +309,154 @@ def assign_project(
     db.refresh(tx)
 
     return {"status": "success", "transaction_id": tx.id, "project_id": tx.project_id}
+
+@router.delete("/{tx_id}")
+def delete_transaction(
+    tx_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    tx = db.query(Transaction).filter(
+        (Transaction.id == tx_id) & (Transaction.user_id == current_user.id)
+    ).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction non trouvée")
+
+    db.delete(tx)
+    db.commit()
+
+    return {"status": "success", "message": "Transaction supprimée", "transaction_id": tx_id}
+
+@router.post("/preview-csv")
+def preview_csv_transactions(
+    req: PreviewCsvRequest,
+    current_user: User = Depends(get_current_user),
+):
+    if not req.csv_text or not req.csv_text.strip():
+        raise HTTPException(status_code=400, detail="Contenu CSV vide")
+    return csv_parser_service.analyze_and_parse_csv(req.csv_text, req.custom_mapping)
+
+@router.post("/import-csv")
+def import_csv_transactions(
+    req: ImportCsvRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    import hashlib
+    from datetime import datetime
+
+    # 1. Resolve or create target account
+    account_id = req.account_id
+    account = None
+    if account_id and account_id != "new":
+        account = db.query(Account).filter((Account.id == account_id) & (Account.user_id == current_user.id)).first()
+
+    if not account:
+        account_name = req.account_name or "Relevé Importé (CSV)"
+        account_type = req.account_type or "Compte Courant"
+        account = db.query(Account).filter((Account.name == account_name) & (Account.user_id == current_user.id)).first()
+        if not account:
+            account = Account(
+                id=f"acc_{uuid.uuid4().hex[:12]}",
+                user_id=current_user.id,
+                bank_account_id=f"csv_{uuid.uuid4().hex[:8]}",
+                backend_name="csv_import",
+                bank_name=account_name,
+                name=account_name,
+                account_type=account_type,
+                balance=0.0,
+                currency="EUR",
+            )
+            db.add(account)
+            db.commit()
+            db.refresh(account)
+
+    # 2. Get transactions to import
+    tx_list = req.transactions
+    if not tx_list and req.csv_text:
+        parsed = csv_parser_service.analyze_and_parse_csv(req.csv_text, req.custom_mapping)
+        tx_list = parsed.get("all_transactions", [])
+
+    if not tx_list:
+        raise HTTPException(status_code=400, detail="Aucune transaction valide à importer")
+
+    imported_count = 0
+    updated_count = 0
+    matched_tx_ids = set()
+    user_rules = db.query(MerchantRule).filter(MerchantRule.user_id == current_user.id).all()
+    rule_map = {r.merchant_pattern.lower(): r for r in user_rules}
+
+    for tx_data in tx_list:
+        booking_date = str(tx_data.get("date") or datetime.utcnow().strftime("%Y-%m-%d"))[:10]
+        amount = round(float(tx_data.get("amount", 0.0)), 2)
+        raw_label = str(tx_data.get("raw_label") or "Paiement").strip()
+        merchant_name = tx_data.get("merchant_name") or CleanerService.clean_merchant_name(raw_label)
+        category = tx_data.get("category")
+        subcategory = tx_data.get("subcategory")
+        logo_url = None
+
+        matched_rule = rule_map.get(merchant_name.lower())
+        if matched_rule:
+            category = matched_rule.category
+            subcategory = matched_rule.subcategory
+            logo_url = matched_rule.logo_url
+        elif not category or category.lower() in ["divers", "autre", "none"]:
+            category = CategorizerService.categorize(merchant_name, raw_label, amount)
+
+        label_hash = hashlib.md5(f"{account.id}_{booking_date}_{amount}_{raw_label.upper()}".encode()).hexdigest()[:10]
+        bank_tx_id = tx_data.get("id") or f"csv_{account.id}_{label_hash}"
+
+        # Fuzzy reconciliation (matches exact bank_tx_id, exact date+amount+label, or same day / +/-2 days with same amount & similar title)
+        existing_tx = ReconciliationService.find_matching_transaction(
+            db=db,
+            user_id=current_user.id,
+            account_id=account.id,
+            booking_date=booking_date,
+            amount=amount,
+            raw_label=raw_label,
+            merchant_name=merchant_name,
+            bank_tx_id=bank_tx_id,
+            exclude_tx_ids=matched_tx_ids,
+        )
+
+        if existing_tx:
+            matched_tx_ids.add(existing_tx.id)
+            if not existing_tx.is_user_classified:
+                if category:
+                    existing_tx.category = category
+                if subcategory:
+                    existing_tx.subcategory = subcategory
+                if merchant_name:
+                    existing_tx.merchant_name = merchant_name
+            updated_count += 1
+        else:
+            new_tx = Transaction(
+                id=f"tx_{uuid.uuid4().hex[:12]}",
+                user_id=current_user.id,
+                bank_tx_id=bank_tx_id,
+                account_id=account.id,
+                booking_date=booking_date,
+                value_date=booking_date,
+                amount=amount,
+                currency=account.currency or "EUR",
+                raw_label=raw_label,
+                merchant_name=merchant_name,
+                category=category or "Divers",
+                subcategory=subcategory,
+                status="confirmed",
+                logo_url=logo_url,
+            )
+            db.add(new_tx)
+            imported_count += 1
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"{imported_count} opération(s) importée(s), {updated_count} déjà existante(s).",
+        "account_id": account.id,
+        "account_name": account.name,
+        "imported_count": imported_count,
+        "updated_count": updated_count,
+        "total_processed": len(tx_list),
+    }

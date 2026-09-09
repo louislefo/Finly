@@ -19,6 +19,7 @@ from app.models.bank_connection import BankConnection
 from app.services.sync_service import sync_service
 from app.services.cleaner_service import CleanerService
 from app.services.categorizer_service import CategorizerService
+from app.services.reconciliation_service import ReconciliationService
 
 router = APIRouter()
 
@@ -140,6 +141,7 @@ def export_json_backup(
                 "subcategory": getattr(t, "subcategory", None),
                 "is_user_classified": getattr(t, "is_user_classified", False),
                 "is_excluded_from_budget": getattr(t, "is_excluded_from_budget", False),
+                "status": getattr(t, "status", "confirmed") or "confirmed",
                 "project_id": getattr(t, "project_id", None),
                 "logo_url": getattr(t, "logo_url", None),
                 "created_at": t.created_at.isoformat() if getattr(t, "created_at", None) else None,
@@ -561,14 +563,17 @@ async def import_json_backup(
                     first_acc = db.query(Account).filter(Account.user_id == current_user.id).first()
                     target_acc_id = first_acc.id if first_acc else None
 
-            # Deduplication
-            existing_tx = db.query(Transaction).filter(
-                (Transaction.user_id == current_user.id) &
-                ((Transaction.id == tx_id) |
-                 ((Transaction.booking_date == booking_date) &
-                  (Transaction.amount == tx_amount) &
-                  (Transaction.raw_label == raw_label)))
-            ).first()
+            # Fuzzy deduplication & reconciliation
+            existing_tx = ReconciliationService.find_matching_transaction(
+                db=db,
+                user_id=current_user.id,
+                account_id=target_acc_id or "",
+                booking_date=booking_date,
+                amount=tx_amount,
+                raw_label=raw_label,
+                merchant_name=tx_merchant,
+                bank_tx_id=tx.get("bank_tx_id") or tx_id,
+            )
 
             if existing_tx:
                 if tx_category:
@@ -578,6 +583,8 @@ async def import_json_backup(
                 existing_tx.is_user_classified = is_user_classified
                 if "is_excluded_from_budget" in tx:
                     existing_tx.is_excluded_from_budget = is_excluded_from_budget
+                if "status" in tx:
+                    existing_tx.status = tx.get("status") or "confirmed"
                 if target_acc_id and not existing_tx.account_id:
                     existing_tx.account_id = target_acc_id
             else:
@@ -594,6 +601,7 @@ async def import_json_backup(
                     merchant_name=tx_merchant,
                     category=tx_category,
                     subcategory=tx_subcategory,
+                    status=tx.get("status", "confirmed") or "confirmed",
                     is_user_classified=is_user_classified,
                     is_excluded_from_budget=is_excluded_from_budget,
                 )

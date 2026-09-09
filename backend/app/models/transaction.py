@@ -20,6 +20,7 @@ class Transaction(Base):
     subcategory = Column(String, nullable=True)
     is_user_classified = Column(Boolean, default=False)
     is_excluded_from_budget = Column(Boolean, default=False)
+    status = Column(String, default="confirmed", index=True)
     project_id = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
