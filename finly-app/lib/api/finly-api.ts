@@ -355,6 +355,72 @@ export const FinlyAPI = {
     return await res.json()
   },
 
+  async deleteTransaction(txId: string): Promise<{ status: string; message: string; transaction_id: string }> {
+    const res = await fetch(`${API_BASE_URL}/transactions/${txId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la suppression de la transaction.")
+    }
+    return await res.json()
+  },
+
+  async previewCsvTransactions(params: {
+    csv_text: string
+    custom_mapping?: Record<string, any>
+  }): Promise<{
+    status: string
+    delimiter: string
+    has_header: boolean
+    columns: string[]
+    detected_mapping: Record<string, any>
+    total_count: number
+    message?: string
+    sample_transactions: any[]
+    all_transactions: any[]
+  }> {
+    const res = await fetch(`${API_BASE_URL}/transactions/preview-csv`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'analyse du CSV.")
+    }
+    return await res.json()
+  },
+
+  async importCsvTransactions(params: {
+    account_id?: string
+    account_name?: string
+    account_type?: string
+    csv_text?: string
+    custom_mapping?: Record<string, any>
+    transactions?: any[]
+  }): Promise<{
+    status: string
+    message: string
+    account_id: string
+    account_name: string
+    imported_count: number
+    updated_count: number
+    total_processed: number
+  }> {
+    const res = await fetch(`${API_BASE_URL}/transactions/import-csv`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'importation des dépenses CSV.")
+    }
+    return await res.json()
+  },
+
   async getCompanyInfo(txId: string): Promise<{
     found: boolean
     nom_complet?: string

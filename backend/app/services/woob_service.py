@@ -151,6 +151,7 @@ class WoobService:
                             "amount": tx_amount,
                             "raw_label": tx_raw_label,
                             "currency": acc_currency,
+                            "status": "confirmed",
                         })
                 except Exception as tx_err:
                     self.log(f"-> Info transactions {acc_label}: {tx_err}")
@@ -311,6 +312,7 @@ class WoobService:
                                     "amount": tx_amount,
                                     "raw_label": tx_raw_label,
                                     "currency": acc_currency,
+                                    "status": "confirmed",
                                 })
                     except Exception as tx_err:
                         self.log(f"-> Info transactions {acc_label}: {tx_err}")
@@ -334,6 +336,7 @@ class WoobService:
                                         "amount": tx_amount,
                                         "raw_label": tx_raw_label,
                                         "currency": acc_currency,
+                                        "status": "pending",
                                     })
                     except Exception:
                         pass

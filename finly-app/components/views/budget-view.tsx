@@ -70,7 +70,7 @@ export function BudgetView() {
   const [isSetBudgetOpen, setIsSetBudgetOpen] = useState<boolean>(false)
   const [budgetFormCat, setBudgetFormCat] = useState<string>("")
   const [budgetFormLimit, setBudgetFormLimit] = useState<string>("")
-  const [viewTransactionsCat, setViewTransactionsCat] = useState<BudgetItem | null>(null)
+  const [selectedCategoryModal, setSelectedCategoryModal] = useState<string | null>(null)
   const [isExcludedListModalOpen, setIsExcludedListModalOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
@@ -157,18 +157,10 @@ export function BudgetView() {
       setBudgetSummary(summary)
       setCategoriesList(cats)
       setAccountsList(accsRes?.accounts || [])
-
-      // Sync active viewTransactionsCat if open
-      if (viewTransactionsCat) {
-        const updatedCat = summary.items.find((i) => i.category === viewTransactionsCat.category)
-        if (updatedCat) {
-          setViewTransactionsCat(updatedCat)
-        }
-      }
     } finally {
       setIsLoading(false)
     }
-  }, [periodMode, selectedMonth, selectedAccountId, viewTransactionsCat])
+  }, [periodMode, selectedMonth, selectedAccountId])
 
   useEffect(() => {
     loadBudgets()
@@ -278,6 +270,19 @@ export function BudgetView() {
   }
 
   const items = budgetSummary?.items || []
+
+  const viewTransactionsCat = useMemo(() => {
+    if (!selectedCategoryModal || !budgetSummary) return null
+    return budgetSummary.items.find((i) => i.category === selectedCategoryModal) || {
+      category: selectedCategoryModal,
+      monthly_limit: 0,
+      spent: 0,
+      remaining: 0,
+      percentage: 0,
+      transactions_count: 0,
+      transactions: [],
+    }
+  }, [budgetSummary, selectedCategoryModal])
 
   const filteredItems = useMemo(() => {
     if (!selectedCategory) return items
@@ -601,7 +606,7 @@ export function BudgetView() {
                 <div className="flex justify-between items-center pt-2 border-t border-white/5 text-xs">
                   <button
                     type="button"
-                    onClick={() => setViewTransactionsCat(item)}
+                    onClick={() => setSelectedCategoryModal(item.category)}
                     className="text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <span>Voir opérations</span>
@@ -713,7 +718,7 @@ export function BudgetView() {
       </Dialog>
 
       {/* Category Transactions List Dialog */}
-      <Dialog open={!!viewTransactionsCat} onOpenChange={() => setViewTransactionsCat(null)}>
+      <Dialog open={Boolean(selectedCategoryModal)} onOpenChange={(open) => { if (!open) setSelectedCategoryModal(null) }}>
         <DialogContent className="max-w-xl p-6 bg-[#18181B] border-white/10 text-white rounded-3xl max-h-[85vh] overflow-y-auto">
           {viewTransactionsCat && (
             <div className="flex flex-col gap-4">
@@ -861,7 +866,7 @@ export function BudgetView() {
               <div className="flex justify-end pt-2">
                 <Button
                   variant="outline"
-                  onClick={() => setViewTransactionsCat(null)}
+                  onClick={() => setSelectedCategoryModal(null)}
                   className="border-white/10 bg-zinc-900 text-zinc-300 text-xs h-9 rounded-xl cursor-pointer"
                 >
                   Fermer
@@ -981,7 +986,7 @@ export function BudgetView() {
       </Dialog>
 
       {/* Single Transaction Edit Dialog (Category, Subcategory, Exclusion) */}
-      <Dialog open={!!editingTx} onOpenChange={() => setEditingTx(null)}>
+      <Dialog open={Boolean(editingTx)} onOpenChange={(open) => { if (!open) { setEditingTx(null); setTxEditFeedback(null) } }}>
         <DialogContent className="max-w-md p-6 bg-[#18181B] border-white/10 text-white rounded-3xl">
           {editingTx && (
             <form onSubmit={handleSaveTxCategory} className="flex flex-col gap-4">

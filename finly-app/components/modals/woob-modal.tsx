@@ -15,6 +15,7 @@ import {
   ChevronRight,
   X,
   FileCode,
+  FileSpreadsheet,
   Upload,
   Database,
   Check,
@@ -29,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { BankLogo } from "@/components/ui/bank-icons"
+import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 
 interface BankItem {
@@ -62,6 +64,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     budgets: number
   } | null>(null)
   const [pendingImportedBanks, setPendingImportedBanks] = useState<any[]>([])
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState<boolean>(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -209,7 +212,8 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleReset}>
+    <>
+      <Dialog open={isOpen} onOpenChange={handleReset}>
       <DialogContent className="bg-[#18181B] border-white/10 text-white rounded-3xl p-5 sm:p-7 max-w-lg sm:max-w-2xl w-[94vw] sm:w-full max-h-[90vh] overflow-y-auto overscroll-contain flex flex-col gap-4">
         {/* Header */}
         <DialogHeader className="p-0 text-left shrink-0">
@@ -243,60 +247,9 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
           </div>
         )}
 
-        {/* STEP 1: Select Bank or Import JSON */}
+        {/* STEP 1: Select Bank or Import CSV */}
         {step === "select" && (
           <div className="flex flex-col gap-3.5">
-            {/* JSON Backup Import Card */}
-            <div className="p-4 rounded-2xl bg-zinc-950 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-indigo-950/20">
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 shrink-0">
-                  <FileCode className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-white">Restaurer une sauvegarde (.json)</span>
-                  <span className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                    Importez un fichier JSON exporté depuis Finly pour recharger instantanément vos comptes et historique.
-                  </span>
-                </div>
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-
-              <Button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isImporting}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-4 rounded-xl font-semibold gap-1.5 shrink-0 cursor-pointer shadow-md shadow-indigo-600/30"
-              >
-                {isImporting ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Importation...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Importer un .json</span>
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Separator */}
-            <div className="flex items-center gap-3 py-0.5">
-              <div className="h-px bg-white/10 flex-1" />
-              <span className="text-[10px] uppercase font-semibold text-zinc-500 tracking-wider">
-                ou connecter une banque en direct
-              </span>
-              <div className="h-px bg-white/10 flex-1" />
-            </div>
-
             {/* Search Input */}
             <div className="relative shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -318,7 +271,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
             </div>
 
             {/* Banks List */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[42vh] sm:max-h-[320px] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[38vh] sm:max-h-[290px] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
               {filteredBanks.map((bank) => (
                 <button
                   key={bank.id}
@@ -341,11 +294,33 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
               ))}
 
               {filteredBanks.length === 0 && (
-                <div className="col-span-full py-10 text-center text-xs text-zinc-500">
+                <div className="col-span-full py-8 text-center text-xs text-zinc-500">
                   Aucun établissement trouvé pour cette recherche.
                 </div>
               )}
             </div>
+
+            {/* CSV Import Button Below Banks */}
+            <button
+              type="button"
+              onClick={() => setIsCsvModalOpen(true)}
+              className="w-full p-3.5 rounded-2xl bg-zinc-950 border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-zinc-900 transition-all flex items-center justify-between cursor-pointer group shadow-lg shadow-emerald-950/20"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold text-white group-hover:text-emerald-300">
+                    Ajouter mes dépenses en CSV
+                  </span>
+                  <span className="text-[11px] text-zinc-400 leading-relaxed">
+                    Reconnaissance automatique des colonnes depuis n&apos;importe quel relevé bancaire
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 shrink-0" />
+            </button>
 
             <div className="shrink-0 p-2.5 sm:p-3 rounded-xl bg-zinc-950/50 border border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
               <span className="flex items-center gap-1.5">
@@ -569,5 +544,16 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
         )}
       </DialogContent>
     </Dialog>
+
+    <CsvImportModal
+      isOpen={isCsvModalOpen}
+      onClose={() => setIsCsvModalOpen(false)}
+      onImportSuccess={() => {
+        setIsCsvModalOpen(false)
+        handleReset()
+        if (onBankConnected) onBankConnected()
+      }}
+    />
+  </>
   )
 }

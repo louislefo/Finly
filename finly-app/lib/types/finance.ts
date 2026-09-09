@@ -115,6 +115,7 @@ export interface Transaction {
   bank?: string
   project?: string
   logo_url?: string
+  status?: string
 }
 
 export interface AddressSearchResult {
