@@ -43,7 +43,7 @@ RUN mkdir -p /app/data /app/woob_data /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Environment variables
-ENV DATABASE_URL="sqlite:///./data/finly.db" \
+ENV DATABASE_URL="sqlite:////app/data/finly.db" \
     SYNC_INTERVAL_HOURS="6" \
     CORS_ORIGINS="*" \
     BACKEND_INTERNAL_URL="http://127.0.0.1:8000" \

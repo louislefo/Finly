@@ -13,7 +13,7 @@ services:
       - finly_data:/app/data
       - finly_woob:/app/woob_data
     environment:
-      - DATABASE_URL=sqlite:///./data/finly.db
+      - DATABASE_URL=sqlite:////app/data/finly.db
       - SYNC_INTERVAL_HOURS=6
       - CORS_ORIGINS=*
       - SECRET_KEY=${SECRET_KEY:-finly-default-secret-key-change-me-in-prod}
