@@ -111,4 +111,21 @@ def get_current_user(
     if not user:
         raise credentials_exception
 
+    if hasattr(user, "is_active") and not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ce compte utilisateur a été désactivé.",
+        )
+
     return user
+
+def get_current_admin_user(
+    current_user = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs.",
+        )
+    return current_user
+

@@ -70,6 +70,12 @@ Finly is built for individuals who want complete control over their financial da
 - Generate structured `.xlsx` workbooks with native Excel formulas (`SUM`, `SUMIF`).
 - Dedicated tabs for executive summary, granular transactions, and category breakdowns.
 
+### 7. Administration Panel and User Impersonation
+- Dedicated administrative dashboard (`/admin`) with real-time system metrics (active users, connected banks, total volume, SQLite database size, scheduler status).
+- User management tools (role assignment, account activation/deactivation, password reset, and cascading deletion).
+- One-click user impersonation mode allowing administrators to view and navigate any user's dashboard.
+- System maintenance utilities (manual global bank synchronization, SQLite `VACUUM` compaction).
+
 ---
 
 ## Technology Stack
@@ -137,6 +143,13 @@ docker compose up -d --build
 - Web Application: [http://localhost:3000](http://localhost:3000)
 - REST API Interactive Docs (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
 - Health Check: [http://localhost:8000/health](http://localhost:8000/health)
+
+**Default Administrator Account:**
+- **Identifier:** `admin` (or `admin@finly.local`)
+- **Password:** `admin`
+
+> [!NOTE]
+> The default administrator account is automatically initialized upon the first startup. You can change its password or create additional administrator accounts directly from the Administration panel (`/admin`) or using the CLI.
 
 ### 5. Stop containers
 ```bash
@@ -206,7 +219,8 @@ If you wish to contribute or develop locally without Docker:
 ## User Guide and Workflow
 
 ### Step 1: Initial Setup & Account Creation
-- Open [http://localhost:3000](http://localhost:3000) and register your local administrator credentials.
+- Open [http://localhost:3000](http://localhost:3000) and sign in using the default superuser credentials (`admin` / `admin`).
+- Alternatively, register a new personal account or create and promote administrators directly from the Administration panel (`/admin`).
 - All subsequent sessions use secure JWT tokens stored client-side.
 
 ### Step 2: Connecting Bank Accounts or Manual Entry

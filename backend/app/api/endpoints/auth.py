@@ -75,8 +75,10 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login_user(req: LoginRequest, db: Session = Depends(get_db)):
-    clean_email = req.email.lower().strip()
-    user = db.query(User).filter(User.email == clean_email).first()
+    clean_identifier = req.email.lower().strip()
+    user = db.query(User).filter(
+        (User.email == clean_identifier) | (User.email == f"{clean_identifier}@finly.local")
+    ).first()
     if not user or not verify_user_password(req.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

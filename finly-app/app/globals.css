@@ -146,3 +146,11 @@
     @apply bg-transparent! dark:invert;
   }
 }
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

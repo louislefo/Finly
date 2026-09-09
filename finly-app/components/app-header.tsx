@@ -2,7 +2,6 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Wallet,
@@ -17,6 +16,7 @@ import {
   CreditCard,
   Landmark,
   Plus,
+  ShieldCheck,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -33,11 +33,12 @@ import { ChangePasswordModal } from "@/components/modals/change-password-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { useAuth } from "@/components/auth-context"
 import { Account } from "@/lib/types/finance"
+import { cn } from "@/lib/utils"
 
 export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout, isImpersonating, stopImpersonating } = useAuth()
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [isConnectedAccountsOpen, setIsConnectedAccountsOpen] = useState<boolean>(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false)
@@ -83,64 +84,72 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-[#09090B]/90 backdrop-blur-md border-b border-white/10 px-4 md:px-8 h-16 flex items-center justify-between transition-all">
-        {/* Brand Logo & Title */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-zinc-900/80 border border-white/10 shadow-sm transition-transform duration-200 group-hover:scale-105">
-            <Image
-              src="/logo_sombre.png"
-              alt="Finly"
-              width={28}
-              height={28}
-              className="object-contain"
-              priority
-            />
+      {isImpersonating && (
+        <div className="sticky top-0 z-50 w-full bg-amber-950/80 backdrop-blur-md border-b border-amber-500/30 px-4 md:px-8 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-200">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              Mode vue utilisateur : <strong className="text-white">{user?.full_name}</strong> ({user?.email})
+            </span>
           </div>
-          <span className="font-bold text-lg text-white tracking-tight group-hover:text-zinc-200 transition-colors">
-            Finly
-          </span>
-        </Link>
+          <button
+            onClick={stopImpersonating}
+            className="self-start sm:self-auto px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+          >
+            Quitter la vue utilisateur
+          </button>
+        </div>
+      )}
+      <header className="sticky top-0 z-40 w-full pt-2.5 sm:pt-3 px-2.5 sm:px-6 pb-2 bg-gradient-to-b from-[#09090B] via-[#09090B]/95 to-transparent backdrop-blur-md">
+        <div className="max-w-5xl mx-auto bg-[#18181B]/95 border border-white/10 rounded-full px-3 sm:px-5 h-12 sm:h-14 flex items-center justify-between shadow-2xl shadow-black/60 ring-1 ring-white/5 gap-2 sm:gap-4">
+          {/* Brand Title */}
+          <Link href="/" className="flex items-center shrink-0 pr-1 group">
+            <span className="font-[family-name:var(--font-logo)] text-2xl sm:text-3xl text-zinc-100 tracking-wide select-none group-hover:text-white transition-colors">
+              Finly
+            </span>
+          </Link>
 
-        {/* Desktop Top Header Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-zinc-900/60 p-1.5 rounded-xl border border-white/10">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+          {/* Desktop Categories Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1.5 py-0.5">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer select-none",
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
 
-        {/* Right Section: User Account Dropdown Menu */}
-        <div className="flex items-center gap-3">
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="outline-none">
-                <div className="flex items-center gap-2 p-1.5 pl-2 rounded-xl bg-zinc-900/80 border border-white/10 hover:border-indigo-500/40 hover:bg-zinc-800 transition-all cursor-pointer">
-                  <Avatar size="sm" className="w-7 h-7">
-                    <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs font-semibold text-white hidden sm:inline">
-                    {firstName}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-                </div>
-              </DropdownMenuTrigger>
+          {/* Right Section: User Account Dropdown Menu */}
+          <div className="flex items-center shrink-0">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="outline-none">
+                  <div className="flex items-center gap-2 sm:gap-2.5 py-1 px-2 sm:px-3 rounded-full bg-zinc-900/90 border border-white/10 hover:border-indigo-500/40 hover:bg-zinc-800 transition-all cursor-pointer shadow-sm group">
+                    <Avatar size="sm" className="w-6 h-6 sm:w-7 sm:h-7 shrink-0">
+                      <AvatarFallback className="bg-indigo-600 text-white font-bold text-[11px] sm:text-xs">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs sm:text-sm font-semibold text-white tracking-tight group-hover:text-zinc-100 transition-colors max-w-[110px] sm:max-w-[180px] truncate">
+                      {user.full_name || firstName}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-200 transition-colors shrink-0" />
+                  </div>
+                </DropdownMenuTrigger>
 
               <DropdownMenuContent
                 align="end"
@@ -188,6 +197,14 @@ export function AppHeader() {
                     <Plus className="w-4 h-4 text-indigo-400" />
                     <span>Connecter une banque</span>
                   </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => router.push("/admin")}
+                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-400" />
+                    <span>Administration</span>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
 
                 <DropdownMenuSeparator className="bg-white/5 my-1" />
@@ -210,6 +227,7 @@ export function AppHeader() {
               <span>Connexion</span>
             </button>
           )}
+          </div>
         </div>
       </header>
 

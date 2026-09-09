@@ -9,6 +9,8 @@ import {
   MortgageRatesSummary,
   AddressSearchResult,
   RealEstateEstimate,
+  AdminStats,
+  AdminUserItem,
 } from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -712,6 +714,122 @@ export const FinlyAPI = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.detail || "Erreur lors du calcul d'amortissement.")
+    }
+    return await res.json()
+  },
+
+  // 10. Administration
+  async getAdminStats(): Promise<AdminStats> {
+    const res = await fetch(`${API_BASE_URL}/admin/stats`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la récupération des statistiques d'administration.")
+    }
+    return await res.json()
+  },
+
+  async getAdminUsers(): Promise<{ status: string; users: AdminUserItem[] }> {
+    const res = await fetch(`${API_BASE_URL}/admin/users`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la récupération des utilisateurs.")
+    }
+    return await res.json()
+  },
+
+  async updateAdminUser(
+    userId: string,
+    data: { role?: string; is_active?: boolean; full_name?: string }
+  ): Promise<{ status: string; message: string; user: any }> {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour de l'utilisateur.")
+    }
+    return await res.json()
+  },
+
+  async resetAdminUserPassword(
+    userId: string,
+    newPassword: string
+  ): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/reset-password`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ new_password: newPassword }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la réinitialisation du mot de passe.")
+    }
+    return await res.json()
+  },
+
+  async deleteAdminUser(userId: string): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la suppression de l'utilisateur.")
+    }
+    return await res.json()
+  },
+
+  async triggerAdminSyncAll(): Promise<{ status: string; message: string; target_connections: number }> {
+    const res = await fetch(`${API_BASE_URL}/admin/maintenance/sync-all`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors du déclenchement de la synchronisation.")
+    }
+    return await res.json()
+  },
+
+  async triggerAdminVacuum(): Promise<{
+    status: string
+    message: string
+    database_size_bytes: number
+    database_size_mb: number
+  }> {
+    const res = await fetch(`${API_BASE_URL}/admin/maintenance/vacuum`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'optimisation de la base de données.")
+    }
+    return await res.json()
+  },
+
+  async impersonateUser(userId: string): Promise<{
+    status: string
+    access_token: string
+    token_type: string
+    user: User
+    impersonated_by: { id: string; email: string; full_name: string }
+  }> {
+    const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/impersonate`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'accès au compte utilisateur.")
     }
     return await res.json()
   },

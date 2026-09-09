@@ -10,6 +10,7 @@ class User(Base):
     full_name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="member")
+    is_active = Column(Boolean, default=True)
     auto_sync_enabled = Column(Boolean, default=False)
     sync_interval_hours = Column(Integer, default=12)
     sync_time = Column(String, default="08:00")

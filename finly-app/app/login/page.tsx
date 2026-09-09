@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState } from "react"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-context"
 import { Card } from "@/components/ui/card"
@@ -49,21 +48,11 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md flex flex-col gap-6 relative z-10">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="relative w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-zinc-900/90 border border-white/10 shadow-2xl">
-            <Image
-              src="/logo_sombre.png"
-              alt="Finly"
-              width={42}
-              height={42}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight mt-1">
+        <div className="flex flex-col items-center text-center gap-1">
+          <span className="font-[family-name:var(--font-logo)] text-5xl md:text-6xl text-zinc-100 tracking-wide select-none drop-shadow-md">
             Finly
-          </h1>
-          <p className="text-xs text-zinc-400">
+          </span>
+          <p className="text-xs text-zinc-400 mt-1">
             {isRegisterMode
               ? "Créer un espace financier sécurisé"
               : "Connexion à votre espace financier"}
@@ -97,13 +86,15 @@ export default function LoginPage() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-300">Adresse email</label>
+              <label className="text-xs font-medium text-zinc-300">
+                {isRegisterMode ? "Adresse email" : "Email ou identifiant"}
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <Input
-                  type="email"
+                  type={isRegisterMode ? "email" : "text"}
                   required
-                  placeholder="nom@exemple.fr"
+                  placeholder={isRegisterMode ? "nom@exemple.fr" : "nom@exemple.fr ou admin"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9 bg-zinc-900/80 border-white/10 text-white text-xs h-10"

@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # Sync Interval
     SYNC_INTERVAL_HOURS: int = 6
 
+    # Superuser Configuration
+    FIRST_SUPERUSER_EMAIL: str = "admin@finly.local"
+    FIRST_SUPERUSER_PASSWORD: str = "admin"
+    FIRST_SUPERUSER_NAME: str = "Administrateur"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
