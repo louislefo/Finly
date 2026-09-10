@@ -2,8 +2,8 @@
 FROM node:20-slim AS frontend-builder
 WORKDIR /app/frontend
 
-COPY finly-app/package*.json ./
-RUN npm ci
+COPY finly-app/package*.json finly-app/.npmrc* ./
+RUN npm ci --legacy-peer-deps
 
 COPY finly-app/ ./
 ENV NEXT_TELEMETRY_DISABLED=1
