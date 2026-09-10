@@ -4,7 +4,9 @@ from app.main import app
 from app.core.security import create_access_token
 from app.core.database import SessionLocal
 from app.models.user import User
+from app.core.seed import init_db_superuser
 
+init_db_superuser()
 client = TestClient(app)
 
 def test_admin_access_denied_for_unauthenticated():

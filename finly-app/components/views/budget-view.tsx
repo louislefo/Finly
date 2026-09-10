@@ -33,8 +33,10 @@ import {
   Trash2,
   AlertCircle,
   RotateCcw,
+  FileText,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useAuth } from "@/components/auth-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -52,6 +54,7 @@ import { FinlyAPI } from "@/lib/api/finly-api"
 import { BudgetSummary, BudgetItem, CategoryItem, Account } from "@/lib/types/finance"
 import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
+import { downloadBudgetPdf } from "@/lib/export/budget-pdf-export"
 
 type BudgetTxItem = BudgetItem["transactions"][number]
 
@@ -61,6 +64,7 @@ const getInitialMonth = () => {
 }
 
 export function BudgetView() {
+  const { user } = useAuth()
   const { formatAmount } = usePrivacy()
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null)
   const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([])
@@ -256,6 +260,30 @@ export function BudgetView() {
     }
   }
 
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false)
+
+  const handleExportPdf = async () => {
+    if (!budgetSummary) return
+    setIsExportingPdf(true)
+    try {
+      const activePeriodName = periodMode === "last_30_days" ? "30 derniers jours" : formatMonthName(selectedMonth)
+      const selectedAccountObj = accountsList.find((a) => a.id === selectedAccountId)
+      const activeAccountName = selectedAccountId === "all" ? "Tous les comptes de dépôt" : (selectedAccountObj?.name || selectedAccountObj?.bank || "Compte")
+
+      await downloadBudgetPdf({
+        summary: budgetSummary,
+        periodName: activePeriodName,
+        accountName: activeAccountName,
+        userName: user?.full_name || user?.email || "Utilisateur Finly",
+        currency: "EUR",
+      })
+    } catch (err) {
+      console.error("Erreur génération PDF budget:", err)
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
+
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "Alimentation": return ShoppingBag
@@ -418,6 +446,18 @@ export function BudgetView() {
               )}
             </div>
           )}
+
+          <Button
+            onClick={handleExportPdf}
+            disabled={isExportingPdf || !budgetSummary}
+            variant="outline"
+            size="sm"
+            className="bg-zinc-900 border-white/10 hover:bg-white/5 text-zinc-200 hover:text-white text-xs h-9 px-3.5 gap-1.5 rounded-2xl cursor-pointer"
+            title="Exporter le rapport de budget en PDF"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <span>{isExportingPdf ? "Exportation..." : "Exporter PDF"}</span>
+          </Button>
 
           <Button
             onClick={() => handleOpenSetBudget()}

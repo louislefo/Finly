@@ -558,7 +558,10 @@ export function CashflowSankeyChart({
               : "bg-zinc-950/90 border-white/5"
           }`}
         >
-          <div className="min-w-[700px] sm:min-w-[800px] lg:min-w-full h-[460px] sm:h-[520px] md:h-[580px] p-2 sm:p-4">
+          <div
+            id="finly-cashflow-sankey-container"
+            className="min-w-[700px] sm:min-w-[800px] lg:min-w-full h-[460px] sm:h-[520px] md:h-[580px] p-2 sm:p-4"
+          >
             <ResponsiveSankey
               data={sankeyData}
               margin={{ top: 20, right: 165, bottom: 20, left: 165 }}
