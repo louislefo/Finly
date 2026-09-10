@@ -1,5 +1,6 @@
 import os
 import uuid
+import hashlib
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from woob.core import Woob
@@ -138,12 +139,22 @@ class WoobService:
                 self.log(f"-> Compte extrait: {acc_label} | Solde: {acc_balance} {acc_currency}")
 
                 transactions_list = []
+                seen_tx_counts: Dict[str, int] = {}
                 try:
                     for history_tx in backend.iter_history(account):
                         tx_amount = float(history_tx.amount or 0.0)
                         tx_raw_label = str(history_tx.raw or history_tx.label or "Transaction")
                         tx_date = history_tx.date.strftime("%Y-%m-%d") if history_tx.date else datetime.utcnow().strftime("%Y-%m-%d")
-                        tx_id = str(history_tx.id) if getattr(history_tx, "id", None) else f"{acc_id}_{tx_date}_{tx_amount}"
+                        
+                        raw_id = getattr(history_tx, "id", None)
+                        if raw_id:
+                            tx_id = str(raw_id)
+                        else:
+                            label_hash = hashlib.md5(f"{acc_id}_{tx_date}_{tx_amount}_{tx_raw_label.strip().upper()}".encode()).hexdigest()[:10]
+                            count = seen_tx_counts.get(label_hash, 0)
+                            seen_tx_counts[label_hash] = count + 1
+                            suffix = f"_{count}" if count > 0 else ""
+                            tx_id = f"{acc_id}_{label_hash}{suffix}"
 
                         transactions_list.append({
                             "id": tx_id,
@@ -155,6 +166,34 @@ class WoobService:
                         })
                 except Exception as tx_err:
                     self.log(f"-> Info transactions {acc_label}: {tx_err}")
+
+                try:
+                    if hasattr(backend, "iter_coming"):
+                        for coming_tx in backend.iter_coming(account):
+                            tx_amount = float(coming_tx.amount or 0.0)
+                            tx_raw_label = str(coming_tx.raw or coming_tx.label or "Transaction à venir")
+                            tx_date = coming_tx.date.strftime("%Y-%m-%d") if coming_tx.date else datetime.utcnow().strftime("%Y-%m-%d")
+
+                            raw_id = getattr(coming_tx, "id", None)
+                            if raw_id:
+                                tx_id = str(raw_id)
+                            else:
+                                label_hash = hashlib.md5(f"{acc_id}_{tx_date}_{tx_amount}_{tx_raw_label.strip().upper()}_coming".encode()).hexdigest()[:10]
+                                count = seen_tx_counts.get(label_hash, 0)
+                                seen_tx_counts[label_hash] = count + 1
+                                suffix = f"_{count}" if count > 0 else ""
+                                tx_id = f"{acc_id}_{label_hash}{suffix}"
+
+                            transactions_list.append({
+                                "id": tx_id,
+                                "date": tx_date,
+                                "amount": tx_amount,
+                                "raw_label": tx_raw_label,
+                                "currency": acc_currency,
+                                "status": "pending",
+                            })
+                except Exception:
+                    pass
 
                 extracted_accounts.append({
                     "backend_name": backend_name,
@@ -291,7 +330,7 @@ class WoobService:
 
                     # Fetch history
                     transactions_list = []
-                    seen_tx_ids = set()
+                    seen_tx_counts: Dict[str, int] = {}
 
                     # 1. Past transactions (History)
                     try:
@@ -300,20 +339,24 @@ class WoobService:
                             tx_raw_label = str(history_tx.raw or history_tx.label or "Transaction")
                             tx_date = history_tx.date.strftime("%Y-%m-%d") if history_tx.date else datetime.utcnow().strftime("%Y-%m-%d")
 
-                            # Deterministic stable ID
-                            label_hash = hashlib.md5(f"{acc_id}_{tx_date}_{tx_amount}_{tx_raw_label.strip().upper()}".encode()).hexdigest()[:10]
-                            tx_id = str(history_tx.id) if getattr(history_tx, "id", None) else f"{acc_id}_{label_hash}"
+                            raw_id = getattr(history_tx, "id", None)
+                            if raw_id:
+                                tx_id = str(raw_id)
+                            else:
+                                label_hash = hashlib.md5(f"{acc_id}_{tx_date}_{tx_amount}_{tx_raw_label.strip().upper()}".encode()).hexdigest()[:10]
+                                count = seen_tx_counts.get(label_hash, 0)
+                                seen_tx_counts[label_hash] = count + 1
+                                suffix = f"_{count}" if count > 0 else ""
+                                tx_id = f"{acc_id}_{label_hash}{suffix}"
 
-                            if tx_id not in seen_tx_ids:
-                                seen_tx_ids.add(tx_id)
-                                transactions_list.append({
-                                    "id": tx_id,
-                                    "date": tx_date,
-                                    "amount": tx_amount,
-                                    "raw_label": tx_raw_label,
-                                    "currency": acc_currency,
-                                    "status": "confirmed",
-                                })
+                            transactions_list.append({
+                                "id": tx_id,
+                                "date": tx_date,
+                                "amount": tx_amount,
+                                "raw_label": tx_raw_label,
+                                "currency": acc_currency,
+                                "status": "confirmed",
+                            })
                     except Exception as tx_err:
                         self.log(f"-> Info transactions {acc_label}: {tx_err}")
 
@@ -325,19 +368,24 @@ class WoobService:
                                 tx_raw_label = str(coming_tx.raw or coming_tx.label or "Transaction à venir")
                                 tx_date = coming_tx.date.strftime("%Y-%m-%d") if coming_tx.date else datetime.utcnow().strftime("%Y-%m-%d")
 
-                                label_hash = hashlib.md5(f"{acc_id}_{tx_date}_{tx_amount}_{tx_raw_label.strip().upper()}_coming".encode()).hexdigest()[:10]
-                                tx_id = str(coming_tx.id) if getattr(coming_tx, "id", None) else f"{acc_id}_{label_hash}"
+                                raw_id = getattr(coming_tx, "id", None)
+                                if raw_id:
+                                    tx_id = str(raw_id)
+                                else:
+                                    label_hash = hashlib.md5(f"{acc_id}_{tx_date}_{tx_amount}_{tx_raw_label.strip().upper()}_coming".encode()).hexdigest()[:10]
+                                    count = seen_tx_counts.get(label_hash, 0)
+                                    seen_tx_counts[label_hash] = count + 1
+                                    suffix = f"_{count}" if count > 0 else ""
+                                    tx_id = f"{acc_id}_{label_hash}{suffix}"
 
-                                if tx_id not in seen_tx_ids:
-                                    seen_tx_ids.add(tx_id)
-                                    transactions_list.append({
-                                        "id": tx_id,
-                                        "date": tx_date,
-                                        "amount": tx_amount,
-                                        "raw_label": tx_raw_label,
-                                        "currency": acc_currency,
-                                        "status": "pending",
-                                    })
+                                transactions_list.append({
+                                    "id": tx_id,
+                                    "date": tx_date,
+                                    "amount": tx_amount,
+                                    "raw_label": tx_raw_label,
+                                    "currency": acc_currency,
+                                    "status": "pending",
+                                })
                     except Exception:
                         pass
 

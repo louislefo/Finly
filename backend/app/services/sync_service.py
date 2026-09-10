@@ -147,6 +147,7 @@ class SyncService:
             tx_list = acc_info.get("transactions", [])
             matched_db_tx_ids = set()
             incoming_coming_hashes = set()
+            seen_generated_keys: Dict[str, int] = {}
 
             for tx in tx_list:
                 raw_label = str(tx.get("raw_label") or "Paiement / Virement").strip()
@@ -154,13 +155,17 @@ class SyncService:
                 booking_date_str = str(tx.get("date") or datetime.utcnow().strftime("%Y-%m-%d"))[:10]
                 status = tx.get("status", "confirmed")
                 value_date = tx.get("value_date") or booking_date_str
-
                 incoming_date = _parse_date(booking_date_str) or datetime.utcnow()
+                cleaned_merchant = CleanerService.clean_merchant_name(raw_label)
 
                 # Calculate deterministic label hash
                 label_hash = hashlib.md5(f"{acc_id}_{booking_date_str}_{raw_amount}_{raw_label.upper()}".encode()).hexdigest()[:10]
                 bank_provided_id = tx.get("id")
-                tx_key = bank_provided_id or f"{acc_id}_{label_hash}"
+                base_key = bank_provided_id or f"{acc_id}_{label_hash}"
+                
+                count = seen_generated_keys.get(base_key, 0)
+                seen_generated_keys[base_key] = count + 1
+                tx_key = f"{base_key}_{count}" if count > 0 else base_key
 
                 if status == "pending" or "_coming" in str(tx_key):
                     incoming_coming_hashes.add(tx_key)
@@ -214,13 +219,19 @@ class SyncService:
                         def candidate_rank(c: Transaction):
                             c_date = _parse_date(c.booking_date) or incoming_date
                             day_diff = abs((c_date - incoming_date).days)
-                            similar_title = 0 if ReconciliationService.is_similar_title(raw_label, c.raw_label or "", merchant_name, c.merchant_name) else 1
+                            similar_title = 0 if ReconciliationService.is_similar_title(raw_label, c.raw_label or "", cleaned_merchant, c.merchant_name) else 1
                             is_pending = 0 if (getattr(c, "status", "confirmed") == "pending" or "_coming" in str(c.bank_tx_id or "")) else 1
                             has_gen_key = 0 if (c.bank_tx_id and c.bank_tx_id.startswith(f"{acc_id}_")) else 1
                             return (similar_title, is_pending, day_diff, has_gen_key)
 
                         candidates.sort(key=candidate_rank)
-                        existing_tx = candidates[0]
+                        best_candidate = candidates[0]
+                        if (
+                            ReconciliationService.is_similar_title(raw_label, best_candidate.raw_label or "", cleaned_merchant, best_candidate.merchant_name)
+                            or getattr(best_candidate, "status", "confirmed") == "pending"
+                            or "_coming" in str(best_candidate.bank_tx_id or "")
+                        ):
+                            existing_tx = best_candidate
 
                 # If existing transaction matched, reconcile and update
                 if existing_tx:
@@ -244,12 +255,16 @@ class SyncService:
                         is_modified = True
 
                     if bank_provided_id and existing_tx.bank_tx_id != bank_provided_id:
-                        existing_tx.bank_tx_id = bank_provided_id
-                        is_modified = True
+                        # Check that bank_provided_id isn't already assigned to another transaction
+                        duplicate_check = db.query(Transaction).filter(
+                            (Transaction.bank_tx_id == bank_provided_id) & (Transaction.id != existing_tx.id)
+                        ).first()
+                        if not duplicate_check:
+                            existing_tx.bank_tx_id = bank_provided_id
+                            is_modified = True
 
                     # Re-clean merchant & re-categorize only if not user-classified
                     if not existing_tx.is_user_classified:
-                        cleaned_merchant = CleanerService.clean_merchant_name(raw_label)
                         existing_tx.merchant_name = cleaned_merchant
 
                         user_rule = None
@@ -279,8 +294,6 @@ class SyncService:
                     continue
 
                 # Priority 4: Truly new transaction, insert into DB
-                cleaned_merchant = CleanerService.clean_merchant_name(raw_label)
-
                 user_rule = None
                 if conn_user_id:
                     user_rule = db.query(MerchantRule).filter(
@@ -297,11 +310,16 @@ class SyncService:
                     category = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount)
                     subcategory = None
 
+                # Ensure final_bank_tx_id is strictly unique before insert
+                final_bank_tx_id = tx_key
+                while db.query(Transaction).filter(Transaction.bank_tx_id == final_bank_tx_id).first():
+                    final_bank_tx_id = f"{tx_key}_{uuid.uuid4().hex[:6]}"
+
                 try:
                     new_tx = Transaction(
                         id=f"tx_{uuid.uuid4().hex[:12]}",
                         user_id=conn_user_id,
-                        bank_tx_id=tx_key,
+                        bank_tx_id=final_bank_tx_id,
                         account_id=db_account.id,
                         booking_date=booking_date_str,
                         value_date=value_date,

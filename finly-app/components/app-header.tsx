@@ -198,13 +198,15 @@ export function AppHeader() {
                     <span>Connecter une banque</span>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem
-                    onClick={() => router.push("/admin")}
-                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-amber-400" />
-                    <span>Administration</span>
-                  </DropdownMenuItem>
+                  {user?.role === "admin" && (
+                    <DropdownMenuItem
+                      onClick={() => router.push("/admin")}
+                      className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-amber-400" />
+                      <span>Administration</span>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
 
                 <DropdownMenuSeparator className="bg-white/5 my-1" />
