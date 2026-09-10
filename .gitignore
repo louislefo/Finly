@@ -260,6 +260,8 @@ __marimo__/
 
 backend/finly.db
 backend/woob_data/backends
+data/
 commandes.md
 GEMINI.md
+
 
