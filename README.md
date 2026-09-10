@@ -1,339 +1,380 @@
 # Finly
 
-Finly is a modern, self-hosted personal finance management progressive web app (PWA) designed with a privacy-first architecture. It combines automated bank synchronization, envelope budgeting, net worth tracking, and transaction classification in an ultra-clean, OLED-inspired dark interface.
+Finly est une application web progressive (PWA) auto-hebergee de gestion des finances personnelles et du patrimoine, concue avec une architecture axee sur la confidentialite absolue. Elle combine synchronisation bancaire directe, budgetisation par enveloppes, suivi de la valeur nette en temps reel, analyse de flux de tresorerie et gestion de projets d'epargne dans une interface sombre et minimaliste inspiree d'Apple et Linear.
 
 <p align="center">
-  <img src="Documents/images/Budget.png" alt="Finly Budget Dashboard" width="100%" />
+  <img src="Documents/images/vueglobale.png" alt="Vue Globale - Finly Dashboard" width="100%" />
 </p>
 
 ---
 
-## Table of Contents
+## Sommaire
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
-- [Prerequisites](#prerequisites)
-- [Quick Start with Docker](#quick-start-with-docker)
-- [Manual Setup for Development](#manual-setup-for-development)
-  - [Backend Setup (FastAPI)](#backend-setup-fastapi)
-  - [Frontend Setup (Next.js)](#frontend-setup-nextjs)
-- [User Guide and Workflow](#user-guide-and-workflow)
-- [Environment Variables](#environment-variables)
-- [Banking Connectors (Woob)](#banking-connectors-woob)
-- [Security and Data Privacy](#security-and-data-privacy)
-- [Project Structure](#project-structure)
-- [License](#license)
-
----
-
-## Overview
-
-Finly is built for individuals who want complete control over their financial data without relying on third-party SaaS cloud platforms.
-
-- **100% Self-Hosted & Private:** All account details, credentials, and transactions remain strictly on your local machine or server.
-- **Direct Bank Sync:** Automated data retrieval via Woob without intermediaries or external aggregators.
-- **Minimalist Aesthetic:** Focused interface inspired by Linear and Apple, featuring pure dark mode, clean typography, and zero unnecessary visual clutter.
+- [Apercu](#apercu)
+- [Galerie et Interface](#galerie-et-interface)
+- [Fonctionnalites Cles](#fonctionnalites-cles)
+- [Stack Technologique](#stack-technologique)
+- [Prerequis](#prerequis)
+- [Demarrage Rapide avec Docker](#demarrage-rapide-avec-docker)
+- [Installation Manuelle pour le Developpement](#installation-manuelle-pour-le-developpement)
+  - [Backend FastAPI](#backend-fastapi)
+  - [Frontend Nextjs](#frontend-nextjs)
+- [Tests et Qualite](#tests-et-qualite)
+- [Gestion des Connecteurs Bancaires Woob](#gestion-des-connecteurs-bancaires-woob)
+- [Outils CLI d'Administration](#outils-cli-dadministration)
+- [Securite et Protection des Donnees](#securite-et-protection-des-donnees)
+- [Structure du Projet](#structure-du-projet)
+- [Guide de Contribution](#guide-de-contribution)
+- [Licence](#licence)
 
 ---
 
-## Key Features
+## Apercu
 
-### 1. Net Worth and Asset Tracking
-- Consolidated real-time calculation of your total net worth.
-- Breakdown across checking accounts, savings, investments, and real estate assets.
-- One-click privacy mode to mask account balances.
-- Historical net worth evolution and monthly trajectory charts.
+Finly s'adresse aux utilisateurs souhaitant reprendre le controle total de leurs donnees financieres sans dependre de services SaaS tiers ou de serveurs cloud externes.
 
-### 2. Envelope Budgeting
-- Category-based monthly budget envelopes with configurable spending targets.
-- Real-time tracking of consumed amounts and remaining disposable funds.
-- Progress bars and overspending warnings.
-
-### 3. Transaction Management and Auto-Categorization
-- Filter transactions by day, month, or custom date ranges.
-- Automated normalization and cleanup of raw bank transaction labels.
-- Dynamic rule-based category matcher based on keywords.
-- Detailed transaction drawer for manual categorization and notes.
-
-### 4. Savings Goals and Projects
-- Custom savings goals with target amounts and deadlines.
-- Associate specific transactions or savings accounts with active projects.
-- Visual milestone indicators and remaining balance tracking.
-
-### 5. Bank Aggregation Engine
-- Direct connection to hundreds of European banks using open-source Woob modules.
-- Scheduled background synchronization jobs via APScheduler.
-- AES-256 (Fernet) symmetric encryption for all stored banking credentials.
-
-### 6. Dynamic Excel Export
-- Generate structured `.xlsx` workbooks with native Excel formulas (`SUM`, `SUMIF`).
-- Dedicated tabs for executive summary, granular transactions, and category breakdowns.
-
-### 7. Administration Panel and User Impersonation
-- Dedicated administrative dashboard (`/admin`) with real-time system metrics (active users, connected banks, total volume, SQLite database size, scheduler status).
-- User management tools (role assignment, account activation/deactivation, password reset, and cascading deletion).
-- One-click user impersonation mode allowing administrators to view and navigate any user's dashboard.
-- System maintenance utilities (manual global bank synchronization, SQLite `VACUUM` compaction).
+- **100% Auto-Heberge et Prive :** Toutes les informations de compte, identifiants et transactions sont stockes localement dans votre base de donnees.
+- **Synchronisation Bancaire Directe :** Recuperation automatisee des soldes et operations via le moteur open-source Woob, sans intermediaire payant ni aggregation distante.
+- **Esthetique Minimaliste et Epuree :** Interface Dark Mode exclusive (Zinc 950 `#09090B`), concue pour afficher les chiffres cles et graphiques essentiels sans texte superflu.
+- **Responsive et PWA :** Utilisation fluide sur grand ecran comme sur mobile avec navigation dediee.
 
 ---
 
-## Technology Stack
+## Galerie et Interface
+
+### Vue Globale et Tableau de Bord
+
+Tableau de bord centralisant le patrimoine total, la repartition par types de comptes (comptes courants, epargne, investissements, immobilier), l'evolution temporelle et le mode confidentialite.
+
+| Version Desktop | Version Mobile |
+| :--- | :--- |
+| <img src="Documents/images/vueglobale.png" alt="Vue Globale Desktop" width="100%" /> | <img src="Documents/images/vueglobale_mobile.png" alt="Vue Globale Mobile" width="100%" /> |
+
+---
+
+### Suivi des Depenses et Transactions
+
+Filtrage avance par periode (jour, mois, personnalise), categorisation intelligente et affichage optimise.
+
+| Version Desktop | Version Mobile |
+| :--- | :--- |
+| <img src="Documents/images/depenses.png" alt="Depenses Desktop" width="100%" /> | <img src="Documents/images/depenses_mobile.png" alt="Depenses Mobile" width="100%" /> |
+
+---
+
+### Budgetisation par Enveloppes et Analyse des Flux
+
+Controlez vos plafonds de depenses par categorie avec jauges de progression et analysez vos flux de tresorerie (entrees vs sorties).
+
+| Budgetisation par Enveloppes | Flux de Tresorerie (Cashflow) |
+| :--- | :--- |
+| <img src="Documents/images/budget.png" alt="Budget par Enveloppes" width="100%" /> | <img src="Documents/images/cashflow.png" alt="Flux de Tresorerie" width="100%" /> |
+
+---
+
+### Projets d'Epargne et Gestion des Cartes
+
+Fixez des objectifs financiers avec echeances et suivez les soldes par etablissement bancaire.
+
+| Projets d'Epargne | Vue Cartes et Comptes |
+| :--- | :--- |
+| <img src="Documents/images/projet.png" alt="Projets d'Epargne" width="100%" /> | <img src="Documents/images/carte.png" alt="Vue Cartes" width="100%" /> |
+
+---
+
+## Fonctionnalites Cles
+
+### 1. Suivi de Patrimoine et Valeur Nette
+- Agregation en direct de la valeur nette globale.
+- Prise en compte des comptes courants, livrets d'epargne, portefeuilles d'actifs et biens immobiliers (valeur du bien et capital restant du).
+- Mode Confidentialite en un clic pour masquer l'ensemble des montants a l'ecran.
+- Graphiques d'evolution historique et de trajectoire financiere.
+
+### 2. Budgetisation Mensuelle par Enveloppes
+- Enveloppes budgetaires configurables par categorie de depenses (Alimentation, Logement, Transports, Loisirs, etc.).
+- Jauges de consommation en temps reel et alertes visuelles de depassement.
+- Export PDF structure des budgets mensuels avec repartition graphique.
+
+### 3. Gestion et Normalisation des Transactions
+- Nettoyage automatique des libelles bruts de cartes et virements.
+- Moteur de regles dynamiques pour l'auto-categorisation basee sur des mots-cles.
+- Panneau lateral de modification detaillee (changement de categorie, notes, association a un projet).
+
+### 4. Projets et Objectifs d'Epargne
+- Creation d'objectifs avec montant cible, date butoir et indicateur de progression.
+- Visualisation du montant restant a financer et des etapes atteintes.
+
+### 5. Moteur d'Agregation Bancaire Locale (Woob)
+- Connexion directe aux banques francaises et europeennes.
+- Chiffrement symetrique AES-256 (Fernet) de tous les identifiants stockes.
+- Planificateur integre (APScheduler) pour la synchronisation automatique en arriere-plan.
+
+### 6. Exports Avances Excel et PDF
+- Export de classeurs Excel (`.xlsx`) incluant des formules de calcul natives (`SUM`, `SUMIF`) et des onglets thematiques.
+- Export de rapports budgetaires au format PDF avec tableaux et synthetiseurs visuels.
+
+### 7. Administration et Maintenance
+- Espace dedie `/admin` avec metriques systeme (utilisateurs, connexions bancaires, taille de la base SQLite, statut du scheduler).
+- Gestion complete des comptes utilisateurs (activation, reinitialisation de mot de passe, suppression en cascade).
+- Mode Impersonation permettant a l'administrateur de diagnostiquer l'espace d'un utilisateur en un clic.
+- Outils de maintenance : synchronisation globale forcee et compactage de base (`VACUUM`).
+
+---
+
+## Stack Technologique
 
 ### Frontend
-- **Framework:** Next.js 16 (App Router, React 19, TypeScript)
-- **Styling:** Tailwind CSS, custom Shadcn UI / Radix UI components
-- **Charts:** Recharts, Lucide Icons
-- **Export Engine:** xlsx, xlsx-js-style
+- **Framework :** Next.js 16 (App Router, React 19, TypeScript)
+- **Style :** Tailwind CSS v4, composants Shadcn UI et Radix UI
+- **Graphiques :** Recharts, Lucide Icons
+- **Export :** xlsx, xlsx-js-style, jspdf
 
 ### Backend
-- **API Framework:** FastAPI (Python 3.11+)
-- **Database:** SQLite with SQLAlchemy ORM
-- **Authentication:** JWT (JSON Web Tokens) with bcrypt password hashing
-- **Data Protection:** Cryptography (AES-256 Fernet)
-- **Banking Driver:** Woob (Web Outside of Browsers)
-- **Task Scheduler:** APScheduler
+- **Framework API :** FastAPI (Python 3.11+)
+- **Base de donnees :** SQLite avec SQLAlchemy ORM
+- **Authentification :** JWT (JSON Web Tokens) avec hachage bcrypt
+- **Chiffrement :** Cryptography (AES-256 Fernet)
+- **Moteur Bancaire :** Woob (Web Outside of Browsers)
+- **Taches de fond :** APScheduler
 
-### Infrastructure
-- Multi-container architecture via Docker and Docker Compose with persistent volumes.
+### Deploiement & Outils
+- **Conteneurisation :** Docker, Docker Compose
+- **Tests :** Pytest (backend), Vitest & Testing Library (frontend)
 
 ---
 
-## Prerequisites
+## Prerequis
 
-Ensure the following tools are installed on your environment:
-
-- **Docker Approach (Recommended):**
+- **Approche Docker (Recommandee) :**
   - Docker Engine 20.10+
   - Docker Compose 2.0+
-- **Manual Development Approach:**
-  - Node.js 20+ and npm
-  - Python 3.11+ and pip
+- **Approche Developpement Manuel :**
+  - Node.js 20+ et npm
+  - Python 3.11+ et pip
 
 ---
 
-## Quick Start with Docker
+## Demarrage Rapide avec Docker
 
-The fastest way to deploy Finly in a local or self-hosted production environment.
+Le moyen le plus simple et robuste de deployer Finly sur une machine locale ou un serveur personnel.
 
-### 1. Clone the repository
+### 1. Cloner le depot
 ```bash
 git clone https://github.com/louislefo/Finly.git
 cd Finly
 ```
 
-### 2. Configure backend environment
-Copy the template configuration:
+### 2. Configurer les variables du backend
+Copier le fichier d'exemple :
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Generate a secure secret key:
+Generer une cle secrete securisee :
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
-Paste this value into `SECRET_KEY` inside `backend/.env`.
+Renseigner cette valeur dans `SECRET_KEY` a l'interieur du fichier `backend/.env`.
 
-### 3. Build and launch containers
+### 3. Lancer les conteneurs
 ```bash
 docker compose up -d --build
 ```
 
-### 4. Access the application
-- Web Application: [http://localhost:3000](http://localhost:3000)
-- REST API Interactive Docs (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
-- Health Check: [http://localhost:8000/health](http://localhost:8000/health)
+### 4. Acceder a l'application
+- **Interface Web :** [http://localhost:3000](http://localhost:3000)
+- **Documentation API (Swagger UI) :** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Verification de sante :** [http://localhost:8000/health](http://localhost:8000/health)
 
-**Default Administrator Account:**
-- **Identifier:** `admin` (or `admin@finly.local`)
-- **Password:** `admin`
+**Compte Administrateur Initial :**
+- Identifiant : `admin` (ou `admin@finly.local`)
+- Mot de passe : `admin`
 
-> [!NOTE]
-> The default administrator account is automatically initialized upon the first startup. You can change its password or create additional administrator accounts directly from the Administration panel (`/admin`) or using the CLI.
+*Note : Le compte administrateur est cree automatiquement au premier lancement. Vous pouvez modifier ses identifiants depuis le panneau `/admin` ou via la CLI.*
 
-### 5. Stop containers
+### 5. Arreter les conteneurs
 ```bash
 docker compose down
 ```
 
 ---
 
-## Manual Setup for Development
+## Installation Manuelle pour le Developpement
 
-If you wish to contribute or develop locally without Docker:
+### Backend FastAPI
 
-### Backend Setup (FastAPI)
-
-1. Open a terminal and navigate to the backend directory:
+1. Se positionner dans le repertoire backend :
    ```bash
    cd backend
    ```
 
-2. Create and activate a Python virtual environment:
+2. Creer et activer un environnement virtuel Python :
    ```bash
-   # On Linux / macOS
+   # Sur Linux / macOS
    python3 -m venv .venv
    source .venv/bin/activate
 
-   # On Windows (PowerShell)
+   # Sur Windows (PowerShell)
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
    ```
 
-3. Install required Python packages:
+3. Installer les dependances Python :
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Create your local environment configuration:
+4. Preparer la configuration locale :
    ```bash
    cp .env.example .env
    ```
 
-5. Start the FastAPI development server with hot-reload:
+5. Demarrer le serveur backend avec rechargement a chaud :
    ```bash
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-### Frontend Setup (Next.js)
+---
 
-1. Open a second terminal and navigate to the frontend directory:
+### Frontend Next.js
+
+1. Ouvrir un second terminal et se positionner dans le dossier frontend :
    ```bash
    cd finly-app
    ```
 
-2. Install Node dependencies:
+2. Installer les modules Node.js :
    ```bash
    npm install
    ```
 
-3. Start the Next.js development server:
+3. Lancer le serveur de developpement :
    ```bash
    npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Ouvrir [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
 ---
 
-## User Guide and Workflow
+## Tests et Qualite
 
-### Step 1: Initial Setup & Account Creation
-- Open [http://localhost:3000](http://localhost:3000) and sign in using the default superuser credentials (`admin` / `admin`).
-- Alternatively, register a new personal account or create and promote administrators directly from the Administration panel (`/admin`).
-- All subsequent sessions use secure JWT tokens stored client-side.
+### Tests Backend (Pytest)
+```bash
+cd backend
+pytest -v
+```
 
-### Step 2: Connecting Bank Accounts or Manual Entry
-- Navigate to the **Accounts** section.
-- **Automated Sync:** Select your banking institution from the Woob connector catalog, enter your credentials, and validate any multi-factor authentication (MFA) prompts.
-- **Manual Accounts:** Create offline checking, savings, or investment accounts and record manual balances.
-- **Real Estate:** Add real estate properties to include property value and remaining loan balances in your net worth calculation.
+### Tests Frontend (Vitest)
+```bash
+cd finly-app
+npm test
+```
 
-### Step 3: Setting Up Monthly Budgets
-- Navigate to the **Budget** tab.
-- Define monthly spending envelopes for your primary expense categories (e.g., Housing, Groceries, Transport, Subscriptions).
-- Review progress bars and remaining allowances throughout the month.
-
-### Step 4: Reviewing and Categorizing Expenses
-- Check the **Expenses / Transactions** section to inspect recent transactions synced from your accounts.
-- Set up automatic categorization rules to match transaction descriptions with target categories.
-- Manually edit any transaction details or notes as needed.
-
-### Step 5: Tracking Savings Goals & Projects
-- Go to the **Projects** tab.
-- Define short-term or long-term financial targets (e.g., Emergency Fund, Vacation, Down Payment).
-- Track funding percentages and allocate capital towards your milestones.
-
-### Step 6: Exporting Reports
-- Export your consolidated financial history into Excel (`.xlsx`) workbooks containing native formulas for bookkeeping or tax preparation.
+### Verification du Lint Frontend
+```bash
+cd finly-app
+npm run lint
+```
 
 ---
 
-## Environment Variables
+## Gestion des Connecteurs Bancaires Woob
 
-The backend configuration is managed through environment variables located in `backend/.env`.
+Finly exploite la suite d'outils Woob pour communiquer avec les interfaces des etablissements bancaires.
 
-| Variable | Description | Default Value |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | SQLAlchemy connection string for SQLite database | `sqlite:///./finly.db` |
-| `SECRET_KEY` | Secret key used for JWT signing and AES-256 credential encryption | Required |
-| `CORS_ORIGINS` | Permitted origins for Cross-Origin Resource Sharing | `http://localhost:3000` |
-| `SYNC_INTERVAL_HOURS` | Frequency of automated background bank synchronizations (in hours) | `6` |
-
----
-
-## Banking Connectors (Woob)
-
-Finly relies on the open-source Woob engine to communicate directly with banking APIs and portals.
-
-### Updating Bank Connector Modules
-Because banking web interfaces change over time, keep connector modules up to date:
+### Mettre a jour les modules bancaires
+Les interfaces bancaires evoluant regulierement, il est conseille de maintenir les modules a jour :
 ```bash
 woob config update
 ```
 
-### Listing Supported Institutions
+### Lister les banques supportees
 ```bash
 woob bank
 ```
 
 ---
 
-## Security and Data Privacy
+## Outils CLI d'Administration
 
-1. **Zero External Telemetry:** Finly never transmits financial data, account numbers, or credentials to external servers.
-2. **Encrypted Credentials:** Bank connection credentials and authentication tokens stored in the database are encrypted with symmetric AES-256 encryption (Fernet).
-3. **Password Security:** User authentication passwords are protected using industry-standard bcrypt hashes.
-4. **Data Ownership:** You maintain full ownership over your database. Backups can be made by copying the SQLite database file.
+Le backend dispose d'un outil en ligne de commande pour la gestion rapide des comptes administrateurs et des utilisateurs sans passer par l'interface web :
 
----
+### Creer un compte administrateur
+```bash
+python -m app.cli create-admin --email admin@domaine.local --password MonMotDePasseFort --name "Admin Principal"
+```
 
-## Project Structure
+### Promouvoir un utilisateur existant
+```bash
+python -m app.cli promote-admin --email utilisateur@domaine.local
+```
 
-```text
-Finly/
-|-- backend/                     # FastAPI backend application
-|   |-- app/
-|   |   |-- api/                 # REST API routes (accounts, budgets, sync, etc.)
-|   |   |-- core/                # Configuration, security, database models
-|   |   |-- models/              # SQLAlchemy database entities
-|   |   |-- scheduler/           # Background sync task scheduler
-|   |   |-- services/            # Business logic (Woob engine, Excel export)
-|   |   `-- main.py              # Application entrypoint
-|   |-- Dockerfile               # Backend container configuration
-|   |-- requirements.txt         # Python dependencies
-|   `-- .env.example             # Environment template
-|
-|-- finly-app/                   # Next.js frontend application
-|   |-- app/                     # App router pages (budget, compte, depenses, etc.)
-|   |-- components/              # UI components (cards, dialogs, charts)
-|   |-- hooks/                   # Custom React hooks
-|   |-- lib/                     # API client and formatting utilities
-|   |-- Dockerfile               # Frontend container configuration
-|   `-- package.json             # Node.js dependencies
-|
-|-- Documents/                   # Documentation and visual assets
-|   `-- images/
-|       `-- Budget.png           # Dashboard and budget screenshot
-|
-|-- docker-compose.yml           # Multi-container orchestration
-`-- README.md                    # Project documentation
+### Lister l'ensemble des utilisateurs
+```bash
+python -m app.cli list-users
+```
+
+### Reinitialiser le mot de passe d'un compte
+```bash
+python -m app.cli reset-password --email utilisateur@domaine.local --password NouveauMotDePasse
 ```
 
 ---
 
-## Contributing
+## Securite et Protection des Donnees
 
-Contributions, bug reports, and feature requests are welcome:
-
-1. Fork the repository.
-2. Create a dedicated branch: `git checkout -b feature/new-feature-name`.
-3. Commit your changes: `git commit -m "Add new feature"`.
-4. Push to the branch: `git push origin feature/new-feature-name`.
-5. Open a Pull Request.
+1. **Zero Telemetrie Externe :** Aucune donnee financiere ou information d'utilisation n'est transmise vers des serveurs tiers.
+2. **Chiffrement Symetrique AES-256 :** Les identifiants bancaires et jetons d'acces stockes en base sont chiffres avec Fernet (AES-256-CBC et HMAC-SHA256).
+3. **Protection des Mots de Passe :** Tous les mots de passe utilisateurs sont haches a l'aide de bcrypt avec un sel unique.
+4. **Controle Total de la Persistance :** Votre base SQLite reste entierement locale. Les sauvegardes consistent simplement a copier le fichier de base de donnees.
 
 ---
 
-## License
+## Structure du Projet
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+```text
+Finly/
+|-- backend/                     # Application API FastAPI (Python)
+|   |-- app/
+|   |   |-- api/                 # Endpoints REST (auth, accounts, budgets, sync, admin)
+|   |   |-- core/                # Configuration, securite, base de donnees
+|   |   |-- models/              # Entites SQLAlchemy
+|   |   |-- scheduler/           # Taches de synchronisation planifiees
+|   |   |-- services/            # Moteur Woob, export Excel & PDF
+|   |   |-- cli.py               # Outil de commande d'administration
+|   |   `-- main.py              # Point d'entree FastAPI
+|   |-- tests/                   # Suite de tests Pytest
+|   |-- Dockerfile               # Image Docker backend
+|   |-- requirements.txt         # Dependances Python
+|   `-- .env.example             # Gabarit des variables d'environnement
+|
+|-- finly-app/                   # Application frontend Next.js 16 (App Router)
+|   |-- app/                     # Pages et routes (dashboard, budget, depenses, admin)
+|   |-- components/              # Composants UI Shadcn, graphiques, tiroirs et modales
+|   |-- hooks/                   # Hooks React personnalises
+|   |-- lib/                     # Client API, formatage, export PDF
+|   |-- __tests__/               # Suite de tests Vitest
+|   |-- Dockerfile               # Image Docker frontend
+|   `-- package.json             # Dependances et scripts Node.js
+|
+|-- Documents/                   # Documentation et ressources visuelles
+|   `-- images/                  # Captures d'ecran de l'application
+|
+|-- docker-compose.yml           # Orchestration multi-conteneurs
+|-- CONTRIBUTING.md              # Guide complet pour contribuer au projet
+|-- commandes.md                 # Aide-memoire des commandes frequentes
+`-- README.md                    # Documentation generale
+```
+
+---
+
+## Guide de Contribution
+
+Les contributions au projet sont les bienvenues. Pour connaitre les regles de developpement, les conventions de code et la procedure de soumission de Pull Requests, veuillez consulter le fichier [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Licence
+
+Ce projet est distribue sous licence MIT. Consultez le fichier `LICENSE` pour plus de details.
