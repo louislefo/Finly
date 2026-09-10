@@ -588,10 +588,14 @@ async def import_json_backup(
                 if target_acc_id and not existing_tx.account_id:
                     existing_tx.account_id = target_acc_id
             else:
+                final_bank_tx_id = tx.get("bank_tx_id") or tx_id
+                while db.query(Transaction).filter(Transaction.bank_tx_id == final_bank_tx_id).first():
+                    final_bank_tx_id = f"{final_bank_tx_id}_{uuid.uuid4().hex[:6]}"
+
                 new_tx = Transaction(
                     id=tx_id,
                     user_id=current_user.id,
-                    bank_tx_id=tx.get("bank_tx_id", tx_id),
+                    bank_tx_id=final_bank_tx_id,
                     account_id=target_acc_id,
                     booking_date=booking_date,
                     value_date=tx.get("value_date", booking_date),
