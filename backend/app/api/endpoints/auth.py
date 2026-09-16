@@ -19,6 +19,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     full_name: str
+    language: Optional[str] = "en"
 
 class LoginRequest(BaseModel):
     email: str
@@ -54,6 +55,7 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
         full_name=req.full_name.strip(),
         hashed_password=hashed_pw,
         role="member",
+        language=req.language or "en",
     )
     db.add(new_user)
     db.commit()
@@ -70,6 +72,7 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
             "email": new_user.email,
             "full_name": new_user.full_name,
             "role": new_user.role,
+            "language": new_user.language,
         },
     }
 
@@ -96,6 +99,7 @@ def login_user(req: LoginRequest, db: Session = Depends(get_db)):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
+            "language": getattr(user, "language", "en") or "en",
         },
     }
 
@@ -126,6 +130,13 @@ class UpdateSyncSettingsRequest(BaseModel):
     auto_sync_enabled: bool
     sync_interval_hours: Optional[int] = 12
     sync_time: Optional[str] = "08:00"
+    language: Optional[str] = None
+
+class UpdatePreferencesRequest(BaseModel):
+    language: Optional[str] = None
+    auto_sync_enabled: Optional[bool] = None
+    sync_interval_hours: Optional[int] = None
+    sync_time: Optional[str] = None
 
 @router.get("/me")
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
@@ -134,6 +145,7 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "full_name": current_user.full_name,
         "role": current_user.role,
+        "language": str(getattr(current_user, "language", "en") or "en"),
         "auto_sync_enabled": bool(getattr(current_user, "auto_sync_enabled", False)),
         "sync_interval_hours": int(getattr(current_user, "sync_interval_hours", 12) or 12),
         "sync_time": str(getattr(current_user, "sync_time", "08:00") or "08:00"),
@@ -150,6 +162,8 @@ def update_sync_settings(
         current_user.sync_interval_hours = req.sync_interval_hours
     if req.sync_time is not None:
         current_user.sync_time = req.sync_time
+    if req.language is not None:
+        current_user.language = req.language
     db.commit()
     db.refresh(current_user)
 
@@ -159,6 +173,39 @@ def update_sync_settings(
         "auto_sync_enabled": current_user.auto_sync_enabled,
         "sync_interval_hours": current_user.sync_interval_hours,
         "sync_time": current_user.sync_time,
+        "language": current_user.language,
+    }
+
+@router.patch("/preferences")
+def update_user_preferences(
+    req: UpdatePreferencesRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if req.language is not None:
+        current_user.language = req.language
+    if req.auto_sync_enabled is not None:
+        current_user.auto_sync_enabled = req.auto_sync_enabled
+    if req.sync_interval_hours is not None:
+        current_user.sync_interval_hours = req.sync_interval_hours
+    if req.sync_time is not None:
+        current_user.sync_time = req.sync_time
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "status": "success",
+        "message": "Préférences mises à jour.",
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "role": current_user.role,
+            "language": current_user.language,
+            "auto_sync_enabled": current_user.auto_sync_enabled,
+            "sync_interval_hours": current_user.sync_interval_hours,
+            "sync_time": current_user.sync_time,
+        },
     }
 
 @router.post("/logout")

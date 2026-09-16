@@ -4,20 +4,22 @@ import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Wallet, ArrowUpDown, PieChart, Compass } from "lucide-react"
+import { useI18n } from "@/components/i18n-context"
 import { cn } from "@/lib/utils"
 
 export function MobileNav() {
   const pathname = usePathname()
+  const { t } = useI18n()
 
   if (pathname === "/login") {
     return null
   }
 
   const items = [
-    { href: "/", label: "Vue Globale", icon: Wallet },
-    { href: "/depenses", label: "Dépenses", icon: ArrowUpDown },
-    { href: "/budget", label: "Budgets", icon: PieChart },
-    { href: "/projets", label: "Projets", icon: Compass },
+    { href: "/", label: t.nav.overview, icon: Wallet },
+    { href: "/depenses", label: t.nav.expenses, icon: ArrowUpDown },
+    { href: "/budget", label: t.nav.budgets, icon: PieChart },
+    { href: "/projets", label: t.nav.projects, icon: Compass },
   ]
 
   return (

@@ -33,9 +33,9 @@ import {
   RotateCcw,
   Trash2,
   Camera,
-  ImageOff,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -59,15 +59,16 @@ import { ExportDialog } from "@/components/modals/export-dialog"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Transaction, Project, Account, CategoryItem } from "@/lib/types/finance"
-import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
 import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 
 export function TransactionsView() {
   const { formatAmount } = usePrivacy()
+  const { t, language, format } = useI18n()
+
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all")
   const [accountFilterType, setAccountFilterType] = useState<"checking" | "savings" | "all">("checking")
-  const [selectedCategory, setSelectedCategory] = useState<string>("Toutes")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [transactionsList, setTransactionsList] = useState<Transaction[]>([])
   const [projectsList, setProjectsList] = useState<Project[]>([])
   const [accountsList, setAccountsList] = useState<Account[]>([])
@@ -103,7 +104,7 @@ export function TransactionsView() {
       setAccountsList(accRes.accounts || [])
       setCategoriesList(catRes || [])
     } catch (err) {
-      console.error("Erreur chargement transactions:", err)
+      console.error("Failed to load transactions:", err)
     }
   }, [])
 
@@ -131,7 +132,7 @@ export function TransactionsView() {
   const checkingAccountIds = useMemo(() => {
     return new Set(
       accountsList
-        .filter((a) => !a.type || a.type === "Compte Courant" || a.type.toLowerCase().includes("courant") || a.type.toLowerCase().includes("dépôt") || a.type.toLowerCase().includes("depot"))
+        .filter((a) => !a.type || a.type === "Compte Courant" || a.type.toLowerCase().includes("courant") || a.type.toLowerCase().includes("dépôt") || a.type.toLowerCase().includes("checking"))
         .map((a) => a.id)
     )
   }, [accountsList])
@@ -147,6 +148,7 @@ export function TransactionsView() {
         (tx.account && tx.account.toLowerCase().includes(searchQuery.toLowerCase()))
 
       const matchesCategory =
+        selectedCategory === "all" ||
         selectedCategory === "Toutes" ||
         tx.category === selectedCategory ||
         tx.subcategory === selectedCategory
@@ -181,11 +183,11 @@ export function TransactionsView() {
       setTransactionsList((prev) => prev.filter((t) => t.id !== selectedTx.id))
       setSelectedTx(null)
       setShowDeleteConfirm(false)
-      setFeedbackMessage("Transaction supprimée avec succès")
+      setFeedbackMessage(t.transactions.transactionDeleted)
       setTimeout(() => setFeedbackMessage(null), 3000)
     } catch (err) {
-      console.error("Erreur suppression transaction:", err)
-      setFeedbackMessage("Erreur lors de la suppression de la transaction")
+      console.error("Error deleting transaction:", err)
+      setFeedbackMessage(t.transactions.transactionDeleteError)
       setTimeout(() => setFeedbackMessage(null), 3000)
     } finally {
       setIsDeletingTx(false)
@@ -235,11 +237,16 @@ export function TransactionsView() {
       setIsEditingCategory(false)
 
       if (res.updated_count > 1) {
-        setFeedbackMessage(`Catégorie appliquée à ${res.updated_count} opérations de ${selectedTx.merchant}`)
+        setFeedbackMessage(
+          format(t.transactions.appliedToCount, {
+            count: res.updated_count,
+            merchant: selectedTx.merchant,
+          })
+        )
         setTimeout(() => setFeedbackMessage(null), 4000)
       }
     } catch (err) {
-      console.error("Erreur mise a jour categorie:", err)
+      console.error("Error updating category:", err)
     }
   }
 
@@ -267,7 +274,7 @@ export function TransactionsView() {
       setNewCatParent("")
       setIsCreatingCategory(false)
     } catch (err) {
-      console.error("Erreur creation categorie:", err)
+      console.error("Error creating category:", err)
     }
   }
 
@@ -283,10 +290,10 @@ export function TransactionsView() {
         prev.map((t) => (t.merchant === selectedTx.merchant ? { ...t, logo_url: "none" } : t))
       )
       setIsEditingLogo(false)
-      setFeedbackMessage(`Logo retiré pour ${selectedTx.merchant}`)
+      setFeedbackMessage(format(t.transactions.logoRemovedFor, { merchant: selectedTx.merchant }))
       setTimeout(() => setFeedbackMessage(null), 3000)
     } catch (err) {
-      console.error("Erreur suppression logo:", err)
+      console.error("Error removing logo:", err)
     }
   }
 
@@ -302,10 +309,10 @@ export function TransactionsView() {
         prev.map((t) => (t.merchant === selectedTx.merchant ? { ...t, logo_url: undefined } : t))
       )
       setIsEditingLogo(false)
-      setFeedbackMessage(`Logo par défaut rétabli pour ${selectedTx.merchant}`)
+      setFeedbackMessage(format(t.transactions.logoResetFor, { merchant: selectedTx.merchant }))
       setTimeout(() => setFeedbackMessage(null), 3000)
     } catch (err) {
-      console.error("Erreur reset logo:", err)
+      console.error("Error resetting logo:", err)
     }
   }
 
@@ -328,10 +335,10 @@ export function TransactionsView() {
       )
       setIsEditingLogo(false)
       setCustomLogoInput("")
-      setFeedbackMessage(`Logo personnalisé enregistré pour ${selectedTx.merchant}`)
+      setFeedbackMessage(format(t.transactions.logoSavedFor, { merchant: selectedTx.merchant }))
       setTimeout(() => setFeedbackMessage(null), 3000)
     } catch (err) {
-      console.error("Erreur custom logo:", err)
+      console.error("Error setting custom logo:", err)
     }
   }
 
@@ -348,40 +355,25 @@ export function TransactionsView() {
   const resetFilters = () => {
     setSelectedAccountId("all")
     setAccountFilterType("checking")
-    setSelectedCategory("Toutes")
+    setSelectedCategory("all")
     setSearchQuery("")
   }
 
   const hasActiveFilters =
     selectedAccountId !== "all" ||
     accountFilterType !== "checking" ||
-    selectedCategory !== "Toutes" ||
+    (selectedCategory !== "all" && selectedCategory !== "Toutes") ||
     searchQuery !== ""
 
   const activeFilterLabel = useMemo(() => {
     if (selectedAccountId !== "all") {
       const acc = accountsList.find((a) => a.id === selectedAccountId)
-      return acc?.name || "Compte spécifique"
+      return acc?.name || t.transactions.specificAccount
     }
-    if (accountFilterType === "savings") return "Épargne & Placements"
-    if (accountFilterType === "all") return "Tous les comptes"
-    return "Compte Courant"
-  }, [selectedAccountId, accountFilterType, accountsList])
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "Alimentation": return ShoppingBag
-      case "Transports": return Car
-      case "Logement": return HomeIcon
-      case "Abonnements": return Film
-      case "Loisirs & Sorties": return Compass
-      case "Santé & Bien-être": return HeartPulse
-      case "Virements & Épargne": return PiggyBank
-      case "Revenus":
-      case "Virement Reçu": return ArrowDownRight
-      default: return Tag
-    }
-  }
+    if (accountFilterType === "savings") return t.transactions.savingsAndInvestments
+    if (accountFilterType === "all") return t.transactions.allAccounts
+    return t.transactions.checkingAccount
+  }, [selectedAccountId, accountFilterType, accountsList, t])
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
@@ -396,9 +388,9 @@ export function TransactionsView() {
       {/* Minimalist Top Header */}
       <div className="flex justify-between items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Historique des Opérations</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">{t.transactions.title}</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            {activeFilterLabel} • {filteredTransactions.length} opération{filteredTransactions.length > 1 ? "s" : ""}
+            {activeFilterLabel} • {filteredTransactions.length} {language === "fr" ? `opération${filteredTransactions.length > 1 ? "s" : ""}` : `transaction${filteredTransactions.length > 1 ? "s" : ""}`}
           </p>
         </div>
 
@@ -411,7 +403,7 @@ export function TransactionsView() {
             className="h-8 px-2.5 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline text-xs">{isSyncing ? "Actualisation..." : "Actualiser"}</span>
+            <span className="hidden sm:inline text-xs">{isSyncing ? t.common.syncing : t.common.refresh}</span>
           </Button>
 
           <Button
@@ -421,7 +413,7 @@ export function TransactionsView() {
             className="h-8 px-2.5 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-xs">Exporter</span>
+            <span className="hidden sm:inline text-xs">{t.common.export}</span>
           </Button>
 
           {/* Clean Filter Dropdown Menu Button */}
@@ -434,7 +426,7 @@ export function TransactionsView() {
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Filtres</span>
+              <span className="hidden sm:inline">{t.common.filter}</span>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent
@@ -444,21 +436,21 @@ export function TransactionsView() {
             >
               <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-white/5">
                 <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" /> Filtres
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" /> {t.common.filter}
                 </span>
                 {hasActiveFilters && (
                   <button
                     onClick={resetFilters}
                     className="text-[11px] text-zinc-400 hover:text-white cursor-pointer"
                   >
-                    Réinitialiser
+                    {t.common.reset}
                   </button>
                 )}
               </div>
 
               {/* Scope Section */}
               <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-zinc-400 px-2 py-1">
-                Périmètre
+                {t.transactions.scope}
               </DropdownMenuLabel>
               <DropdownMenuGroup>
                 <DropdownMenuItem
@@ -472,7 +464,7 @@ export function TransactionsView() {
                       : "text-zinc-300 hover:bg-white/5"
                   }`}
                 >
-                  <span>Compte Courant</span>
+                  <span>{t.transactions.checkingAccount}</span>
                   {selectedAccountId === "all" && accountFilterType === "checking" && <Check className="w-3.5 h-3.5" />}
                 </DropdownMenuItem>
 
@@ -487,7 +479,7 @@ export function TransactionsView() {
                       : "text-zinc-300 hover:bg-white/5"
                   }`}
                 >
-                  <span>Épargne & Placements</span>
+                  <span>{t.transactions.savingsAndInvestments}</span>
                   {selectedAccountId === "all" && accountFilterType === "savings" && <Check className="w-3.5 h-3.5" />}
                 </DropdownMenuItem>
 
@@ -502,7 +494,7 @@ export function TransactionsView() {
                       : "text-zinc-300 hover:bg-white/5"
                   }`}
                 >
-                  <span>Tous les comptes ({transactionsList.length})</span>
+                  <span>{t.transactions.allAccounts} ({transactionsList.length})</span>
                   {selectedAccountId === "all" && accountFilterType === "all" && <Check className="w-3.5 h-3.5" />}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -512,7 +504,7 @@ export function TransactionsView() {
                 <>
                   <DropdownMenuSeparator className="bg-white/5 my-1" />
                   <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-zinc-400 px-2 py-1">
-                    Compte spécifique
+                    {t.transactions.specificAccount}
                   </DropdownMenuLabel>
                   <DropdownMenuGroup>
                     {accountsList.map((acc) => {
@@ -541,17 +533,17 @@ export function TransactionsView() {
               {/* Category Filter */}
               <DropdownMenuSeparator className="bg-white/5 my-1" />
               <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-zinc-400 px-2 py-1">
-                Catégorie
+                {t.budgets.category}
               </DropdownMenuLabel>
               <DropdownMenuGroup>
                 <DropdownMenuItem
-                  onClick={() => setSelectedCategory("Toutes")}
+                  onClick={() => setSelectedCategory("all")}
                   className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer ${
-                    selectedCategory === "Toutes" ? "bg-indigo-600 text-white" : "text-zinc-300 hover:bg-white/5"
+                    selectedCategory === "all" || selectedCategory === "Toutes" ? "bg-indigo-600 text-white" : "text-zinc-300 hover:bg-white/5"
                   }`}
                 >
-                  <span>Toutes les catégories</span>
-                  {selectedCategory === "Toutes" && <Check className="w-3.5 h-3.5" />}
+                  <span>{t.transactions.allCategories}</span>
+                  {(selectedCategory === "all" || selectedCategory === "Toutes") && <Check className="w-3.5 h-3.5" />}
                 </DropdownMenuItem>
                 {categoriesList.map((cat) => (
                   <DropdownMenuItem
@@ -561,7 +553,7 @@ export function TransactionsView() {
                       selectedCategory === cat.name ? "bg-indigo-600 text-white" : "text-zinc-300 hover:bg-white/5"
                     }`}
                   >
-                    <span>{cat.name}</span>
+                    <span>{t.categories[cat.name] || cat.name}</span>
                     {selectedCategory === cat.name && <Check className="w-3.5 h-3.5" />}
                   </DropdownMenuItem>
                 ))}
@@ -577,7 +569,7 @@ export function TransactionsView() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <Input
             type="text"
-            placeholder="Rechercher une opération, un commerçant ou une catégorie..."
+            placeholder={t.transactions.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-zinc-900/80 border-white/10 text-white text-xs h-9"
@@ -591,7 +583,9 @@ export function TransactionsView() {
               className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs py-1 px-2.5 gap-1.5 flex items-center"
             >
               <span>{activeFilterLabel}</span>
-              {selectedCategory !== "Toutes" && <span>• {selectedCategory}</span>}
+              {selectedCategory !== "all" && selectedCategory !== "Toutes" && (
+                <span>• {t.categories[selectedCategory] || selectedCategory}</span>
+              )}
               <button
                 onClick={resetFilters}
                 className="hover:text-white transition-colors cursor-pointer"
@@ -607,11 +601,11 @@ export function TransactionsView() {
       <div className="flex flex-col gap-5">
         {Object.keys(groupedByDate).length === 0 ? (
           <Card className="p-10 text-center border-white/10 bg-[#18181B] flex flex-col items-center justify-center gap-2.5">
-            <p className="text-sm font-medium text-white">Aucune transaction trouvée</p>
+            <p className="text-sm font-medium text-white">{t.transactions.noTransactionsFound}</p>
             <p className="text-xs text-zinc-400">
               {transactionsList.length === 0
-                ? "Connectez votre banque pour charger vos dépenses."
-                : "Aucune opération ne correspond aux filtres sélectionnés."}
+                ? t.transactions.noTransactionsConnectPrompt
+                : t.transactions.noTransactionsFilterPrompt}
             </p>
             {transactionsList.length === 0 && (
               <Button
@@ -619,7 +613,7 @@ export function TransactionsView() {
                 size="sm"
                 className="mt-2 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs cursor-pointer"
               >
-                <PlusCircle className="w-4 h-4" /> Connecter un compte
+                <PlusCircle className="w-4 h-4" /> {t.transactions.connectAccount}
               </Button>
             )}
           </Card>
@@ -666,7 +660,8 @@ export function TransactionsView() {
                           </span>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-[11px] text-zinc-400">
-                              {tx.category}{tx.subcategory ? ` • ${tx.subcategory}` : ""}
+                              {t.categories[tx.category] || tx.category}
+                              {tx.subcategory ? ` • ${t.categories[tx.subcategory] || tx.subcategory}` : ""}
                             </span>
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-white/5 text-zinc-400 truncate max-w-[120px]">
                               {tx.account}
@@ -712,7 +707,7 @@ export function TransactionsView() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         defaultScope="transactions"
-        title="Exporter les Transactions"
+        title={t.transactions.title}
         transactions={transactionsList}
         accounts={accountsList}
         projects={projectsList}
@@ -747,13 +742,13 @@ export function TransactionsView() {
                           type="button"
                           onClick={() => setIsEditingLogo(!isEditingLogo)}
                           className="text-zinc-500 hover:text-indigo-300 transition-colors p-0.5 rounded cursor-pointer"
-                          title="Gérer le logo du commerçant"
+                          title={t.transactions.merchantLogoManagement}
                         >
                           <Camera className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       <span className="text-xs text-zinc-400">
-                        {selectedTx.date} à {selectedTx.time}
+                        {selectedTx.date} {selectedTx.time ? `• ${selectedTx.time}` : ""}
                       </span>
                     </div>
                   </div>
@@ -776,7 +771,7 @@ export function TransactionsView() {
                   <div className="flex justify-between items-center pb-2 border-b border-white/5">
                     <span className="text-xs font-bold text-white flex items-center gap-1.5">
                       <Camera className="w-3.5 h-3.5 text-indigo-400" />
-                      Gestion du logo de l&apos;enseigne
+                      {t.transactions.merchantLogoManagement}
                     </span>
                     <button
                       type="button"
@@ -789,7 +784,7 @@ export function TransactionsView() {
 
                   <div className="flex flex-col gap-2">
                     <p className="text-[11px] text-zinc-400">
-                      Préférence mémorisée pour toutes les opérations de <strong className="text-white">{selectedTx.merchant}</strong>.
+                      {t.transactions.rememberMerchantPreference} <strong className="text-white">{selectedTx.merchant}</strong>.
                     </p>
 
                     <div className="grid grid-cols-2 gap-2 mt-0.5">
@@ -801,7 +796,7 @@ export function TransactionsView() {
                         className="text-xs border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-white h-9 rounded-xl gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Supprimer le logo</span>
+                        <span>{t.transactions.removeLogo}</span>
                       </Button>
 
                       <Button
@@ -812,14 +807,14 @@ export function TransactionsView() {
                         className="text-xs border-white/10 bg-zinc-800 text-zinc-300 hover:text-white h-9 rounded-xl gap-1.5 cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Logo par défaut</span>
+                        <span>{t.transactions.resetDefaultLogo}</span>
                       </Button>
                     </div>
 
                     <form onSubmit={handleSetCustomLogo} className="flex gap-2 mt-1">
                       <Input
                         type="text"
-                        placeholder="Domaine (ex: monoprix.fr)"
+                        placeholder={t.transactions.customLogoUrlOrDomain}
                         value={customLogoInput}
                         onChange={(e) => setCustomLogoInput(e.target.value)}
                         className="bg-zinc-950 border-white/10 text-white text-xs h-9 rounded-xl flex-1 font-mono"
@@ -830,7 +825,7 @@ export function TransactionsView() {
                         disabled={!customLogoInput.trim()}
                         className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 rounded-xl px-3 cursor-pointer"
                       >
-                        Valider
+                        {t.common.save}
                       </Button>
                     </form>
                   </div>
@@ -848,24 +843,25 @@ export function TransactionsView() {
                   className="flex justify-between items-center p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <span className="text-zinc-400 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-indigo-400" /> Catégorie
+                    <Tag className="w-3.5 h-3.5 text-indigo-400" /> {t.budgets.category}
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold text-white">
-                      {selectedTx.category}{selectedTx.subcategory ? ` > ${selectedTx.subcategory}` : ""}
+                      {t.categories[selectedTx.category] || selectedTx.category}
+                      {selectedTx.subcategory ? ` > ${t.categories[selectedTx.subcategory] || selectedTx.subcategory}` : ""}
                     </span>
                     <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center px-2 py-1 pt-2 border-t border-white/5">
-                  <span className="text-zinc-400">Compte</span>
+                  <span className="text-zinc-400">{t.projects.linkedAccount}</span>
                   <span className="font-medium text-white">{selectedTx.account}</span>
                 </div>
 
                 {selectedTx.project && (
                   <div className="flex justify-between items-center px-2 py-1 pt-1 border-t border-white/5">
-                    <span className="text-zinc-400">Projet</span>
+                    <span className="text-zinc-400">{t.nav.projects}</span>
                     <span className="font-medium text-indigo-300">{selectedTx.project}</span>
                   </div>
                 )}
@@ -876,8 +872,10 @@ export function TransactionsView() {
                 <div className="p-4 rounded-2xl bg-zinc-900/90 border border-white/10 flex flex-col gap-4 animate-in fade-in duration-150">
                   <div className="flex justify-between items-center pb-2 border-b border-white/5">
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white">Changer la Catégorie</span>
-                      <span className="text-[11px] text-zinc-400">Mémorisé automatiquement pour {selectedTx.merchant}</span>
+                      <span className="text-sm font-bold text-white">{t.transactions.categorization}</span>
+                      <span className="text-[11px] text-zinc-400">
+                        {t.transactions.rememberMerchantPreference} {selectedTx.merchant}
+                      </span>
                     </div>
 
                     <Button
@@ -887,7 +885,7 @@ export function TransactionsView() {
                       className="text-xs border-white/10 bg-zinc-800 text-indigo-400 hover:text-white h-7 px-2.5 gap-1 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{isCreatingCategory ? "Fermer" : "Nouvelle"}</span>
+                      <span>{isCreatingCategory ? t.common.close : t.transactions.createCategory}</span>
                     </Button>
                   </div>
 
@@ -895,31 +893,31 @@ export function TransactionsView() {
                   {isCreatingCategory && (
                     <form onSubmit={handleCreateNewCategory} className="p-3.5 rounded-xl bg-zinc-950 border border-white/10 flex flex-col gap-3">
                       <span className="text-xs font-semibold text-white">
-                        Ajouter une catégorie personnalisée
+                        {t.transactions.createCategory}
                       </span>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-medium text-zinc-400">Rattacher à une catégorie parente (Optionnel)</label>
+                        <label className="text-[10px] font-medium text-zinc-400">{t.transactions.parentCategory}</label>
                         <select
                           value={newCatParent}
                           onChange={(e) => setNewCatParent(e.target.value)}
                           className="bg-zinc-900 border border-white/10 rounded-xl p-2 text-xs text-white outline-none cursor-pointer"
                         >
-                          <option value="">Aucune (Nouvelle catégorie principale)</option>
+                          <option value="">{language === "fr" ? "Aucune (Nouvelle catégorie principale)" : "None (New main category)"}</option>
                           {categoriesList.map((cat) => (
                             <option key={cat.id} value={cat.name}>
-                              {cat.name}
+                              {t.categories[cat.name] || cat.name}
                             </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-medium text-zinc-400">Nom</label>
+                        <label className="text-[10px] font-medium text-zinc-400">{t.transactions.newCategoryName}</label>
                         <Input
                           type="text"
                           required
-                          placeholder="Ex: Boulangerie, Essence, Parking..."
+                          placeholder="Ex: Bakery, Gas, Parking..."
                           value={newCatName}
                           onChange={(e) => setNewCatName(e.target.value)}
                           className="bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl"
@@ -927,7 +925,7 @@ export function TransactionsView() {
                       </div>
 
                       <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 rounded-xl font-semibold cursor-pointer">
-                        Créer et sélectionner
+                        {t.transactions.saveCategory}
                       </Button>
                     </form>
                   )}
@@ -937,7 +935,7 @@ export function TransactionsView() {
                     {/* Selector 1: Main Category */}
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-zinc-300">
-                        Catégorie principale
+                        {t.transactions.mainCategory}
                       </label>
                       <select
                         value={selectedMainCat}
@@ -949,7 +947,7 @@ export function TransactionsView() {
                       >
                         {categoriesList.map((cat) => (
                           <option key={cat.id} value={cat.name} className="bg-zinc-950 text-white">
-                            {cat.name}
+                            {t.categories[cat.name] || cat.name}
                           </option>
                         ))}
                       </select>
@@ -958,7 +956,7 @@ export function TransactionsView() {
                     {/* Selector 2: Subcategory */}
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-zinc-300">
-                        Sous-catégorie (optionnelle)
+                        {t.transactions.subcategoryOptional}
                       </label>
                       <select
                         value={selectedSubCat}
@@ -966,11 +964,11 @@ export function TransactionsView() {
                         className="bg-zinc-950 border border-white/10 text-white text-xs rounded-xl p-2.5 outline-none hover:border-indigo-500/50 transition-colors cursor-pointer"
                       >
                         <option value="" className="bg-zinc-950 text-zinc-400">
-                          Aucune sous-catégorie
+                          {language === "fr" ? "Aucune sous-catégorie" : "No subcategory"}
                         </option>
                         {activeSubcategories.map((sub) => (
                           <option key={sub} value={sub} className="bg-zinc-950 text-white">
-                            {sub}
+                            {t.categories[sub] || sub}
                           </option>
                         ))}
                       </select>
@@ -983,7 +981,7 @@ export function TransactionsView() {
                       className="mt-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-10 rounded-xl font-semibold cursor-pointer shadow-md shadow-indigo-600/30"
                     >
                       <Check className="w-4 h-4 mr-1.5" />
-                      Appliquer la catégorie
+                      {t.transactions.saveCategory}
                     </Button>
                   </div>
                 </div>
@@ -993,7 +991,7 @@ export function TransactionsView() {
               {isLoadingCompany && (
                 <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex items-center justify-center gap-2 text-xs text-zinc-400">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                  <span>Recherche des informations d&apos;établissement...</span>
+                  <span>{language === "fr" ? "Recherche des informations d'établissement..." : "Looking up merchant details..."}</span>
                 </div>
               )}
 
@@ -1002,7 +1000,7 @@ export function TransactionsView() {
                   <div className="flex justify-between items-center pb-2 border-b border-white/5">
                     <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                      {companyInfo.is_matching_etablissement ? "Établissement Local" : "Informations Entreprise"}
+                      {companyInfo.is_matching_etablissement ? (language === "fr" ? "Établissement Local" : "Local Branch") : (language === "fr" ? "Informations Entreprise" : "Company Information")}
                     </span>
                     {companyInfo.siren && (
                       <a
@@ -1011,7 +1009,7 @@ export function TransactionsView() {
                         rel="noreferrer"
                         className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
                       >
-                        <span>Fiche officielle</span>
+                        <span>{language === "fr" ? "Fiche officielle" : "Official Registry"}</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
@@ -1019,7 +1017,7 @@ export function TransactionsView() {
 
                   <div className="flex flex-col gap-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="text-zinc-400">Raison sociale</span>
+                      <span className="text-zinc-400">{language === "fr" ? "Raison sociale" : "Legal Name"}</span>
                       <span className="font-semibold text-white truncate max-w-[240px]">
                         {companyInfo.nom_complet}
                       </span>
@@ -1037,7 +1035,7 @@ export function TransactionsView() {
                     {companyInfo.activite_label && (
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-zinc-400 shrink-0 flex items-center gap-1">
-                          <Briefcase className="w-3 h-3" /> Activité
+                          <Briefcase className="w-3 h-3" /> {language === "fr" ? "Activité" : "Activity"}
                         </span>
                         <span className="text-right text-zinc-300 line-clamp-2">
                           {companyInfo.activite_label}
@@ -1048,7 +1046,7 @@ export function TransactionsView() {
                     {companyInfo.adresse && (
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-zinc-400 shrink-0 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {companyInfo.is_matching_etablissement ? "Établissement" : "Siège"}
+                          <MapPin className="w-3 h-3" /> {companyInfo.is_matching_etablissement ? (language === "fr" ? "Établissement" : "Branch") : (language === "fr" ? "Siège" : "Headquarters")}
                         </span>
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -1075,7 +1073,7 @@ export function TransactionsView() {
                   <div className="flex flex-col gap-1.5 p-3.5 rounded-2xl bg-zinc-950 border border-white/10">
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                        Libellé bancaire d&apos;origine
+                        {language === "fr" ? "Libellé bancaire d'origine" : "Original Bank Label"}
                       </span>
                       {rawLabelText && (
                         <button
@@ -1083,19 +1081,19 @@ export function TransactionsView() {
                           onClick={() => {
                             if (typeof navigator !== "undefined") {
                               navigator.clipboard.writeText(rawLabelText)
-                              setFeedbackMessage("Libellé copié dans le presse-papier")
+                              setFeedbackMessage(language === "fr" ? "Libellé copié dans le presse-papier" : "Bank label copied to clipboard")
                               setTimeout(() => setFeedbackMessage(null), 3000)
                             }
                           }}
                           className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <Copy className="w-3 h-3" />
-                          <span>Copier</span>
+                          <span>{t.common.copy}</span>
                         </button>
                       )}
                     </div>
                     <p className="font-mono text-xs sm:text-sm text-zinc-100 select-all break-words leading-relaxed pt-0.5">
-                      {rawLabelText || "Non renseigné par la banque"}
+                      {rawLabelText || (language === "fr" ? "Non renseigné par la banque" : "Not provided by bank")}
                     </p>
                   </div>
                 )
@@ -1106,7 +1104,7 @@ export function TransactionsView() {
                 {showDeleteConfirm ? (
                   <div className="flex flex-col gap-2.5 p-3.5 rounded-2xl bg-red-950/20 border border-red-500/20 animate-in fade-in duration-150">
                     <p className="text-xs text-red-200 font-medium text-center">
-                      Êtes-vous sûr de vouloir supprimer cette transaction ?
+                      {t.transactions.deleteTransactionDesc}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -1116,7 +1114,7 @@ export function TransactionsView() {
                         disabled={isDeletingTx}
                         className="flex-1 border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs py-3 cursor-pointer"
                       >
-                        Annuler
+                        {t.common.cancel}
                       </Button>
                       <Button
                         type="button"
@@ -1125,7 +1123,7 @@ export function TransactionsView() {
                         className="flex-1 bg-red-600 hover:bg-red-500 text-white font-medium text-xs py-3 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                        {isDeletingTx ? "Suppression..." : "Confirmer"}
+                        {isDeletingTx ? t.common.loading : t.common.confirm}
                       </Button>
                     </div>
                   </div>
@@ -1138,14 +1136,14 @@ export function TransactionsView() {
                           className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-medium text-xs py-4 cursor-pointer"
                         >
                           <Tag className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
-                          Modifier Catégorie
+                          {t.transactions.categorization}
                         </Button>
                         <Button
                           onClick={() => setShowDeleteConfirm(true)}
                           className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 font-medium text-xs py-4 cursor-pointer transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                          Supprimer
+                          {t.common.delete}
                         </Button>
                       </>
                     )}
@@ -1158,7 +1156,7 @@ export function TransactionsView() {
                           setIsCreatingCategory(false)
                         }}
                       >
-                        Terminé
+                        {t.common.save}
                       </Button>
                     )}
                   </div>

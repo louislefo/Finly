@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { DollarSign, Wallet } from "lucide-react"
+import { DollarSign } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Project, Account } from "@/lib/types/finance"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 
 interface AddFundsModalProps {
   project: Project | null
@@ -29,6 +30,7 @@ export function AddFundsModal({
   accounts = [],
 }: AddFundsModalProps) {
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
   const [amount, setAmount] = useState<string>("")
   const [sourceAccountId, setSourceAccountId] = useState<string>("")
 
@@ -51,7 +53,7 @@ export function AddFundsModal({
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-indigo-400" />
-            <span>Alimenter le Projet</span>
+            <span>{t.modals.addFundsTitle}</span>
           </DialogTitle>
           <div className="flex items-center justify-between text-xs text-zinc-400 pt-1 font-mono">
             <span className="text-zinc-300 font-semibold">{project.name}</span>
@@ -64,7 +66,7 @@ export function AddFundsModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
           <div className="flex flex-col gap-3.5">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-300">Montant à verser (€) *</label>
+              <label className="text-xs font-semibold text-zinc-300">{language === "fr" ? "Montant à verser (€) *" : "Amount to contribute (€) *"}</label>
               <Input
                 type="number"
                 step="any"
@@ -79,13 +81,13 @@ export function AddFundsModal({
 
             {accounts.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-300">Compte Source Débité</label>
+                <label className="text-xs font-semibold text-zinc-300">{t.modals.depositSourceAccount}</label>
                 <select
                   value={sourceAccountId}
                   onChange={(e) => setSourceAccountId(e.target.value)}
-                  className="p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs h-10 focus:ring-indigo-500"
+                  className="p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs h-10 focus:ring-indigo-500 cursor-pointer"
                 >
-                  <option value="">Sélectionner un compte (optionnel)</option>
+                  <option value="">{language === "fr" ? "Sélectionner un compte (optionnel)" : "Select source account (optional)"}</option>
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} ({acc.bank}) - {formatAmount(acc.balance)}
@@ -101,7 +103,7 @@ export function AddFundsModal({
               type="submit"
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-indigo-600/20 cursor-pointer text-xs h-10"
             >
-              Confirmer le versement
+              {language === "fr" ? "Confirmer le versement" : "Confirm Deposit"}
             </Button>
             <Button
               type="button"
@@ -109,7 +111,7 @@ export function AddFundsModal({
               onClick={onClose}
               className="border-white/10 bg-zinc-900 text-zinc-300 rounded-xl cursor-pointer text-xs h-10 px-4"
             >
-              Annuler
+              {t.common.cancel}
             </Button>
           </div>
         </form>

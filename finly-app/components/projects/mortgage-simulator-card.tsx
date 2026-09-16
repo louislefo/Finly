@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react"
 import { Building2, Calculator, Percent, Sparkles, TrendingUp, Shield, HelpCircle, ArrowRight, Check } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +25,7 @@ export function MortgageSimulatorCard({
 }: MortgageSimulatorCardProps) {
   const ratesData = ratesSummary || propRatesData
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
 
   // Simulator state
   const [propertyPrice, setPropertyPrice] = useState<number>(250000)
@@ -106,11 +108,11 @@ export function MortgageSimulatorCard({
           <div className="flex items-center gap-2">
             <Percent className="w-4 h-4 text-indigo-400" />
             <span className="text-xs font-bold text-white tracking-wide">
-              Barème des Taux Immobiliers en Direct
+              {language === "fr" ? "Barème des Taux Immobiliers en Direct" : "Live Real Estate Mortgage Rates"}
             </span>
           </div>
           <span className="text-[10px] text-zinc-500 font-mono">
-            {ratesData?.source || "Banque de France & Marché"} • {ratesData?.last_updated || "Mars 2026"}
+            {ratesData?.source || (language === "fr" ? "Banque de France & Marché" : "Central Bank & Market")} • {ratesData?.last_updated || "2026"}
           </span>
         </div>
 
@@ -139,15 +141,15 @@ export function MortgageSimulatorCard({
               >
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] font-semibold text-zinc-300">
-                    {r.duration_years} ans
+                    {r.duration_years} {language === "fr" ? "ans" : "yrs"}
                   </span>
-                  {isSelected && <Badge variant="outline" className="text-[9px] py-0 px-1 border-indigo-400 text-indigo-300">Actif</Badge>}
+                  {isSelected && <Badge variant="outline" className="text-[9px] py-0 px-1 border-indigo-400 text-indigo-300">{language === "fr" ? "Actif" : "Active"}</Badge>}
                 </div>
                 <span className="text-sm font-bold font-mono text-white">
                   {r.rate_good.toFixed(2)}%
                 </span>
                 <span className="text-[9px] text-zinc-500 font-mono">
-                  Taux moyen constaté
+                  {language === "fr" ? "Taux moyen constaté" : "Average market rate"}
                 </span>
               </button>
             )
@@ -162,7 +164,7 @@ export function MortgageSimulatorCard({
           <div className="flex items-center gap-2 pb-2 border-b border-white/5">
             <Calculator className="w-4 h-4 text-indigo-400" />
             <CardTitle className="text-sm font-bold text-white">
-              Paramètres du Projet Immobilier
+              {language === "fr" ? "Paramètres du Projet Immobilier" : "Real Estate Loan Parameters"}
             </CardTitle>
           </div>
 
@@ -170,7 +172,7 @@ export function MortgageSimulatorCard({
             {/* Property Price */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Prix du bien (€)
+                {language === "fr" ? "Prix du bien (€)" : "Property price (€)"}
               </label>
               <Input
                 type="number"
@@ -185,7 +187,7 @@ export function MortgageSimulatorCard({
             {/* Down Payment */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Apport personnel (€)
+                {language === "fr" ? "Apport personnel (€)" : "Down payment (€)"}
               </label>
               <Input
                 type="number"
@@ -200,7 +202,7 @@ export function MortgageSimulatorCard({
             {/* Property Type */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Type de bien
+                {language === "fr" ? "Type de bien" : "Property type"}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -212,7 +214,7 @@ export function MortgageSimulatorCard({
                       : "bg-zinc-950 border-white/10 text-zinc-400 hover:text-white"
                   }`}
                 >
-                  Ancien (~7,5%)
+                  {language === "fr" ? "Ancien (~7,5%)" : "Existing (~7.5%)"}
                 </button>
                 <button
                   type="button"
@@ -223,7 +225,7 @@ export function MortgageSimulatorCard({
                       : "bg-zinc-950 border-white/10 text-zinc-400 hover:text-white"
                   }`}
                 >
-                  Neuf (~2,5%)
+                  {language === "fr" ? "Neuf (~2,5%)" : "New build (~2.5%)"}
                 </button>
               </div>
             </div>
@@ -231,7 +233,7 @@ export function MortgageSimulatorCard({
             {/* Loan Duration */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Durée d&apos;emprunt
+                {language === "fr" ? "Durée d'emprunt" : "Loan term"}
               </label>
               <select
                 value={loanDurationYears}
@@ -241,18 +243,18 @@ export function MortgageSimulatorCard({
                 }}
                 className="h-10 px-3 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none cursor-pointer"
               >
-                <option value={7}>7 ans (84 mois)</option>
-                <option value={10}>10 ans (120 mois)</option>
-                <option value={15}>15 ans (180 mois)</option>
-                <option value={20}>20 ans (240 mois)</option>
-                <option value={25}>25 ans (300 mois)</option>
+                <option value={7}>7 {language === "fr" ? "ans" : "yrs"} (84 {language === "fr" ? "mois" : "mos"})</option>
+                <option value={10}>10 {language === "fr" ? "ans" : "yrs"} (120 {language === "fr" ? "mois" : "mos"})</option>
+                <option value={15}>15 {language === "fr" ? "ans" : "yrs"} (180 {language === "fr" ? "mois" : "mos"})</option>
+                <option value={20}>20 {language === "fr" ? "ans" : "yrs"} (240 {language === "fr" ? "mois" : "mos"})</option>
+                <option value={25}>25 {language === "fr" ? "ans" : "yrs"} (300 {language === "fr" ? "mois" : "mos"})</option>
               </select>
             </div>
 
             {/* Interest Rate */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Taux d&apos;intérêt annuel (%)
+                {language === "fr" ? "Taux d'intérêt annuel (%)" : "Annual interest rate (%)"}
               </label>
               <Input
                 type="number"
@@ -268,7 +270,7 @@ export function MortgageSimulatorCard({
             {/* Insurance Rate */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Taux assurance emprunteur (%)
+                {language === "fr" ? "Taux assurance emprunteur (%)" : "Loan insurance rate (%)"}
               </label>
               <Input
                 type="number"
@@ -283,7 +285,7 @@ export function MortgageSimulatorCard({
             {/* Monthly Income for Debt Ratio */}
             <div className="sm:col-span-2 flex flex-col gap-1.5 pt-1 border-t border-white/5">
               <label className="text-xs font-semibold text-zinc-300">
-                Revenus nets mensuels du foyer (€) — pour le taux d&apos;endettement
+                {language === "fr" ? "Revenus nets mensuels du foyer (€) — pour le taux d'endettement" : "Household monthly net income (€) — for debt ratio"}
               </label>
               <Input
                 type="number"
@@ -301,7 +303,7 @@ export function MortgageSimulatorCard({
         <div className="lg:col-span-5 flex flex-col gap-4">
           <Card className="p-5 md:p-6 border-indigo-500/30 bg-gradient-to-b from-indigo-950/20 to-[#18181B] rounded-3xl flex flex-col gap-4">
             <div className="flex justify-between items-center pb-2 border-b border-white/5">
-              <span className="text-xs font-semibold text-zinc-300">Mensualité Estimée</span>
+              <span className="text-xs font-semibold text-zinc-300">{language === "fr" ? "Mensualité Estimée" : "Estimated Monthly Payment"}</span>
               <Badge
                 variant="outline"
                 className={`text-[10px] font-mono ${
@@ -310,40 +312,40 @@ export function MortgageSimulatorCard({
                     : "border-rose-500/30 bg-rose-500/10 text-rose-300"
                 }`}
               >
-                {debtRatio}% endettement
+                {debtRatio}% {language === "fr" ? "endettement" : "debt ratio"}
               </Badge>
             </div>
 
             <div className="flex flex-col">
               <span className="text-3xl font-extrabold font-mono text-white tracking-tight">
                 {formatAmount(simulation.monthlyPayment)}
-                <span className="text-xs text-zinc-400 font-normal ml-1">/ mois</span>
+                <span className="text-xs text-zinc-400 font-normal ml-1">{language === "fr" ? "/ mois" : "/ mo"}</span>
               </span>
               <span className="text-[11px] text-zinc-400 mt-1 font-mono">
-                Assurance incluse ({formatAmount((simulation.loanAmount * (simulation.insuranceRate / 100)) / 12)}/mois)
+                {language === "fr" ? `Assurance incluse (${formatAmount((simulation.loanAmount * (simulation.insuranceRate / 100)) / 12)}/mois)` : `Insurance included (${formatAmount((simulation.loanAmount * (simulation.insuranceRate / 100)) / 12)}/mo)`}
               </span>
             </div>
 
             {/* Financial Breakdown Table */}
             <div className="flex flex-col gap-2 pt-2 border-t border-white/5 text-xs">
               <div className="flex justify-between items-center text-zinc-300">
-                <span className="text-zinc-400">Montant emprunté</span>
+                <span className="text-zinc-400">{language === "fr" ? "Montant emprunté" : "Loan amount"}</span>
                 <span className="font-mono font-bold text-white">{formatAmount(simulation.loanAmount)}</span>
               </div>
               <div className="flex justify-between items-center text-zinc-300">
-                <span className="text-zinc-400">Frais de notaire estimés</span>
+                <span className="text-zinc-400">{language === "fr" ? "Frais de notaire estimés" : "Estimated notary fees"}</span>
                 <span className="font-mono text-zinc-200">{formatAmount(simulation.notaryFees)}</span>
               </div>
               <div className="flex justify-between items-center text-zinc-300">
-                <span className="text-zinc-400">Coût total des intérêts</span>
+                <span className="text-zinc-400">{language === "fr" ? "Coût total des intérêts" : "Total interest cost"}</span>
                 <span className="font-mono text-amber-300">{formatAmount(simulation.totalInterest)}</span>
               </div>
               <div className="flex justify-between items-center text-zinc-300">
-                <span className="text-zinc-400">Coût total de l&apos;assurance</span>
+                <span className="text-zinc-400">{language === "fr" ? "Coût total de l'assurance" : "Total insurance cost"}</span>
                 <span className="font-mono text-zinc-200">{formatAmount(simulation.totalInsurance)}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-white/5 font-semibold text-white">
-                <span>Coût global de l&apos;opération</span>
+                <span>{language === "fr" ? "Coût global de l'opération" : "Total project cost"}</span>
                 <span className="font-mono text-indigo-300">{formatAmount(simulation.totalCost)}</span>
               </div>
             </div>
@@ -353,7 +355,7 @@ export function MortgageSimulatorCard({
               <Button
                 type="button"
                 onClick={() => {
-                  const name = `Achat Immobilier (${Math.round(simulation.propertyPrice / 1000)}k€)`
+                  const name = language === "fr" ? `Achat Immobilier (${Math.round(simulation.propertyPrice / 1000)}k€)` : `Real Estate Purchase (${Math.round(simulation.propertyPrice / 1000)}k€)`
                   if (onCreateProject) {
                     onCreateProject({
                       name,
@@ -363,7 +365,7 @@ export function MortgageSimulatorCard({
                       currentAmount: 0,
                       monthlyContribution: simulation.monthlyPayment,
                       category: "Immobilier",
-                      deadline: "31 Déc 2026",
+                      deadline: "31 Dec 2026",
                       realEstateData: {
                         ...simulation,
                         debtRatioEstimated: debtRatio,
@@ -376,7 +378,7 @@ export function MortgageSimulatorCard({
                 className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 rounded-xl cursor-pointer shadow-md shadow-indigo-600/30 gap-1.5 mt-1"
               >
                 <Check className="w-4 h-4" />
-                <span>Enregistrer en Projet Immobilier</span>
+                <span>{language === "fr" ? "Enregistrer en Projet Immobilier" : "Save as Real Estate Goal"}</span>
               </Button>
             )}
           </Card>

@@ -3,6 +3,7 @@ export interface User {
   email: string
   full_name: string
   role?: string
+  language?: "en" | "fr" | string
   is_active?: boolean
   auto_sync_enabled?: boolean
   sync_interval_hours?: number

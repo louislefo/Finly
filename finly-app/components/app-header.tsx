@@ -32,6 +32,7 @@ import { ConnectedAccountsModal } from "@/components/modals/connected-accounts-m
 import { ChangePasswordModal } from "@/components/modals/change-password-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { useAuth } from "@/components/auth-context"
+import { useI18n } from "@/components/i18n-context"
 import { Account } from "@/lib/types/finance"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +40,7 @@ export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, isImpersonating, stopImpersonating } = useAuth()
+  const { t, language, setLanguage } = useI18n()
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [isConnectedAccountsOpen, setIsConnectedAccountsOpen] = useState<boolean>(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false)
@@ -59,10 +61,10 @@ export function AppHeader() {
   }
 
   const navItems = [
-    { label: "Vue Globale", href: "/", icon: Wallet },
-    { label: "Dépenses", href: "/depenses", icon: ArrowUpDown },
-    { label: "Budgets", href: "/budget", icon: PieChart },
-    { label: "Projets", href: "/projets", icon: Compass },
+    { label: t.nav.overview, href: "/", icon: Wallet },
+    { label: t.nav.expenses, href: "/depenses", icon: ArrowUpDown },
+    { label: t.nav.budgets, href: "/budget", icon: PieChart },
+    { label: t.nav.projects, href: "/projets", icon: Compass },
   ]
 
   // Extract initials
@@ -75,7 +77,7 @@ export function AppHeader() {
         .slice(0, 2)
     : "U"
 
-  const firstName = user?.full_name ? user.full_name.split(" ")[0] : "Mon Espace"
+  const firstName = user?.full_name ? user.full_name.split(" ")[0] : t.nav.mySpace
 
   // Do not show full header nav on login page
   if (pathname === "/login") {
@@ -89,14 +91,14 @@ export function AppHeader() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
-              Mode vue utilisateur : <strong className="text-white">{user?.full_name}</strong> ({user?.email})
+              {t.nav.userViewMode} : <strong className="text-white">{user?.full_name}</strong> ({user?.email})
             </span>
           </div>
           <button
             onClick={stopImpersonating}
             className="self-start sm:self-auto px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg text-xs font-semibold transition-all cursor-pointer"
           >
-            Quitter la vue utilisateur
+            {t.nav.exitUserView}
           </button>
         </div>
       )}
@@ -133,8 +135,32 @@ export function AppHeader() {
             })}
           </nav>
 
-          {/* Right Section: User Account Dropdown Menu */}
-          <div className="flex items-center shrink-0">
+          {/* Right Section: Language Switcher & User Account Dropdown Menu */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Quick Language Toggle */}
+            <div className="flex items-center bg-zinc-900/90 border border-white/10 rounded-full p-0.5 text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setLanguage("en")}
+                className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                  language === "en" ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-zinc-200"
+                }`}
+                title="Switch to English"
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage("fr")}
+                className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                  language === "fr" ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-zinc-200"
+                }`}
+                title="Passer en Français"
+              >
+                FR
+              </button>
+            </div>
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger className="outline-none">
@@ -179,7 +205,7 @@ export function AppHeader() {
                     className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
                   >
                     <Landmark className="w-4 h-4 text-emerald-400" />
-                    <span>Patrimoine & Actifs</span>
+                    <span>{t.nav.wealth}</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
@@ -187,7 +213,7 @@ export function AppHeader() {
                     className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
                   >
                     <Building2 className="w-4 h-4 text-indigo-400" />
-                    <span>Banques & Comptes</span>
+                    <span>{t.nav.accounts}</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
@@ -195,7 +221,7 @@ export function AppHeader() {
                     className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 cursor-pointer"
                   >
                     <Plus className="w-4 h-4 text-indigo-400" />
-                    <span>Connecter une banque</span>
+                    <span>{t.nav.connectBank}</span>
                   </DropdownMenuItem>
 
                   {user?.role === "admin" && (
@@ -204,7 +230,7 @@ export function AppHeader() {
                       className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
                     >
                       <ShieldCheck className="w-4 h-4 text-amber-400" />
-                      <span>Administration</span>
+                      <span>{t.nav.admin}</span>
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuGroup>
@@ -216,7 +242,7 @@ export function AppHeader() {
                   className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4 text-rose-400" />
-                  <span>Se déconnecter</span>
+                  <span>{t.nav.logout}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -226,7 +252,7 @@ export function AppHeader() {
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
             >
               <UserIcon className="w-3.5 h-3.5" />
-              <span>Connexion</span>
+              <span>{t.nav.login}</span>
             </button>
           )}
           </div>

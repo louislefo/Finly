@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { ResponsiveSankey } from "@nivo/sankey"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -85,6 +86,7 @@ export function CashflowSankeyChart({
   formatMonthName,
 }: CashflowSankeyChartProps) {
   const { formatAmount } = usePrivacy()
+  const { t, language, format } = useI18n()
   const [isMounted, setIsMounted] = useState<boolean>(false)
   const [chartTheme, setChartTheme] = useState<"dark" | "light">("dark")
   const [detailLevel, setDetailLevel] = useState<"standard" | "detailed">("detailed")
@@ -161,11 +163,11 @@ export function CashflowSankeyChart({
           .trim() || inc.category
 
         if (nameUpper.includes("VIR.PERMANENT") || nameUpper.includes("SALAIRE")) {
-          cleanLabel = "Salaire & Virement"
+          cleanLabel = t.cashflow.salaryTransfer
         } else if (nameUpper.includes("WERO")) {
-          cleanLabel = "Virement Wero"
+          cleanLabel = t.cashflow.weroTransfer
         } else if (nameUpper.includes("INSTANTANE")) {
-          cleanLabel = "Virement Reçu"
+          cleanLabel = t.cashflow.receivedTransfer
         }
 
         if (isPassiveOrRefund) {
@@ -186,7 +188,7 @@ export function CashflowSankeyChart({
       const fallbackAmount = Math.max(totalSpent, budgetSummary.total_budget || 1000)
       earnedInflows.push({
         id: "inc_src_default",
-        label: "Revenus Estimés",
+        label: t.cashflow.estimatedIncome,
         amount: fallbackAmount,
       })
     }
@@ -212,13 +214,13 @@ export function CashflowSankeyChart({
     const passivePillarColor = isLight ? "#f97316" : "#fb923c"
 
     if (earnedInflows.length > 0) {
-      addNode(earnedPillarId, "Revenus d'Activité", earnedPillarColor, "inflow_pillar")
+      addNode(earnedPillarId, t.cashflow.earnedIncome, earnedPillarColor, "inflow_pillar")
       for (const inc of earnedInflows) {
         addLink(inc.id, earnedPillarId, inc.amount)
       }
     }
     if (passiveInflows.length > 0) {
-      addNode(passivePillarId, "Remboursements & Passifs", passivePillarColor, "inflow_pillar")
+      addNode(passivePillarId, t.cashflow.refundsPassive, passivePillarColor, "inflow_pillar")
       for (const inc of passiveInflows) {
         addLink(inc.id, passivePillarId, inc.amount)
       }
@@ -230,13 +232,13 @@ export function CashflowSankeyChart({
     const deficitId = "inflow_deficit"
     const deficitColor = isLight ? "#dc2626" : "#f87171"
     if (hasDeficit) {
-      addNode(deficitId, "Prélèvement Épargne", deficitColor, "source", deficitAmount)
+      addNode(deficitId, t.cashflow.savingsDraw, deficitColor, "source", deficitAmount)
     }
 
     // Stage 3: Hub
     const HUB_ID = "hub_central"
     const hubColor = isLight ? "#6366f1" : "#818cf8"
-    const hubLabel = totalIncome > 0 ? "Total Revenus" : "Ressources Mensuelles"
+    const hubLabel = totalIncome > 0 ? t.cashflow.totalIncome : t.cashflow.monthlyInflows
     addNode(HUB_ID, hubLabel, hubColor, "hub")
 
     if (earnedInflows.length > 0) {
@@ -274,27 +276,29 @@ export function CashflowSankeyChart({
     }
 
     const pillarTotals: Record<string, { label: string; color: string; amount: number }> = {}
-    const pillarMeta: Record<string, { label: string; lightColor: string; darkColor: string }> = {
-      outpil_fixed: { label: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
-      outpil_living: { label: "Dépenses Courantes", lightColor: "#ea580c", darkColor: "#f59e0b" },
-      outpil_discretionary: { label: "Loisirs & Plaisir", lightColor: "#9333ea", darkColor: "#c084fc" },
-      outpil_savings: { label: "Épargne & Avenir", lightColor: "#16a34a", darkColor: "#34d399" },
+    const pillarMeta: Record<string, { labelKey: string; lightColor: string; darkColor: string }> = {
+      outpil_fixed: { labelKey: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
+      outpil_living: { labelKey: "Dépenses Courantes", lightColor: "#ea580c", darkColor: "#f59e0b" },
+      outpil_discretionary: { labelKey: "Loisirs & Plaisir", lightColor: "#9333ea", darkColor: "#c084fc" },
+      outpil_savings: { labelKey: "Épargne & Avenir", lightColor: "#16a34a", darkColor: "#34d399" },
     }
 
     for (const pId of ORDERED_OUTFLOW_PILLARS) {
       const sumSpent = pillarCategoriesMap[pId].reduce((s, c) => s + c.spent, 0)
+      const pillarLabel = t.categories[pillarMeta[pId].labelKey] || pillarMeta[pId].labelKey
+
       if (pId === "outpil_savings") {
         const effectiveSavings = totalSavingsTxs + Math.max(0, netCashflow)
         if (effectiveSavings > 0) {
           pillarTotals[pId] = {
-            label: pillarMeta[pId].label,
+            label: pillarLabel,
             color: isLight ? pillarMeta[pId].lightColor : pillarMeta[pId].darkColor,
             amount: effectiveSavings,
           }
         }
       } else if (sumSpent > 0) {
         pillarTotals[pId] = {
-          label: pillarMeta[pId].label,
+          label: pillarLabel,
           color: isLight ? pillarMeta[pId].lightColor : pillarMeta[pId].darkColor,
           amount: sumSpent,
         }
@@ -316,13 +320,13 @@ export function CashflowSankeyChart({
         const savStyle = isLight ? "#22c55e" : "#34d399"
         if (totalSavingsTxs > 0) {
           const savTxCatId = "cat_epargne_virements"
-          addNode(savTxCatId, "Virements Épargne", savStyle, "category", totalSavingsTxs)
+          addNode(savTxCatId, t.categories["Virements Épargne"] || "Virements Épargne", savStyle, "category", totalSavingsTxs)
           addLink(pId, savTxCatId, totalSavingsTxs)
         }
         if (netCashflow > 0) {
           const savSurplusCatId = "cat_epargne_reste"
           const surplusColor = isLight ? "#0284c7" : "#38bdf8"
-          addNode(savSurplusCatId, "Reste Disponible", surplusColor, "category", netCashflow)
+          addNode(savSurplusCatId, t.categories["Reste Disponible"] || "Reste Disponible", surplusColor, "category", netCashflow)
           addLink(pId, savSurplusCatId, netCashflow)
         }
       } else {
@@ -331,7 +335,8 @@ export function CashflowSankeyChart({
           const catNodeId = `cat_${catItem.category.replace(/\s+/g, "_")}`
           const style = CATEGORY_STYLE_MAP[catItem.category] || { light: "#94a3b8", dark: "#94a3b8" }
           const catColor = isLight ? style.light : style.dark
-          addNode(catNodeId, catItem.category, catColor, "category", catItem.spent)
+          const catDisplay = t.categories[catItem.category] || catItem.category
+          addNode(catNodeId, catDisplay, catColor, "category", catItem.spent)
           addLink(pId, catNodeId, catItem.spent)
         }
       }
@@ -344,13 +349,13 @@ export function CashflowSankeyChart({
           const savStyle = isLight ? "#22c55e" : "#34d399"
           if (totalSavingsTxs > 0) {
             const savSubId = "sub_epargne_livrets"
-            addNode(savSubId, "Livrets & Épargne", savStyle, "sub", totalSavingsTxs)
+            addNode(savSubId, t.categories["Livrets & Épargne"] || "Livrets & Épargne", savStyle, "sub", totalSavingsTxs)
             addLink("cat_epargne_virements", savSubId, totalSavingsTxs)
           }
           if (netCashflow > 0) {
             const surplusColor = isLight ? "#0284c7" : "#38bdf8"
             const surplusSubId = "sub_reste_tresorerie"
-            addNode(surplusSubId, "Épargne / Trésorerie", surplusColor, "sub", netCashflow)
+            addNode(surplusSubId, t.categories["Épargne / Trésorerie"] || "Épargne / Trésorerie", surplusColor, "sub", netCashflow)
             addLink("cat_epargne_reste", surplusSubId, netCashflow)
           }
         } else {
@@ -383,13 +388,14 @@ export function CashflowSankeyChart({
                 if (subAmt <= 0) continue
                 const cleanSub = subName.replace(/^(CB|PRLV SEPA|VIR)\s*/i, "").trim()
                 const subNodeId = `sub_${catItem.category.replace(/\s+/g, "_")}_${cleanSub.replace(/\s+/g, "_")}`
-                addNode(subNodeId, cleanSub, catColor, "sub", subAmt)
+                const subDisplay = t.categories[cleanSub] || cleanSub
+                addNode(subNodeId, subDisplay, catColor, "sub", subAmt)
                 addLink(catNodeId, subNodeId, subAmt)
               }
 
               if (remainder > 0) {
                 const otherNodeId = `sub_${catItem.category.replace(/\s+/g, "_")}_Autres`
-                addNode(otherNodeId, "Autres", catColor, "sub", remainder)
+                addNode(otherNodeId, t.categories["Autres"] || "Autres", catColor, "sub", remainder)
                 addLink(catNodeId, otherNodeId, remainder)
               }
             }
@@ -402,12 +408,12 @@ export function CashflowSankeyChart({
       nodes: nodesList,
       links: linksList,
     }
-  }, [budgetSummary, totalIncome, totalSpent, totalSavingsTxs, netCashflow, detailLevel, isLight])
+  }, [budgetSummary, totalIncome, totalSpent, totalSavingsTxs, netCashflow, detailLevel, isLight, t])
 
   if (!isMounted) {
     return (
       <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl flex items-center justify-center min-h-[350px]">
-        <span className="text-xs text-zinc-500">Chargement du diagramme...</span>
+        <span className="text-xs text-zinc-500">{t.cashflow.loadingChart}</span>
       </Card>
     )
   }
@@ -423,12 +429,12 @@ export function CashflowSankeyChart({
             <GitFork className="w-4 h-4 rotate-90" />
           </div>
           <CardTitle className="text-sm font-bold flex items-center gap-2 text-white flex-wrap">
-            <span>Flux Financier (Cashflow)</span>
+            <span>{t.cashflow.title}</span>
             <Badge
               variant="outline"
               className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-[10px] font-normal"
             >
-              {periodMode === "last_30_days" ? "30 derniers jours" : formatMonthName(selectedMonth)}
+              {periodMode === "last_30_days" ? t.budgets.last30Days : formatMonthName(selectedMonth)}
             </Badge>
           </CardTitle>
         </div>
@@ -446,7 +452,7 @@ export function CashflowSankeyChart({
                 ? "bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-amber-500 shadow-xs"
                 : "bg-zinc-900 hover:bg-zinc-800 border-white/10 text-indigo-400"
             }`}
-            title={isLight ? "Passer en canevas sombre" : "Passer en canevas clair"}
+            title={isLight ? t.cashflow.switchDarkCanvas : t.cashflow.switchLightCanvas}
           >
             {isLight ? (
               <Sun className="w-4 h-4 text-amber-500" />
@@ -462,8 +468,8 @@ export function CashflowSankeyChart({
               onChange={(e) => setDetailLevel(e.target.value as "standard" | "detailed")}
               className="h-8 pl-3 pr-7 bg-zinc-900 hover:bg-zinc-800/80 border border-white/10 text-xs text-zinc-300 hover:text-white rounded-xl outline-none cursor-pointer appearance-none transition-colors font-medium"
             >
-              <option value="detailed" className="bg-zinc-900 text-white">Vue détaillée</option>
-              <option value="standard" className="bg-zinc-900 text-white">Vue synthétique</option>
+              <option value="detailed" className="bg-zinc-900 text-white">{t.cashflow.detailedView}</option>
+              <option value="standard" className="bg-zinc-900 text-white">{t.cashflow.summaryView}</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -478,14 +484,14 @@ export function CashflowSankeyChart({
               <ArrowDownRight className="w-4 h-4" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-zinc-400">Total Entrées</span>
+              <span className="text-[10px] text-zinc-400">{t.cashflow.totalInflow}</span>
               <span className="text-xs font-bold font-mono text-emerald-400">
                 +{formatAmount(totalIncome)}
               </span>
             </div>
           </div>
           <span className="text-[10px] font-mono text-zinc-500">
-            {budgetSummary?.incomes?.length || 0} source(s)
+            {budgetSummary?.incomes?.length || 0} {t.cashflow.sourcesCount}
           </span>
         </div>
 
@@ -495,14 +501,14 @@ export function CashflowSankeyChart({
               <ArrowUpRight className="w-4 h-4" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-zinc-400">Total Dépensé</span>
+              <span className="text-[10px] text-zinc-400">{t.cashflow.totalSpent}</span>
               <span className="text-xs font-bold font-mono text-white">
                 -{formatAmount(totalSpent)}
               </span>
             </div>
           </div>
           <span className="text-[10px] font-mono text-zinc-500">
-            {budgetSummary?.items?.filter((i) => i.spent > 0).length || 0} poste(s)
+            {budgetSummary?.items?.filter((i) => i.spent > 0).length || 0} {t.cashflow.categoriesCount}
           </span>
         </div>
 
@@ -519,7 +525,7 @@ export function CashflowSankeyChart({
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] text-zinc-400">
-                {isSurplus ? "Épargne & Reste Net" : "Déficit Mensuel"}
+                {isSurplus ? t.cashflow.netRemainingSavings : t.cashflow.monthlyDeficit}
               </span>
               <span
                 className={`text-xs font-bold font-mono ${
@@ -538,7 +544,7 @@ export function CashflowSankeyChart({
                 : "border-amber-500/30 bg-amber-500/10 text-amber-300"
             }`}
           >
-            {isSurplus ? `${savingsRate}% épargné` : "Dépassement"}
+            {isSurplus ? format(t.cashflow.savedRate, { rate: savingsRate }) : t.cashflow.overspent}
           </Badge>
         </div>
       </div>
@@ -547,7 +553,7 @@ export function CashflowSankeyChart({
       {!hasData || totalSpent + totalIncome === 0 ? (
         <div className="h-48 w-full flex flex-col items-center justify-center text-xs p-6 text-center rounded-2xl border bg-zinc-950/40 border-white/5 text-zinc-500">
           <span className="font-semibold text-zinc-400">
-            Aucun flux financier enregistré sur cette période
+            {t.cashflow.noData}
           </span>
         </div>
       ) : (
@@ -615,7 +621,7 @@ export function CashflowSankeyChart({
                       isLight ? "border-zinc-100 text-zinc-600" : "border-white/5 text-zinc-300"
                     }`}
                   >
-                    <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>Montant total</span>
+                    <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>{t.cashflow.totalAmount}</span>
                     <span
                       className={`font-mono font-bold ${
                         isLight ? "text-indigo-600" : "text-indigo-300"
@@ -644,7 +650,7 @@ export function CashflowSankeyChart({
                       isLight ? "border-zinc-100 text-zinc-600" : "border-white/5 text-zinc-300"
                     }`}
                   >
-                    <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>Flux transféré</span>
+                    <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>{t.cashflow.transferredFlow}</span>
                     <span
                       className={`font-mono font-bold ${
                         isLight ? "text-zinc-900" : "text-white"

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { FinlyAPI } from "@/lib/api/finly-api"
+import { useI18n } from "@/components/i18n-context"
 import { Lock, Smartphone, ShieldCheck, Loader2 } from "lucide-react"
 
 export interface PendingBankConnection {
@@ -36,6 +37,8 @@ export function ImportCredentialsModal({
   pendingConnections,
   onSuccess,
 }: ImportCredentialsModalProps) {
+  const { t } = useI18n()
+  const tm = t.importCredentialsModal
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [login, setLogin] = useState<string>("")
   const [password, setPassword] = useState<string>("")
@@ -61,13 +64,13 @@ export function ImportCredentialsModal({
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!password.trim() || !login.trim()) {
-      setErrorMessage("Veuillez renseigner votre identifiant et mot de passe.")
+      setErrorMessage(tm.description)
       return
     }
 
     setIsLoading(true)
     setErrorMessage(null)
-    setStatusMessage("Authentification auprès de la banque...")
+    setStatusMessage(tm.connecting)
 
     try {
       const res = await FinlyAPI.connectWoobBank({
@@ -79,7 +82,7 @@ export function ImportCredentialsModal({
 
       if (res.status === "2fa_required") {
         setIs2FARequired(true)
-        setStatusMessage(res.message || "Validation requise sur l'application mobile de votre banque.")
+        setStatusMessage(res.message || tm.title)
         setIsLoading(false)
         return
       }
@@ -94,7 +97,7 @@ export function ImportCredentialsModal({
       }
     } catch (err: any) {
       setIsLoading(false)
-      setErrorMessage(err.message || "Identifiant ou mot de passe incorrect.")
+      setErrorMessage(err.message || tm.passwordLabel)
     }
   }
 
@@ -114,7 +117,7 @@ export function ImportCredentialsModal({
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-indigo-400" />
-              Accès bancaire
+              {tm.title}
             </DialogTitle>
             {pendingConnections.length > 1 && (
               <Badge variant="outline" className="border-white/10 text-zinc-400 text-xs">
@@ -123,7 +126,7 @@ export function ImportCredentialsModal({
             )}
           </div>
           <DialogDescription className="text-xs text-zinc-400 mt-1">
-            Renseignez le mot de passe pour activer la synchronisation automatique en direct.
+            {tm.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -139,31 +142,31 @@ export function ImportCredentialsModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-300">Identifiant</label>
+            <label className="text-xs font-semibold text-zinc-300">{tm.loginLabel}</label>
             <Input
               type="text"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
-              placeholder="Numéro de compte ou identifiant"
+              placeholder={tm.loginPlaceholder}
               className="bg-zinc-950 border-white/10 text-white text-xs h-10 rounded-xl focus-visible:ring-indigo-500"
               required
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-300">Mot de passe</label>
+            <label className="text-xs font-semibold text-zinc-300">{tm.passwordLabel}</label>
             <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mot de passe ou code secret"
+              placeholder={tm.passwordPlaceholder}
               className="bg-zinc-950 border-white/10 text-white text-xs h-10 rounded-xl focus-visible:ring-indigo-500"
               autoFocus
               required
             />
             <span className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
               <Lock className="w-3 h-3 text-emerald-500" />
-              Chiffré localement en AES-256
+              AES-256
             </span>
           </div>
 
@@ -189,10 +192,10 @@ export function ImportCredentialsModal({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Connexion...</span>
+                  <span>{tm.connecting}</span>
                 </>
               ) : (
-                <span>Activer la synchronisation</span>
+                <span>{tm.activateSyncBtn}</span>
               )}
             </Button>
             <Button
@@ -201,7 +204,7 @@ export function ImportCredentialsModal({
               onClick={handleSkip}
               className="border-white/10 bg-zinc-900 text-zinc-400 hover:text-white text-xs h-10 rounded-xl cursor-pointer"
             >
-              Plus tard
+              {tm.laterBtn}
             </Button>
           </div>
         </form>
