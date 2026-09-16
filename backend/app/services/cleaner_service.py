@@ -23,7 +23,7 @@ class CleanerService:
 
     @classmethod
     def clean_merchant_name(cls, raw_label: str) -> str:
-        if not raw_label:
+        if not raw_label or not str(raw_label).strip():
             return "Inconnu"
 
         text = raw_label.strip()
@@ -75,4 +75,4 @@ class CleanerService:
         if text.isupper():
             text = text.title()
 
-        return text or raw_label
+        return text if text else "Inconnu"

@@ -258,6 +258,7 @@ def get_budgets_summary(
     }
 
 @router.post("/")
+@router.post("", include_in_schema=False)
 def set_budget(
     req: SetBudgetRequest,
     db: Session = Depends(get_db),
