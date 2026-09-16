@@ -32,6 +32,18 @@ interface ProjectCardProps {
   onDelete: (projectId: string) => void
 }
 
+function getCategoryIcon(isRealEstate: boolean, category?: string) {
+  if (isRealEstate) return Building2
+  switch (category) {
+    case "Voyage": return Plane
+    case "Logement": return Home
+    case "Véhicule": return Car
+    case "Tech": return Laptop
+    case "Sécurité": return Shield
+    default: return PiggyBank
+  }
+}
+
 export function ProjectCard({
   project,
   onAddFunds,
@@ -44,20 +56,7 @@ export function ProjectCard({
   const isFuture = project.status === "future"
   const isCompleted = project.status === "completed" || project.currentAmount >= project.targetAmount
   const progressPercent = Math.min(100, Math.round((project.currentAmount / Math.max(1, project.targetAmount)) * 100))
-
-  const getCategoryIcon = () => {
-    if (isRealEstate) return Building2
-    switch (project.category) {
-      case "Voyage": return Plane
-      case "Logement": return Home
-      case "Véhicule": return Car
-      case "Tech": return Laptop
-      case "Sécurité": return Shield
-      default: return PiggyBank
-    }
-  }
-
-  const IconComponent = getCategoryIcon()
+  const IconComponent = getCategoryIcon(isRealEstate, project.category)
 
   return (
     <Card className="p-4 sm:p-5 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-4 transition-all hover:border-white/20">

@@ -92,13 +92,13 @@ export function PatrimoineView() {
   // Asset Class Calculations
   const assetCategories = useMemo(() => {
     let liquidities = 0
-    let liquiditiesAccs: Account[] = []
+    const liquiditiesAccs: Account[] = []
 
     let savings = 0
-    let savingsAccs: Account[] = []
+    const savingsAccs: Account[] = []
 
     let investments = 0
-    let investmentsAccs: Account[] = []
+    const investmentsAccs: Account[] = []
 
     for (const a of accounts) {
       const t = (a.type || "").toLowerCase()
