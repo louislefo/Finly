@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/map"
 import { Transaction } from "@/lib/types/finance"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { geocodeTransaction, GeoLocation } from "@/lib/utils/geocoding"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
 
@@ -36,6 +37,7 @@ interface GeocodedTransaction extends Transaction {
 
 export function ExpensesMap({ transactions, className = "" }: ExpensesMapProps) {
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [geocodedTxList, setGeocodedTxList] = useState<GeocodedTransaction[]>([])
 
@@ -109,14 +111,14 @@ export function ExpensesMap({ transactions, className = "" }: ExpensesMapProps) 
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-indigo-400" />
             <CardTitle className="text-base font-bold text-white">
-              Carte des Dépenses & Magasins
+              {language === "fr" ? "Carte des Dépenses & Magasins" : "Expenses & Merchants Map"}
             </CardTitle>
             <Badge variant="outline" className="text-[11px] border-white/10 bg-zinc-900 text-zinc-400 font-mono">
-              {filteredList.length} lieux
+              {filteredList.length} {language === "fr" ? "lieux" : "locations"}
             </Badge>
           </div>
           <span className="text-xs text-zinc-400 mt-0.5">
-            Localisation géographique de vos achats récents
+            {language === "fr" ? "Localisation géographique de vos achats récents" : "Geographic location of your recent purchases"}
           </span>
         </div>
 
@@ -132,7 +134,7 @@ export function ExpensesMap({ transactions, className = "" }: ExpensesMapProps) 
                   : "bg-zinc-900/80 border border-white/5 text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
-              {cat === "all" ? "Toutes" : cat}
+              {cat === "all" ? (language === "fr" ? "Toutes" : "All") : (t.categories[cat] || cat)}
             </button>
           ))}
         </div>
@@ -211,7 +213,7 @@ export function ExpensesMap({ transactions, className = "" }: ExpensesMapProps) 
                           {tx.merchant}
                         </span>
                         <span className="text-[10px] text-zinc-400">
-                          {tx.category} • {tx.date}
+                          {t.categories[tx.category] || tx.category} • {tx.date}
                         </span>
                       </div>
                     </div>
@@ -227,7 +229,9 @@ export function ExpensesMap({ transactions, className = "" }: ExpensesMapProps) 
                     </div>
 
                     <div className="flex items-center justify-between pt-1 border-t border-white/5 text-xs">
-                      <span className="text-[11px] text-zinc-400">Montant débité</span>
+                      <span className="text-[11px] text-zinc-400">
+                        {language === "fr" ? "Montant débité" : "Debited amount"}
+                      </span>
                       <span className="font-bold font-mono text-rose-400">
                         {formatAmount(tx.amount)}
                       </span>

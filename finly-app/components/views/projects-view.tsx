@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -28,6 +29,7 @@ type FilterTab = "all" | "in_progress" | "future" | "real_estate" | "simulator" 
 
 export function ProjectsView() {
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
   const [projectsList, setProjectsList] = useState<Project[]>([])
   const [accountsList, setAccountsList] = useState<Account[]>([])
   const [ratesSummary, setRatesSummary] = useState<MortgageRatesSummary | null>(null)
@@ -51,7 +53,7 @@ export function ProjectsView() {
       setAccountsList(accountsRes?.accounts || [])
       setRatesSummary(ratesData)
     } catch (err) {
-      console.error("Erreur lors du chargement des projets:", err)
+      console.error("Error loading projects:", err)
     } finally {
       setIsLoading(false)
     }
@@ -73,7 +75,7 @@ export function ProjectsView() {
         setProjectsList((prev) => [created, ...prev])
       }
     } catch (err) {
-      console.error("Erreur lors de l'enregistrement du projet:", err)
+      console.error("Error saving project:", err)
     }
   }
 
@@ -82,7 +84,7 @@ export function ProjectsView() {
       await FinlyAPI.deleteProject(projectId)
       setProjectsList((prev) => prev.filter((p) => p.id !== projectId))
     } catch (err) {
-      console.error("Erreur lors de la suppression du projet:", err)
+      console.error("Error deleting project:", err)
     }
   }
 
@@ -99,7 +101,7 @@ export function ProjectsView() {
           .catch(() => {})
       }
     } catch (err) {
-      console.error("Erreur lors de l'ajout de fonds:", err)
+      console.error("Error adding funds:", err)
     }
   }
 
@@ -109,7 +111,7 @@ export function ProjectsView() {
       setProjectsList((prev) => [created, ...prev])
       setSelectedFilter("real_estate")
     } catch (err) {
-      console.error("Erreur création projet immobilier:", err)
+      console.error("Error creating real estate project:", err)
     }
   }
 
@@ -138,7 +140,7 @@ export function ProjectsView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Projets & Objectifs</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">{t.projects.title}</h1>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -149,7 +151,7 @@ export function ProjectsView() {
             className="gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl h-9 text-xs cursor-pointer flex-1 sm:flex-none"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Exporter</span>
+            <span>{t.common.export}</span>
           </Button>
 
           <Button
@@ -161,7 +163,7 @@ export function ProjectsView() {
             className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20 rounded-xl h-9 text-xs cursor-pointer flex-1 sm:flex-none"
           >
             <Plus className="w-4 h-4" />
-            <span>Nouveau Projet</span>
+            <span>{t.projects.newProject}</span>
           </Button>
         </div>
       </div>
@@ -170,9 +172,9 @@ export function ProjectsView() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Card className="p-4 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-3">
           <div className="flex justify-between items-start">
-            <span className="text-xs text-zinc-400 font-medium">Total Épargné</span>
+            <span className="text-xs text-zinc-400 font-medium">{t.projects.totalSaved}</span>
             <span className="text-xs font-mono font-semibold text-zinc-400">
-              Cible: {formatAmount(totalTarget)}
+              {t.projects.target}: {formatAmount(totalTarget)}
             </span>
           </div>
           <div>
@@ -182,7 +184,7 @@ export function ProjectsView() {
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-              <span>Progression globale</span>
+              <span>{t.projects.overallProgress}</span>
               <span className="text-white font-semibold">{overallProgress}%</span>
             </div>
             <Progress value={overallProgress} className="h-1.5 bg-zinc-900 [&>div]:bg-indigo-500" />
@@ -191,35 +193,37 @@ export function ProjectsView() {
 
         <Card className="p-4 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-3">
           <div className="flex justify-between items-start">
-            <span className="text-xs text-zinc-400 font-medium">Effort Mensuel d'Épargne</span>
+            <span className="text-xs text-zinc-400 font-medium">{t.projects.monthlySavingsEffort}</span>
             <Badge variant="outline" className="text-[10px] py-0 border-indigo-500/30 text-indigo-300">
-              Actif
+              {t.projects.activeEffort}
             </Badge>
           </div>
           <div>
             <span className="text-2xl font-bold text-white font-mono">
               {formatAmount(totalMonthlySavings)}
             </span>
-            <span className="text-xs text-zinc-400 font-mono ml-1">/ mois</span>
+            <span className="text-xs text-zinc-400 font-mono ml-1">{language === "fr" ? "/ mois" : "/ mo"}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-zinc-400">
             <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Réparti sur les projets en cours</span>
+            <span>{t.projects.distributedOnProjects}</span>
           </div>
         </Card>
 
         <Card className="p-4 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-3">
           <div className="flex justify-between items-start">
-            <span className="text-xs text-zinc-400 font-medium">Statut des Projets</span>
-            <span className="text-xs text-zinc-400 font-mono">{projectsList.length} au total</span>
+            <span className="text-xs text-zinc-400 font-medium">{t.projects.projectsStatus}</span>
+            <span className="text-xs text-zinc-400 font-mono">
+              {projectsList.length} {language === "fr" ? "au total" : "total"}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2 pt-1 font-mono">
             <div className="flex flex-col p-2 rounded-xl bg-zinc-900/60 border border-white/5">
-              <span className="text-[10px] text-indigo-300 font-medium">En cours</span>
+              <span className="text-[10px] text-indigo-300 font-medium">{t.projects.inProgress}</span>
               <span className="text-base font-bold text-white">{inProgressCount}</span>
             </div>
             <div className="flex flex-col p-2 rounded-xl bg-zinc-900/60 border border-white/5">
-              <span className="text-[10px] text-amber-300 font-medium">Futurs</span>
+              <span className="text-[10px] text-amber-300 font-medium">{t.projects.future}</span>
               <span className="text-base font-bold text-white">{futureCount}</span>
             </div>
           </div>
@@ -229,18 +233,18 @@ export function ProjectsView() {
       {/* Navigation Filter Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
         {[
-          { id: "all" as FilterTab, label: "Tous", count: projectsList.length },
-          { id: "in_progress" as FilterTab, label: "En cours", count: inProgressCount },
-          { id: "future" as FilterTab, label: "Futurs", count: futureCount },
+          { id: "all" as FilterTab, label: t.projects.allFilter, count: projectsList.length },
+          { id: "in_progress" as FilterTab, label: t.projects.inProgressFilter, count: inProgressCount },
+          { id: "future" as FilterTab, label: t.projects.futureFilter, count: futureCount },
           {
             id: "real_estate" as FilterTab,
-            label: "Immobilier",
+            label: t.projects.realEstateFilter,
             count: projectsList.filter((p) => p.projectType === "real_estate").length,
           },
-          { id: "simulator" as FilterTab, label: "Simulateur Taux & Prêt" },
+          { id: "simulator" as FilterTab, label: t.projects.simulatorFilter },
           {
             id: "completed" as FilterTab,
-            label: "Terminés",
+            label: t.projects.completedFilter,
             count: projectsList.filter((p) => p.status === "completed" || p.currentAmount >= p.targetAmount).length,
           },
         ].map((tab) => {
@@ -288,9 +292,9 @@ export function ProjectsView() {
                 <PiggyBank className="w-6 h-6" />
               </div>
               <div className="flex flex-col gap-1">
-                <p className="text-sm font-semibold text-white">Aucun projet dans cette catégorie</p>
+                <p className="text-sm font-semibold text-white">{t.projects.noProjectsInCategory}</p>
                 <p className="text-xs text-zinc-400">
-                  Créez un projet d'épargne ou lancez une simulation immobilière.
+                  {t.projects.noProjectsDesc}
                 </p>
               </div>
               <div className="flex items-center gap-2 mt-2">
@@ -303,7 +307,7 @@ export function ProjectsView() {
                   className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-xl cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Créer un Projet</span>
+                  <span>{t.projects.createProjectBtn}</span>
                 </Button>
                 <Button
                   onClick={() => setSelectedFilter("simulator")}
@@ -312,7 +316,7 @@ export function ProjectsView() {
                   className="gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 text-xs rounded-xl cursor-pointer hover:bg-zinc-800"
                 >
                   <Calculator className="w-3.5 h-3.5" />
-                  <span>Simulateur Prêt</span>
+                  <span>{t.projects.loanSimulatorBtn}</span>
                 </Button>
               </div>
             </Card>
@@ -359,7 +363,7 @@ export function ProjectsView() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         defaultScope="projects"
-        title="Exporter les Projets"
+        title={t.projects.exportProjects}
         projects={projectsList}
       />
     </div>

@@ -5,7 +5,6 @@ import {
   FileSpreadsheet,
   Download,
   CheckCircle,
-  ShieldCheck,
   Calendar,
   Layers,
   Filter,
@@ -22,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { executeExport, generateExportFileName, ExportSettings } from "@/lib/export/excel-export"
 import { Transaction, Account, Project } from "@/lib/types/finance"
+import { useI18n } from "@/components/i18n-context"
 
 interface ExportDialogProps {
   isOpen: boolean
@@ -37,11 +37,12 @@ export function ExportDialog({
   isOpen,
   onClose,
   defaultScope = "transactions",
-  title = "Exportation Excel & Tableaux",
+  title,
   transactions = [],
   accounts = [],
   projects = [],
 }: ExportDialogProps) {
+  const { t, language } = useI18n()
   const [format, setFormat] = useState<"xlsx" | "csv">("xlsx")
   const [periodMode, setPeriodMode] = useState<"month" | "last_3_months" | "year" | "all">("month")
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -56,21 +57,23 @@ export function ExportDialog({
   const [isExporting, setIsExporting] = useState<boolean>(false)
   const [exportSuccess, setExportSuccess] = useState<boolean>(false)
 
-  // Generate available months list from current date backwards (12 months)
+  const activeTitle = title || t.modals.exportTitle
+
+  // Generate available months list from current date backwards (18 months)
   const availableMonths = useMemo(() => {
     const months: { value: string; label: string }[] = []
     const now = new Date()
     for (let i = 0; i < 18; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const label = d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+      const label = d.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US", { month: "long", year: "numeric" })
       months.push({
         value: val,
         label: label.charAt(0).toUpperCase() + label.slice(1),
       })
     }
     return months
-  }, [])
+  }, [language])
 
   // Calculate estimated count of exported transactions
   const previewCount = useMemo(() => {
@@ -150,10 +153,10 @@ export function ExportDialog({
             <div>
               <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-indigo-400" />
-                {title}
+                {activeTitle}
               </DialogTitle>
               <DialogDescription className="text-xs text-zinc-400 mt-0.5">
-                Personnalisez la période, les filtres et les tableaux du classeur
+                {language === "fr" ? "Personnalisez la période, les filtres et les tableaux du classeur" : "Customize period, filters and spreadsheet options"}
               </DialogDescription>
             </div>
             <Badge variant="outline" className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-[10px] uppercase">
@@ -167,7 +170,7 @@ export function ExportDialog({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-zinc-400" />
-              Format du fichier
+              {language === "fr" ? "Format du fichier" : "File format"}
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -179,7 +182,7 @@ export function ExportDialog({
                     : "bg-zinc-950/60 border-white/5 text-zinc-400 hover:text-white"
                 }`}
               >
-                Excel (.xlsx) Multi-feuilles
+                Excel (.xlsx)
               </button>
               <button
                 type="button"
@@ -190,7 +193,7 @@ export function ExportDialog({
                     : "bg-zinc-950/60 border-white/5 text-zinc-400 hover:text-white"
                 }`}
               >
-                CSV Tableur standard
+                CSV (.csv)
               </button>
             </div>
           </div>
@@ -199,7 +202,7 @@ export function ExportDialog({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-              Période d&apos;exportation
+              {language === "fr" ? "Période d'exportation" : "Export period"}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-white/5">
               <button
@@ -211,7 +214,7 @@ export function ExportDialog({
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Par mois
+                {language === "fr" ? "Par mois" : "By month"}
               </button>
               <button
                 type="button"
@@ -222,7 +225,7 @@ export function ExportDialog({
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                3 mois
+                {language === "fr" ? "3 mois" : "3 months"}
               </button>
               <button
                 type="button"
@@ -233,7 +236,7 @@ export function ExportDialog({
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Année
+                {language === "fr" ? "Année" : "Year"}
               </button>
               <button
                 type="button"
@@ -244,7 +247,7 @@ export function ExportDialog({
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Tout
+                {language === "fr" ? "Tout" : "All"}
               </button>
             </div>
 
@@ -272,14 +275,14 @@ export function ExportDialog({
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5 text-zinc-400" />
-                Compte bancaire
+                {t.projects.linkedAccount}
               </label>
               <select
                 value={selectedAccountId}
                 onChange={(e) => setSelectedAccountId(e.target.value)}
                 className="w-full p-2.5 rounded-xl bg-zinc-950 border border-white/10 text-white text-xs focus:ring-1 focus:ring-indigo-500 cursor-pointer"
               >
-                <option value="all">Tous les comptes</option>
+                <option value="all">{t.transactions.allAccounts}</option>
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id} className="bg-zinc-900 text-white">
                     {acc.name || acc.bank} ({acc.bank})
@@ -292,16 +295,16 @@ export function ExportDialog({
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-zinc-400" />
-                Type d&apos;opérations
+                {language === "fr" ? "Type d'opérations" : "Transaction type"}
               </label>
               <select
                 value={transactionType}
                 onChange={(e) => setTransactionType(e.target.value as any)}
                 className="w-full p-2.5 rounded-xl bg-zinc-950 border border-white/10 text-white text-xs focus:ring-1 focus:ring-indigo-500 cursor-pointer"
               >
-                <option value="all">Toutes (Dépenses & Revenus)</option>
-                <option value="expense">Dépenses uniquement</option>
-                <option value="income">Revenus uniquement</option>
+                <option value="all">{language === "fr" ? "Toutes (Dépenses & Revenus)" : "All (Expenses & Incomes)"}</option>
+                <option value="expense">{language === "fr" ? "Dépenses uniquement" : "Expenses only"}</option>
+                <option value="income">{language === "fr" ? "Revenus uniquement" : "Incomes only"}</option>
               </select>
             </div>
           </div>
@@ -309,26 +312,24 @@ export function ExportDialog({
           {/* Advanced Options */}
           {format === "xlsx" && (
             <div className="flex flex-col gap-2 p-3 rounded-2xl bg-zinc-950/60 border border-white/5">
-              <span className="text-xs font-semibold text-zinc-300">Contenu des feuilles Excel</span>
+              <span className="text-xs font-semibold text-zinc-300">{language === "fr" ? "Contenu des feuilles Excel" : "Excel sheet options"}</span>
               <div className="flex items-center justify-between text-xs text-zinc-300">
-                <span>Feuille de répartition par catégorie</span>
+                <span>{language === "fr" ? "Feuille de répartition par catégorie" : "Category breakdown sheet"}</span>
                 <input
                   type="checkbox"
                   checked={includeCategorySummary}
                   onChange={(e) => setIncludeCategorySummary(e.target.checked)}
                   className="w-4 h-4 rounded border-white/20 bg-zinc-800 text-indigo-600"
-                >
-                </input>
+                />
               </div>
               <div className="flex items-center justify-between text-xs text-zinc-300">
-                <span>Formules de calcul automatique (SOMME)</span>
+                <span>{language === "fr" ? "Formules de calcul automatique (SOMME)" : "Automatic formula calculations (SUM)"}</span>
                 <input
                   type="checkbox"
                   checked={includeFormulas}
                   onChange={(e) => setIncludeFormulas(e.target.checked)}
                   className="w-4 h-4 rounded border-white/20 bg-zinc-800 text-indigo-600"
-                >
-                </input>
+                />
               </div>
             </div>
           )}
@@ -339,14 +340,14 @@ export function ExportDialog({
               {fileName}
             </span>
             <span className="text-[11px] text-zinc-400 font-mono">
-              {previewCount > 0 ? `${previewCount} opération(s)` : "Toutes opérations"}
+              {previewCount > 0 ? `${previewCount} ${language === "fr" ? "opération(s)" : "operation(s)"}` : (language === "fr" ? "Toutes opérations" : "All operations")}
             </span>
           </div>
 
           {exportSuccess && (
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              <span>Le fichier {fileName} a été généré avec succès !</span>
+              <span>{language === "fr" ? `Le fichier ${fileName} a été généré avec succès !` : `File ${fileName} generated successfully!`}</span>
             </div>
           )}
 
@@ -358,14 +359,14 @@ export function ExportDialog({
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-md shadow-indigo-600/25 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>{isExporting ? "Génération en cours..." : "Télécharger le Fichier"}</span>
+              <span>{isExporting ? t.common.loading : (language === "fr" ? "Télécharger le Fichier" : "Download File")}</span>
             </Button>
             <Button
               variant="outline"
               onClick={onClose}
               className="border-white/10 bg-zinc-900 text-zinc-300 text-xs h-10 rounded-xl cursor-pointer"
             >
-              Annuler
+              {t.common.cancel}
             </Button>
           </div>
         </div>

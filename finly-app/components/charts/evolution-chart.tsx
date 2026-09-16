@@ -12,6 +12,7 @@ import {
   Tooltip,
 } from "recharts"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Account, Transaction } from "@/lib/types/finance"
 import {
   Settings2,
@@ -44,6 +45,7 @@ export function EvolutionChart({
   transactions = [],
 }: EvolutionChartProps) {
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
   const [isMounted, setIsMounted] = useState<boolean>(false)
   const [timeRange, setTimeRange] = useState<"7J" | "30J" | "1A" | "Tout">("30J")
   const [viewMode, setViewMode] = useState<"sum" | "separate">("sum")
@@ -205,19 +207,30 @@ export function EvolutionChart({
         <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           {/* Time range selector */}
           <div className="flex bg-zinc-900 rounded-xl p-1 border border-white/5 w-full sm:w-auto justify-between sm:justify-start">
-            {(["7J", "30J", "1A", "Tout"] as const).map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`flex-1 sm:flex-none px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
-                  timeRange === range
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
-                }`}
-              >
-                {range}
-              </button>
-            ))}
+            {(["7J", "30J", "1A", "Tout"] as const).map((range) => {
+              const label =
+                range === "7J"
+                  ? (language === "fr" ? "7J" : "7D")
+                  : range === "30J"
+                  ? (language === "fr" ? "30J" : "30D")
+                  : range === "1A"
+                  ? (language === "fr" ? "1A" : "1Y")
+                  : (language === "fr" ? "Tout" : "All")
+
+              return (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`flex-1 sm:flex-none px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
+                    timeRange === range
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
 
           {/* Desktop Gear Settings Button */}
@@ -240,7 +253,9 @@ export function EvolutionChart({
       {isSettingsOpen && (
         <div className="p-3.5 rounded-2xl bg-zinc-900/95 border border-white/10 flex flex-col gap-3 animate-in fade-in duration-150">
           <div className="flex justify-between items-center pb-2 border-b border-white/5">
-            <span className="text-xs font-semibold text-white">Réglages du Graphique</span>
+            <span className="text-xs font-semibold text-white">
+              {language === "fr" ? "Réglages du Graphique" : "Chart Settings"}
+            </span>
             <button
               onClick={() => setIsSettingsOpen(false)}
               className="text-zinc-400 hover:text-white p-1 transition-colors"
@@ -251,7 +266,9 @@ export function EvolutionChart({
 
           {/* Mode Switcher */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <span className="text-xs text-zinc-300">Type d&apos;affichage</span>
+            <span className="text-xs text-zinc-300">
+              {language === "fr" ? "Type d'affichage" : "Display Mode"}
+            </span>
             <div className="flex bg-zinc-950 rounded-xl p-1 border border-white/5">
               <button
                 onClick={() => setViewMode("sum")}
@@ -262,7 +279,7 @@ export function EvolutionChart({
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Somme</span>
+                <span>{language === "fr" ? "Somme" : "Sum"}</span>
               </button>
               <button
                 onClick={() => setViewMode("separate")}
@@ -273,7 +290,7 @@ export function EvolutionChart({
                 }`}
               >
                 <LineChartIcon className="w-3.5 h-3.5" />
-                <span>Séparé</span>
+                <span>{language === "fr" ? "Séparé" : "Separate"}</span>
               </button>
             </div>
           </div>
@@ -282,12 +299,14 @@ export function EvolutionChart({
           {accounts.length > 1 && (
             <div className="flex flex-col gap-2 pt-1 border-t border-white/5">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-zinc-300">Comptes à inclure ({activeAccounts.length}/{accounts.length})</span>
+                <span className="text-xs text-zinc-300">
+                  {language === "fr" ? "Comptes à inclure" : "Accounts to include"} ({activeAccounts.length}/{accounts.length})
+                </span>
                 <button
                   onClick={selectAllAccounts}
                   className="text-[11px] text-indigo-400 hover:text-indigo-300"
                 >
-                  Tous sélectionner
+                  {language === "fr" ? "Tous sélectionner" : "Select all"}
                 </button>
               </div>
 
@@ -437,7 +456,7 @@ export function EvolutionChart({
           </ResponsiveContainer>
         ) : (
           <div className="h-full w-full flex items-center justify-center text-xs text-zinc-500">
-            Chargement...
+            {language === "fr" ? "Chargement..." : "Loading..."}
           </div>
         )}
       </div>
@@ -447,7 +466,7 @@ export function EvolutionChart({
         <div className="p-3 rounded-xl bg-zinc-900/60 border border-white/5 flex flex-col">
           <span className="text-xs text-zinc-400 font-medium flex items-center gap-1">
             <ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Entrées ({timeRange})</span>
+            <span>{language === "fr" ? "Entrées" : "Inflows"} ({timeRange})</span>
           </span>
           <p className="text-lg font-bold text-emerald-400 font-mono mt-0.5">
             +{formatAmount(totalInflow)}
@@ -457,7 +476,7 @@ export function EvolutionChart({
         <div className="p-3 rounded-xl bg-zinc-900/60 border border-white/5 flex flex-col">
           <span className="text-xs text-zinc-400 font-medium flex items-center gap-1">
             <ArrowUpRight className="w-3.5 h-3.5 text-rose-400" />
-            <span>Sorties ({timeRange})</span>
+            <span>{language === "fr" ? "Sorties" : "Outflows"} ({timeRange})</span>
           </span>
           <p className="text-lg font-bold text-white font-mono mt-0.5">
             -{formatAmount(totalOutflow)}

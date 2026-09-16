@@ -19,6 +19,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -51,6 +52,7 @@ export function ProjectCard({
   onDelete,
 }: ProjectCardProps) {
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
 
   const isRealEstate = project.projectType === "real_estate"
   const isFuture = project.status === "future"
@@ -92,12 +94,12 @@ export function ProjectCard({
                     : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
                 }`}
               >
-                {isCompleted ? "Atteint" : isFuture ? "Projet Futur" : "En cours"}
+                {isCompleted ? t.projects.completed : isFuture ? t.projects.future : t.projects.inProgress}
               </Badge>
 
               {isRealEstate && (
                 <Badge variant="outline" className="text-[9px] py-0 px-1.5 border-white/10 text-zinc-400">
-                  Prêt Immo
+                  {language === "fr" ? "Prêt Immo" : "Mortgage"}
                 </Badge>
               )}
 
@@ -117,7 +119,7 @@ export function ProjectCard({
             size="sm"
             variant="ghost"
             onClick={() => onEdit(project)}
-            title="Modifier le projet"
+            title={t.projects.editProject}
             className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl cursor-pointer"
           >
             <Edit2 className="w-3.5 h-3.5" />
@@ -126,7 +128,7 @@ export function ProjectCard({
             size="sm"
             variant="ghost"
             onClick={() => onDelete(project.id)}
-            title="Supprimer le projet"
+            title={t.projects.deleteProject}
             className="h-8 w-8 p-0 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -138,12 +140,12 @@ export function ProjectCard({
       {isRealEstate && project.realEstateData && (
         <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-zinc-950/70 border border-white/5 text-[11px] font-mono">
           <div className="flex flex-col">
-            <span className="text-[9px] text-zinc-500">Bien / Emprunt</span>
+            <span className="text-[9px] text-zinc-500">{language === "fr" ? "Bien / Emprunt" : "Property / Loan"}</span>
             <span className="text-white font-semibold">{formatAmount(project.realEstateData.propertyPrice || 0)}</span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[9px] text-zinc-500">Mensualité estimée</span>
-            <span className="text-indigo-300 font-semibold">{formatAmount(project.realEstateData.monthlyPayment || 0)}/m</span>
+            <span className="text-[9px] text-zinc-500">{language === "fr" ? "Mensualité estimée" : "Est. Monthly"}</span>
+            <span className="text-indigo-300 font-semibold">{formatAmount(project.realEstateData.monthlyPayment || 0)}{language === "fr" ? "/m" : "/mo"}</span>
           </div>
         </div>
       )}
@@ -153,7 +155,7 @@ export function ProjectCard({
         <div className="flex justify-between items-baseline text-xs">
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-medium">
-              {isRealEstate ? "Apport constitué" : "Épargne actuelle"}
+              {isRealEstate ? (language === "fr" ? "Apport constitué" : "Down payment") : (language === "fr" ? "Épargne actuelle" : "Current saved")}
             </span>
             <span className="text-base font-bold font-mono text-white">
               {formatAmount(project.currentAmount)}
@@ -162,7 +164,7 @@ export function ProjectCard({
 
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-zinc-500 font-medium">
-              {isRealEstate ? "Apport cible" : "Objectif"}
+              {isRealEstate ? (language === "fr" ? "Apport cible" : "Target down payment") : t.projects.target}
             </span>
             <span className="text-xs font-mono font-semibold text-zinc-400">
               {formatAmount(project.targetAmount)}
@@ -174,7 +176,7 @@ export function ProjectCard({
         <div className="flex flex-col gap-1">
           <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
             <span>{progressPercent}%</span>
-            <span>Reste {formatAmount(Math.max(0, project.targetAmount - project.currentAmount))}</span>
+            <span>{language === "fr" ? `Reste ${formatAmount(Math.max(0, project.targetAmount - project.currentAmount))}` : `Remaining ${formatAmount(Math.max(0, project.targetAmount - project.currentAmount))}`}</span>
           </div>
           <Progress
             value={progressPercent}
@@ -203,7 +205,7 @@ export function ProjectCard({
           className="h-7 px-2.5 text-xs gap-1 border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-200 rounded-xl cursor-pointer"
         >
           <Plus className="w-3 h-3" />
-          <span>Alimenter</span>
+          <span>{t.projects.addFunds}</span>
         </Button>
       </div>
     </Card>

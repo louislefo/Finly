@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Account } from "@/lib/types/finance"
 
 interface ConnectedAccountsModalProps {
@@ -35,6 +36,9 @@ export function ConnectedAccountsModal({
   onAccountsUpdated,
   onOpenAddBank,
 }: ConnectedAccountsModalProps) {
+  const { t } = useI18n()
+  const tc = t.common
+  const tm = t.connectedAccountsModal
   const { formatAmount } = usePrivacy()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmAccountId, setConfirmAccountId] = useState<string | null>(null)
@@ -83,10 +87,10 @@ export function ConnectedAccountsModal({
             <div className="flex justify-between items-center pr-6">
               <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-indigo-400" />
-                Gestion des Comptes & Banques
+                {tm.title}
               </DialogTitle>
               <Badge variant="outline" className="text-xs border-white/10 text-zinc-300">
-                {accounts.length} compte{accounts.length > 1 ? "s" : ""}
+                {accounts.length} {accounts.length > 1 ? tm.accountsCountPlural : tm.accountsCount}
               </Badge>
             </div>
           </DialogHeader>
@@ -96,7 +100,7 @@ export function ConnectedAccountsModal({
             {bankGroups.length === 0 ? (
               <div className="py-8 text-center text-xs text-zinc-500 flex flex-col items-center gap-2">
                 <Building2 className="w-8 h-8 text-zinc-600" />
-                <span>Aucun compte relié dans la base SQLite.</span>
+                <span>{tm.noAccounts}</span>
               </div>
             ) : (
               bankGroups.map((group) => (
@@ -111,7 +115,7 @@ export function ConnectedAccountsModal({
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-white">{group.bankName}</span>
                         <span className="text-[10px] text-zinc-400">
-                          {group.accounts.length} sous-compte{group.accounts.length > 1 ? "s" : ""}
+                          {group.accounts.length} {group.accounts.length > 1 ? tm.subAccountsPlural : tm.subAccounts}
                         </span>
                       </div>
                     </div>
@@ -152,7 +156,7 @@ export function ConnectedAccountsModal({
                                 onClick={() => handleDeleteAccount(acc)}
                                 className="bg-rose-600 hover:bg-rose-500 text-white text-xs h-7 px-2"
                               >
-                                {deletingId === acc.id ? "..." : "Confirmer"}
+                                {deletingId === acc.id ? "..." : tc.confirm}
                               </Button>
                               <Button
                                 size="sm"
@@ -160,7 +164,7 @@ export function ConnectedAccountsModal({
                                 onClick={() => setConfirmAccountId(null)}
                                 className="text-xs text-zinc-400 h-7 px-1.5"
                               >
-                                Annuler
+                                {tc.cancel}
                               </Button>
                             </div>
                           ) : (
@@ -191,7 +195,7 @@ export function ConnectedAccountsModal({
                           onClick={() => handleDeleteBank(group.bankName)}
                           className="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs h-8"
                         >
-                          {isDeletingBank ? "Suppression en cours..." : `Confirmer la suppression de ${group.bankName}`}
+                          {isDeletingBank ? tm.deletingBank : tm.deleteBankConfirm.replace("{bank}", group.bankName)}
                         </Button>
                         <Button
                           size="sm"
@@ -199,7 +203,7 @@ export function ConnectedAccountsModal({
                           onClick={() => setConfirmBankName(null)}
                           className="text-xs text-zinc-400 h-8"
                         >
-                          Annuler
+                          {tc.cancel}
                         </Button>
                       </div>
                     ) : (
@@ -213,7 +217,7 @@ export function ConnectedAccountsModal({
                         className="text-[11px] text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/10 h-7 px-2.5 gap-1.5 cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
-                        <span>Supprimer toute la banque {group.bankName}</span>
+                        <span>{tm.deleteEntireBank.replace("{bank}", group.bankName)}</span>
                       </Button>
                     )}
                   </div>
@@ -232,14 +236,14 @@ export function ConnectedAccountsModal({
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-4 gap-2"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Connecter une banque</span>
+              <span>{tm.connectBankBtn}</span>
             </Button>
             <Button
               variant="outline"
               onClick={onClose}
               className="border-white/10 bg-zinc-900 text-zinc-300 text-xs py-4"
             >
-              Fermer
+              {tc.close}
             </Button>
           </div>
         </div>
