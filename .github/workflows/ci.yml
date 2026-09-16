@@ -1,0 +1,74 @@
+name: Finly CI
+
+on:
+  push:
+    branches: [ main, master, dev, develop ]
+  pull_request:
+    branches: [ main, master, dev, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-ci:
+    name: Backend Tests & Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run Backend Tests
+        env:
+          SECRET_KEY: "test-secret-key-for-github-actions-ci-12345"
+          DATABASE_URL: "sqlite:///./finly_test.db"
+        run: |
+          cd backend
+          pytest tests/ -v --tb=short
+
+  frontend-ci:
+    name: Frontend Tests, Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: finly-app/package.json
+
+      - name: Install frontend dependencies
+        working-directory: finly-app
+        run: npm ci || npm install
+
+      - name: Run ESLint
+        working-directory: finly-app
+        run: npm run lint
+
+      - name: Run Vitest Tests
+        working-directory: finly-app
+        run: npm test
+
+      - name: Verify Next.js Build
+        working-directory: finly-app
+        env:
+          NEXT_PUBLIC_API_URL: "http://localhost:8000"
+        run: npm run build
