@@ -141,21 +141,27 @@ def extract_postal_code(text: str) -> Optional[str]:
     match = re.search(r'\b(0[1-9]|[1-8]\d|9[0-8]|2[AB])\d{3}\b', text)
     return match.group(0) if match else None
 
-def clean_merchant_query(raw_text: str) -> Tuple[str, Optional[str]]:
+def clean_merchant_query(raw_text: str) -> Tuple[str, Optional[str], Optional[str]]:
     """
     Cleans bank prefixes, card numbers, locations, and codes.
-    Returns (cleaned_query, postal_code).
+    Returns (cleaned_query, postal_code, city_hint).
     """
     if not raw_text:
-        return ("", None)
+        return ("", None, None)
 
     postal_code = extract_postal_code(raw_text)
     text = raw_text.upper()
 
+    # Extract city or arrondissement hint
+    city_hint: Optional[str] = None
+    arr_match = re.search(r'\b(PARIS|LYON|MARSEILLE)\s*(\d{1,2})\b', text)
+    if arr_match:
+        city_hint = f"{arr_match.group(1)} {arr_match.group(2)}"
+
     # Strip banking prefixes
     prefixes = [
         "CB ", "CARTE ", "PAIEMENT PSC ", "PAIEMENT CARTE ", "ACHAT CB ",
-        "ACHAT ", "COTIS ", "FACTURE ", "PRLV ", "PRELEVEMENT "
+        "ACHAT ", "COTIS ", "FACTURE ", "PRLV ", "PRELEVEMENT ", "VIR ", "RETRAIT "
     ]
     for p in prefixes:
         if text.startswith(p):
@@ -178,7 +184,7 @@ def clean_merchant_query(raw_text: str) -> Tuple[str, Optional[str]]:
     # Take first 3 meaningful words (length >= 2)
     words = [w for w in text.split(' ') if len(w) > 1 and not w.isdigit()]
     cleaned = " ".join(words[:3])
-    return (cleaned, postal_code)
+    return (cleaned, postal_code, city_hint)
 
 async def fetch_company_info(merchant_name: str, raw_label: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -198,11 +204,11 @@ async def fetch_company_info(merchant_name: str, raw_label: Optional[str] = None
             "domain": None,
         }
 
-    query_clean, postal_code = clean_merchant_query(merchant_name or raw_label or "")
+    query_clean, postal_code, city_hint = clean_merchant_query(merchant_name or raw_label or "")
     if len(query_clean) < 3:
         return {"found": False, "merchant": merchant_name, "logo_url": None, "domain": None}
 
-    cache_key = f"{query_clean.lower()}_{postal_code or ''}"
+    cache_key = f"{query_clean.lower()}_{postal_code or ''}_{city_hint or ''}"
     if cache_key in _ENRICHMENT_CACHE:
         return _ENRICHMENT_CACHE[cache_key]
 
@@ -243,6 +249,8 @@ async def fetch_company_info(merchant_name: str, raw_label: Optional[str] = None
         params = f"q={urllib.parse.quote(query_clean)}&per_page=1"
         if postal_code:
             params += f"&code_postal={postal_code}"
+        elif city_hint:
+            params += f"&code_postal={city_hint}"
 
         url = f"https://recherche-entreprises.api.gouv.fr/search?{params}"
         async with httpx.AsyncClient(timeout=3.5) as client:
@@ -270,7 +278,7 @@ async def fetch_company_info(merchant_name: str, raw_label: Optional[str] = None
                     result["date_creation"] = etab.get("date_creation")
                     result["is_matching_etablissement"] = is_local
 
-                    # Address formatting & GPS coordinates
+                    # Address formatting & GPS coordinates (prefers local establishment)
                     adresse_complete = target_etab.get("adresse") or target_etab.get("geo_adresse") or siege.get("adresse")
                     result["adresse"] = adresse_complete
                     result["commune"] = target_etab.get("libelle_commune") or siege.get("libelle_commune")
