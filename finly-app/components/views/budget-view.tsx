@@ -285,8 +285,9 @@ export function BudgetView() {
         summary: budgetSummary,
         periodName: activePeriodName,
         accountName: activeAccountName,
-        userName: user?.full_name || user?.email || "Finly User",
+        userName: user?.full_name || user?.email || (language === "fr" ? "Utilisateur Finly" : "Finly User"),
         currency: "EUR",
+        language: language,
       })
     } catch (err) {
       console.error("Error generating budget PDF:", err)

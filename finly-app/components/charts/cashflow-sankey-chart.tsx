@@ -40,24 +40,6 @@ interface SankeyLink {
   value: number
 }
 
-// Category to Outflow Pillar mapping
-const CATEGORY_PILLAR_MAP: Record<string, { pillarId: string; pillarLabel: string; lightColor: string; darkColor: string }> = {
-  "Logement": { pillarId: "outpil_fixed", pillarLabel: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
-  "Abonnements": { pillarId: "outpil_fixed", pillarLabel: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
-  "Impôts & Taxes": { pillarId: "outpil_fixed", pillarLabel: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
-  "Assurances": { pillarId: "outpil_fixed", pillarLabel: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
-  "Alimentation": { pillarId: "outpil_living", pillarLabel: "Dépenses Courantes", lightColor: "#ea580c", darkColor: "#f59e0b" },
-  "Transports": { pillarId: "outpil_living", pillarLabel: "Dépenses Courantes", lightColor: "#ea580c", darkColor: "#fb923c" },
-  "Santé & Bien-être": { pillarId: "outpil_living", pillarLabel: "Dépenses Courantes", lightColor: "#0284c7", darkColor: "#38bdf8" },
-  "Divers": { pillarId: "outpil_living", pillarLabel: "Dépenses Courantes", lightColor: "#ea580c", darkColor: "#fbbf24" },
-  "Loisirs & Sorties": { pillarId: "outpil_discretionary", pillarLabel: "Loisirs & Plaisir", lightColor: "#9333ea", darkColor: "#c084fc" },
-  "Shopping": { pillarId: "outpil_discretionary", pillarLabel: "Loisirs & Plaisir", lightColor: "#9333ea", darkColor: "#c084fc" },
-  "Voyages & Vacances": { pillarId: "outpil_discretionary", pillarLabel: "Loisirs & Plaisir", lightColor: "#9333ea", darkColor: "#c084fc" },
-  "Épargne & Investissements": { pillarId: "outpil_savings", pillarLabel: "Épargne & Avenir", lightColor: "#16a34a", darkColor: "#34d399" },
-  "Virements & Épargne": { pillarId: "outpil_savings", pillarLabel: "Épargne & Avenir", lightColor: "#16a34a", darkColor: "#34d399" },
-  "Épargne": { pillarId: "outpil_savings", pillarLabel: "Épargne & Avenir", lightColor: "#16a34a", darkColor: "#34d399" },
-}
-
 // Light & Dark color mappings for individual categories
 const CATEGORY_STYLE_MAP: Record<string, { light: string; dark: string }> = {
   "Logement": { light: "#94a3b8", dark: "#94a3b8" },
@@ -65,19 +47,15 @@ const CATEGORY_STYLE_MAP: Record<string, { light: string; dark: string }> = {
   "Alimentation": { light: "#fb923c", dark: "#f97316" },
   "Transports": { light: "#fdba74", dark: "#fb923c" },
   "Loisirs & Sorties": { light: "#c084fc", dark: "#c084fc" },
+  "Shopping": { light: "#c084fc", dark: "#c084fc" },
   "Santé & Bien-être": { light: "#38bdf8", dark: "#38bdf8" },
+  "Impôts & Taxes": { light: "#94a3b8", dark: "#94a3b8" },
+  "Assurances": { light: "#94a3b8", dark: "#94a3b8" },
   "Divers": { light: "#fed7aa", dark: "#eab308" },
   "Épargne & Investissements": { light: "#4ade80", dark: "#34d399" },
   "Virements & Épargne": { light: "#4ade80", dark: "#34d399" },
   "Épargne": { light: "#4ade80", dark: "#34d399" },
 }
-
-const ORDERED_OUTFLOW_PILLARS = [
-  "outpil_fixed",
-  "outpil_living",
-  "outpil_discretionary",
-  "outpil_savings",
-] as const
 
 export function CashflowSankeyChart({
   budgetSummary,
@@ -141,9 +119,9 @@ export function CashflowSankeyChart({
     const incomes = budgetSummary.incomes || []
     const rawCategories = (budgetSummary.items || []).filter((i) => i.spent > 0)
 
-    // 1. Inflow Classification
-    const earnedInflows: { id: string; label: string; amount: number }[] = []
-    const passiveInflows: { id: string; label: string; amount: number }[] = []
+    // 1. Inflow Classification & Ordering
+    // All incomes flow directly into the Central Hub without intermediary crossing pillars
+    const allInflows: { id: string; label: string; amount: number; color: string }[] = []
 
     if (incomes.length > 0) {
       for (const inc of incomes) {
@@ -170,237 +148,138 @@ export function CashflowSankeyChart({
           cleanLabel = t.cashflow.receivedTransfer
         }
 
-        if (isPassiveOrRefund) {
-          passiveInflows.push({
-            id: `inc_src_${inc.category.replace(/\s+/g, "_")}`,
-            label: cleanLabel,
-            amount: inc.amount,
-          })
-        } else {
-          earnedInflows.push({
-            id: `inc_src_${inc.category.replace(/\s+/g, "_")}`,
-            label: cleanLabel,
-            amount: inc.amount,
-          })
-        }
+        const nodeColor = isPassiveOrRefund
+          ? (isLight ? "#f97316" : "#fb923c")
+          : (isLight ? "#3b82f6" : "#38bdf8")
+
+        allInflows.push({
+          id: `inc_src_${inc.category.replace(/\s+/g, "_")}`,
+          label: cleanLabel,
+          amount: inc.amount,
+          color: nodeColor,
+        })
       }
     } else {
       const fallbackAmount = Math.max(totalSpent, budgetSummary.total_budget || 1000)
-      earnedInflows.push({
+      allInflows.push({
         id: "inc_src_default",
         label: t.cashflow.estimatedIncome,
         amount: fallbackAmount,
+        color: isLight ? "#3b82f6" : "#38bdf8",
       })
     }
 
-    earnedInflows.sort((a, b) => b.amount - a.amount)
-    passiveInflows.sort((a, b) => b.amount - a.amount)
+    // Sort inflows by amount descending for consistent top-to-bottom layout
+    allInflows.sort((a, b) => b.amount - a.amount)
 
-    // Stage 1: Inflow Sources
-    const earnedSrcColor = isLight ? "#60a5fa" : "#38bdf8"
-    const passiveSrcColor = isLight ? "#fb923c" : "#fb923c"
+    // Stage 1: Central Hub
+    const HUB_ID = "hub_central"
+    const hubColor = isLight ? "#6366f1" : "#818cf8"
+    const hubLabel = totalIncome > 0 ? t.cashflow.totalIncome : t.cashflow.monthlyInflows
+    addNode(HUB_ID, hubLabel, hubColor, "hub")
 
-    for (const inc of earnedInflows) {
-      addNode(inc.id, inc.label, earnedSrcColor, "source", inc.amount)
-    }
-    for (const inc of passiveInflows) {
-      addNode(inc.id, inc.label, passiveSrcColor, "source", inc.amount)
-    }
-
-    // Stage 2: Inflow Pillars
-    const earnedPillarId = "inpil_earned"
-    const earnedPillarColor = isLight ? "#3b82f6" : "#38bdf8"
-    const passivePillarId = "inpil_passive"
-    const passivePillarColor = isLight ? "#f97316" : "#fb923c"
-
-    if (earnedInflows.length > 0) {
-      addNode(earnedPillarId, t.cashflow.earnedIncome, earnedPillarColor, "inflow_pillar")
-      for (const inc of earnedInflows) {
-        addLink(inc.id, earnedPillarId, inc.amount)
-      }
-    }
-    if (passiveInflows.length > 0) {
-      addNode(passivePillarId, t.cashflow.refundsPassive, passivePillarColor, "inflow_pillar")
-      for (const inc of passiveInflows) {
-        addLink(inc.id, passivePillarId, inc.amount)
-      }
+    // Stage 2: Direct Inflow Sources -> Central Hub (zero link crossing)
+    for (const inc of allInflows) {
+      addNode(inc.id, inc.label, inc.color, "source", inc.amount)
+      addLink(inc.id, HUB_ID, inc.amount)
     }
 
-    // Deficit Inflow
+    // Deficit Inflow (placed cleanly in source layer if budget is in deficit)
     const hasDeficit = totalSpent + totalSavingsTxs > totalIncome && totalIncome > 0
     const deficitAmount = hasDeficit ? (totalSpent + totalSavingsTxs) - totalIncome : 0
     const deficitId = "inflow_deficit"
     const deficitColor = isLight ? "#dc2626" : "#f87171"
     if (hasDeficit) {
       addNode(deficitId, t.cashflow.savingsDraw, deficitColor, "source", deficitAmount)
-    }
-
-    // Stage 3: Hub
-    const HUB_ID = "hub_central"
-    const hubColor = isLight ? "#6366f1" : "#818cf8"
-    const hubLabel = totalIncome > 0 ? t.cashflow.totalIncome : t.cashflow.monthlyInflows
-    addNode(HUB_ID, hubLabel, hubColor, "hub")
-
-    if (earnedInflows.length > 0) {
-      const earnedSum = earnedInflows.reduce((sum, i) => sum + i.amount, 0)
-      addLink(earnedPillarId, HUB_ID, earnedSum)
-    }
-    if (passiveInflows.length > 0) {
-      const passiveSum = passiveInflows.reduce((sum, i) => sum + i.amount, 0)
-      addLink(passivePillarId, HUB_ID, passiveSum)
-    }
-    if (hasDeficit) {
       addLink(deficitId, HUB_ID, deficitAmount)
     }
 
-    // Stage 4: Group categories strictly by pillar
-    const pillarCategoriesMap: Record<string, typeof rawCategories> = {
-      outpil_fixed: [],
-      outpil_living: [],
-      outpil_discretionary: [],
-      outpil_savings: [],
+    // 2. Outflow Structure: Direct Hub -> Categories & Savings (eliminates all intermediate pillar crossings)
+    const activeCategories = rawCategories
+      .filter((c) => c.spent > 0)
+      .sort((a, b) => b.spent - a.spent)
+
+    // Stage 3: Add Category Nodes in strict sequence
+    for (const catItem of activeCategories) {
+      const catNodeId = `cat_${catItem.category.replace(/\s+/g, "_")}`
+      const style = CATEGORY_STYLE_MAP[catItem.category] || { light: "#64748b", dark: "#94a3b8" }
+      const catColor = isLight ? style.light : style.dark
+      const catDisplay = t.categories[catItem.category] || catItem.category
+      addNode(catNodeId, catDisplay, catColor, "category", catItem.spent)
+      addLink(HUB_ID, catNodeId, catItem.spent)
     }
 
-    for (const catItem of rawCategories) {
-      const mapping = CATEGORY_PILLAR_MAP[catItem.category] || {
-        pillarId: "outpil_living",
-        pillarLabel: "Dépenses Courantes",
-        lightColor: "#ea580c",
-        darkColor: "#f59e0b",
-      }
-      pillarCategoriesMap[mapping.pillarId].push(catItem)
+    // Savings Transfers (if any)
+    if (totalSavingsTxs > 0) {
+      const savStyle = isLight ? "#16a34a" : "#34d399"
+      const savTxCatId = "cat_epargne_virements"
+      addNode(savTxCatId, t.categories["Virements Épargne"] || "Virements Épargne", savStyle, "category", totalSavingsTxs)
+      addLink(HUB_ID, savTxCatId, totalSavingsTxs)
     }
 
-    for (const pId of ORDERED_OUTFLOW_PILLARS) {
-      pillarCategoriesMap[pId].sort((a, b) => b.spent - a.spent)
+    // Remaining Cashflow / Surplus (if any)
+    if (netCashflow > 0) {
+      const surplusColor = isLight ? "#0284c7" : "#38bdf8"
+      const savSurplusCatId = "cat_epargne_reste"
+      addNode(savSurplusCatId, t.categories["Reste Disponible"] || "Reste Disponible", surplusColor, "category", netCashflow)
+      addLink(HUB_ID, savSurplusCatId, netCashflow)
     }
 
-    const pillarTotals: Record<string, { label: string; color: string; amount: number }> = {}
-    const pillarMeta: Record<string, { labelKey: string; lightColor: string; darkColor: string }> = {
-      outpil_fixed: { labelKey: "Dépenses Fixes", lightColor: "#64748b", darkColor: "#94a3b8" },
-      outpil_living: { labelKey: "Dépenses Courantes", lightColor: "#ea580c", darkColor: "#f59e0b" },
-      outpil_discretionary: { labelKey: "Loisirs & Plaisir", lightColor: "#9333ea", darkColor: "#c084fc" },
-      outpil_savings: { labelKey: "Épargne & Avenir", lightColor: "#16a34a", darkColor: "#34d399" },
-    }
-
-    for (const pId of ORDERED_OUTFLOW_PILLARS) {
-      const sumSpent = pillarCategoriesMap[pId].reduce((s, c) => s + c.spent, 0)
-      const pillarLabel = t.categories[pillarMeta[pId].labelKey] || pillarMeta[pId].labelKey
-
-      if (pId === "outpil_savings") {
-        const effectiveSavings = totalSavingsTxs + Math.max(0, netCashflow)
-        if (effectiveSavings > 0) {
-          pillarTotals[pId] = {
-            label: pillarLabel,
-            color: isLight ? pillarMeta[pId].lightColor : pillarMeta[pId].darkColor,
-            amount: effectiveSavings,
-          }
-        }
-      } else if (sumSpent > 0) {
-        pillarTotals[pId] = {
-          label: pillarLabel,
-          color: isLight ? pillarMeta[pId].lightColor : pillarMeta[pId].darkColor,
-          amount: sumSpent,
-        }
-      }
-    }
-
-    // Add Pillar Nodes
-    for (const pId of ORDERED_OUTFLOW_PILLARS) {
-      const pData = pillarTotals[pId]
-      if (pData) {
-        addNode(pId, pData.label, pData.color, "outflow_pillar", pData.amount)
-        addLink(HUB_ID, pId, pData.amount)
-      }
-    }
-
-    // Stage 5: Add Category Nodes in strict sequence
-    for (const pId of ORDERED_OUTFLOW_PILLARS) {
-      if (pId === "outpil_savings") {
-        const savStyle = isLight ? "#22c55e" : "#34d399"
-        if (totalSavingsTxs > 0) {
-          const savTxCatId = "cat_epargne_virements"
-          addNode(savTxCatId, t.categories["Virements Épargne"] || "Virements Épargne", savStyle, "category", totalSavingsTxs)
-          addLink(pId, savTxCatId, totalSavingsTxs)
-        }
-        if (netCashflow > 0) {
-          const savSurplusCatId = "cat_epargne_reste"
-          const surplusColor = isLight ? "#0284c7" : "#38bdf8"
-          addNode(savSurplusCatId, t.categories["Reste Disponible"] || "Reste Disponible", surplusColor, "category", netCashflow)
-          addLink(pId, savSurplusCatId, netCashflow)
-        }
-      } else {
-        const catsInPillar = pillarCategoriesMap[pId]
-        for (const catItem of catsInPillar) {
-          const catNodeId = `cat_${catItem.category.replace(/\s+/g, "_")}`
-          const style = CATEGORY_STYLE_MAP[catItem.category] || { light: "#94a3b8", dark: "#94a3b8" }
-          const catColor = isLight ? style.light : style.dark
-          const catDisplay = t.categories[catItem.category] || catItem.category
-          addNode(catNodeId, catDisplay, catColor, "category", catItem.spent)
-          addLink(pId, catNodeId, catItem.spent)
-        }
-      }
-    }
-
-    // Stage 6: Subcategory Nodes in strict sequence
+    // Stage 4: Subcategory Nodes (in detailed mode, branching cleanly from each category)
     if (detailLevel === "detailed") {
-      for (const pId of ORDERED_OUTFLOW_PILLARS) {
-        if (pId === "outpil_savings") {
-          const savStyle = isLight ? "#22c55e" : "#34d399"
-          if (totalSavingsTxs > 0) {
-            const savSubId = "sub_epargne_livrets"
-            addNode(savSubId, t.categories["Livrets & Épargne"] || "Livrets & Épargne", savStyle, "sub", totalSavingsTxs)
-            addLink("cat_epargne_virements", savSubId, totalSavingsTxs)
-          }
-          if (netCashflow > 0) {
-            const surplusColor = isLight ? "#0284c7" : "#38bdf8"
-            const surplusSubId = "sub_reste_tresorerie"
-            addNode(surplusSubId, t.categories["Épargne / Trésorerie"] || "Épargne / Trésorerie", surplusColor, "sub", netCashflow)
-            addLink("cat_epargne_reste", surplusSubId, netCashflow)
-          }
-        } else {
-          const catsInPillar = pillarCategoriesMap[pId]
-          for (const catItem of catsInPillar) {
-            const catNodeId = `cat_${catItem.category.replace(/\s+/g, "_")}`
-            const style = CATEGORY_STYLE_MAP[catItem.category] || { light: "#94a3b8", dark: "#94a3b8" }
-            const catColor = isLight ? style.light : style.dark
+      for (const catItem of activeCategories) {
+        const catNodeId = `cat_${catItem.category.replace(/\s+/g, "_")}`
+        const style = CATEGORY_STYLE_MAP[catItem.category] || { light: "#64748b", dark: "#94a3b8" }
+        const catColor = isLight ? style.light : style.dark
 
-            if (catItem.transactions && catItem.transactions.length > 0) {
-              const subMap = new Map<string, number>()
-              let unclassified = 0
+        if (catItem.transactions && catItem.transactions.length > 0) {
+          const subMap = new Map<string, number>()
+          let unclassified = 0
 
-              for (const tx of catItem.transactions) {
-                if (tx.is_excluded_from_budget) continue
-                const amt = Math.abs(tx.amount)
-                const subLabel = tx.subcategory?.trim() || tx.merchant?.trim()
-                if (subLabel) {
-                  subMap.set(subLabel, (subMap.get(subLabel) || 0) + amt)
-                } else {
-                  unclassified += amt
-                }
-              }
-
-              const sortedSubs = Array.from(subMap.entries()).sort((a, b) => b[1] - a[1])
-              const topSubs = sortedSubs.slice(0, 4)
-              const remainder = sortedSubs.slice(4).reduce((sum, s) => sum + s[1], 0) + unclassified
-
-              for (const [subName, subAmt] of topSubs) {
-                if (subAmt <= 0) continue
-                const cleanSub = subName.replace(/^(CB|PRLV SEPA|VIR)\s*/i, "").trim()
-                const subNodeId = `sub_${catItem.category.replace(/\s+/g, "_")}_${cleanSub.replace(/\s+/g, "_")}`
-                const subDisplay = t.categories[cleanSub] || cleanSub
-                addNode(subNodeId, subDisplay, catColor, "sub", subAmt)
-                addLink(catNodeId, subNodeId, subAmt)
-              }
-
-              if (remainder > 0) {
-                const otherNodeId = `sub_${catItem.category.replace(/\s+/g, "_")}_Autres`
-                addNode(otherNodeId, t.categories["Autres"] || "Autres", catColor, "sub", remainder)
-                addLink(catNodeId, otherNodeId, remainder)
-              }
+          for (const tx of catItem.transactions) {
+            if (tx.is_excluded_from_budget) continue
+            const amt = Math.abs(tx.amount)
+            const subLabel = tx.subcategory?.trim() || tx.merchant?.trim()
+            if (subLabel) {
+              subMap.set(subLabel, (subMap.get(subLabel) || 0) + amt)
+            } else {
+              unclassified += amt
             }
           }
+
+          const sortedSubs = Array.from(subMap.entries()).sort((a, b) => b[1] - a[1])
+          const topSubs = sortedSubs.slice(0, 4)
+          const remainder = sortedSubs.slice(4).reduce((sum, s) => sum + s[1], 0) + unclassified
+
+          for (const [subName, subAmt] of topSubs) {
+            if (subAmt <= 0) continue
+            const cleanSub = subName.replace(/^(CB|PRLV SEPA|VIR)\s*/i, "").trim()
+            const subNodeId = `sub_${catItem.category.replace(/\s+/g, "_")}_${cleanSub.replace(/\s+/g, "_")}`
+            const subDisplay = t.categories[cleanSub] || cleanSub
+            addNode(subNodeId, subDisplay, catColor, "sub", subAmt)
+            addLink(catNodeId, subNodeId, subAmt)
+          }
+
+          if (remainder > 0) {
+            const otherNodeId = `sub_${catItem.category.replace(/\s+/g, "_")}_Autres`
+            addNode(otherNodeId, t.categories["Autres"] || "Autres", catColor, "sub", remainder)
+            addLink(catNodeId, otherNodeId, remainder)
+          }
         }
+      }
+
+      if (totalSavingsTxs > 0) {
+        const savStyle = isLight ? "#16a34a" : "#34d399"
+        const savSubId = "sub_epargne_livrets"
+        addNode(savSubId, t.categories["Livrets & Épargne"] || "Livrets & Épargne", savStyle, "sub", totalSavingsTxs)
+        addLink("cat_epargne_virements", savSubId, totalSavingsTxs)
+      }
+
+      if (netCashflow > 0) {
+        const surplusColor = isLight ? "#0284c7" : "#38bdf8"
+        const surplusSubId = "sub_reste_tresorerie"
+        addNode(surplusSubId, t.categories["Épargne / Trésorerie"] || "Épargne / Trésorerie", surplusColor, "sub", netCashflow)
+        addLink("cat_epargne_reste", surplusSubId, netCashflow)
       }
     }
 
@@ -571,8 +450,8 @@ export function CashflowSankeyChart({
             <ResponsiveSankey
               data={sankeyData}
               margin={{ top: 20, right: 165, bottom: 20, left: 165 }}
-              align="justify"
-              sort="input"
+              align="start"
+              sort="auto"
               colors={(node: any) => node.nodeColor || (isLight ? "#3b82f6" : "#38bdf8")}
               nodeOpacity={1}
               nodeHoverOthersOpacity={0.25}
