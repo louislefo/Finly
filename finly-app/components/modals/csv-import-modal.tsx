@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Account } from "@/lib/types/finance"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 
 interface CsvImportModalProps {
   isOpen: boolean
@@ -44,6 +45,9 @@ const ACCOUNT_TYPES = [
 ]
 
 export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportModalProps) {
+  const { t } = useI18n()
+  const tc = t.common
+  const tm = t.csvImportModal
   const { formatAmount } = usePrivacy()
   const [step, setStep] = useState<"input" | "preview" | "success">("input")
   const [inputMode, setInputMode] = useState<"file" | "paste">("file")
@@ -228,14 +232,14 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
             <div className="flex flex-col pr-4">
               <DialogTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-400 shrink-0" />
-                {step === "input" && "Importer mes dépenses en CSV"}
-                {step === "preview" && "Type de compte et aperçu"}
-                {step === "success" && "Importation terminée"}
+                {step === "input" && tm.titleInput}
+                {step === "preview" && tm.titlePreview}
+                {step === "success" && tm.titleSuccess}
               </DialogTitle>
               <DialogDescription className="text-xs text-zinc-400 mt-1">
-                {step === "input" && "Déposez un relevé bancaire (CSV/TSV) ou collez directement vos lignes d'opérations."}
-                {step === "preview" && "Définissez le titre et le type de compte, puis validez vos opérations."}
-                {step === "success" && "Vos dépenses ont été intégrées et catégorisées dans votre espace Finly."}
+                {step === "input" && tm.descInput}
+                {step === "preview" && tm.descPreview}
+                {step === "success" && tm.descSuccess}
               </DialogDescription>
             </div>
           </div>
@@ -261,7 +265,7 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
                 }`}
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>Fichier CSV / Excel</span>
+                <span>{tm.tabFile}</span>
               </button>
               <button
                 type="button"
@@ -271,7 +275,7 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
                 }`}
               >
                 <ClipboardPaste className="w-3.5 h-3.5" />
-                <span>Copier-Coller du texte</span>
+                <span>{tm.tabPaste}</span>
               </button>
             </div>
 
@@ -292,10 +296,10 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-bold text-white">
-                    {fileName ? fileName : "Cliquez ou glissez votre fichier CSV ici"}
+                    {fileName ? fileName : tm.dragDropText}
                   </span>
                   <span className="text-xs text-zinc-400">
-                    Prend en charge tous les formats bancaires (.csv, .tsv, .txt)
+                    {tm.supportedFormats}
                   </span>
                 </div>
               </div>
@@ -305,10 +309,7 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
               <div className="flex flex-col gap-2">
                 <textarea
                   rows={7}
-                  placeholder={`Collez vos lignes d'opérations ici...
-Exemple :
-01/05/2026	62,82	Achat Magasin
-05/05/2026	-25,00	Virement Loyer	Divers`}
+                  placeholder={tm.pastePlaceholder}
                   value={csvText}
                   onChange={(e) => setCsvText(e.target.value)}
                   className="w-full bg-zinc-950 border border-white/10 rounded-2xl p-3.5 text-xs text-zinc-200 font-mono focus:outline-none focus:border-emerald-500/50 resize-none leading-relaxed"
@@ -321,12 +322,12 @@ Exemple :
                   {isAnalyzing ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Analyse en cours...</span>
+                      <span>{tm.analyzingBtn}</span>
                     </>
                   ) : (
                     <>
                       <ArrowRight className="w-4 h-4" />
-                      <span>Analyser le relevé</span>
+                      <span>{tm.analyzeBtn}</span>
                     </>
                   )}
                 </Button>
@@ -343,7 +344,7 @@ Exemple :
               <div className="flex justify-between items-center">
                 <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                  {isCreatingNewAccount ? "Nouveau compte / Banque personnalisée" : "Compte de destination"}
+                  {isCreatingNewAccount ? tm.newAccountSection : tm.destinationAccount}
                 </span>
                 {accounts.length > 0 && (
                   <button
@@ -351,7 +352,7 @@ Exemple :
                     onClick={() => setIsCreatingNewAccount(!isCreatingNewAccount)}
                     className="text-[11px] text-zinc-400 hover:text-white underline cursor-pointer"
                   >
-                    {isCreatingNewAccount ? "Rattacher à un compte existant" : "+ Créer un nouveau compte"}
+                    {isCreatingNewAccount ? tm.linkToExisting : tm.createNewAccount}
                   </button>
                 )}
               </div>
@@ -359,7 +360,7 @@ Exemple :
               {isCreatingNewAccount ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] text-zinc-400 uppercase font-semibold">Titre du compte / Relevé</label>
+                    <label className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.accountTitleLabel}</label>
                     <Input
                       type="text"
                       value={customAccountTitle}
@@ -369,7 +370,7 @@ Exemple :
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] text-zinc-400 uppercase font-semibold">Type de compte</label>
+                    <label className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.accountTypeLabel}</label>
                     <select
                       value={customAccountType}
                       onChange={(e) => setCustomAccountType(e.target.value)}
@@ -383,7 +384,7 @@ Exemple :
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-zinc-400 uppercase font-semibold">Sélectionner un compte existant</label>
+                  <label className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.selectExistingAccount}</label>
                   <select
                     value={selectedAccountId}
                     onChange={(e) => setSelectedAccountId(e.target.value)}
@@ -402,7 +403,7 @@ Exemple :
             {/* Column Recognition Summary */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">Date</span>
+                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.dateCol}</span>
                 <select
                   value={dateCol}
                   onChange={(e) => handleMappingChange("date", Number(e.target.value))}
@@ -415,7 +416,7 @@ Exemple :
               </div>
 
               <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">Montant</span>
+                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.amountCol}</span>
                 <select
                   value={amountCol}
                   onChange={(e) => handleMappingChange("amount", Number(e.target.value))}
@@ -428,13 +429,13 @@ Exemple :
               </div>
 
               <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">Libellé</span>
+                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.labelCol}</span>
                 <select
                   value={labelCol ?? -1}
                   onChange={(e) => handleMappingChange("label", Number(e.target.value))}
                   className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
                 >
-                  <option value={-1}>Auto-détection</option>
+                  <option value={-1}>{tm.autoDetect}</option>
                   {analysisResult.columns.map((c: string, i: number) => (
                     <option key={i} value={i}>{c}</option>
                   ))}
@@ -442,13 +443,13 @@ Exemple :
               </div>
 
               <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">Catégorie</span>
+                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.categoryCol}</span>
                 <select
                   value={categoryCol ?? -1}
                   onChange={(e) => handleMappingChange("category", Number(e.target.value))}
                   className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
                 >
-                  <option value={-1}>Auto-catégorisation IA</option>
+                  <option value={-1}>{tm.aiCategorization}</option>
                   {analysisResult.columns.map((c: string, i: number) => (
                     <option key={i} value={i}>{c}</option>
                   ))}
@@ -460,10 +461,10 @@ Exemple :
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center px-1">
                 <span className="text-xs font-bold text-white">
-                  Aperçu des opérations ({editableTransactions.length})
+                  {tm.previewTxCount} ({editableTransactions.length})
                 </span>
                 <span className="text-[11px] text-zinc-400">
-                  Cliquez sur un libellé pour le modifier
+                  {tm.editLabelHint}
                 </span>
               </div>
 
@@ -540,7 +541,7 @@ Exemple :
                 className="border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 px-4 rounded-xl cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-                Retour
+                {tc.back}
               </Button>
               <Button
                 type="button"
@@ -551,12 +552,12 @@ Exemple :
                 {isImporting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Importation en cours...</span>
+                    <span>{tm.importing}</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    <span>Valider l&apos;importation ({editableTransactions.length} opérations)</span>
+                    <span>{tm.validateImport} ({editableTransactions.length})</span>
                   </>
                 )}
               </Button>
@@ -570,19 +571,19 @@ Exemple :
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <span className="text-base font-bold text-white">Dépenses importées avec succès</span>
+            <span className="text-base font-bold text-white">{tm.importSuccessTitle}</span>
             <p className="text-xs text-zinc-400 max-w-sm">
-              Vos opérations ont été enregistrées sous le compte <span className="text-white font-semibold">{importSummary?.account_name}</span>.
+              {tm.importSuccessDesc} <span className="text-white font-semibold">{importSummary?.account_name}</span>.
             </p>
 
             {importSummary && (
               <div className="grid grid-cols-2 gap-2 w-full max-w-xs my-2 text-left">
                 <div className="p-3 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">Nouvelles opérations</span>
+                  <span className="text-[10px] text-zinc-500">{tm.newTransactionsCount}</span>
                   <span className="text-sm font-bold text-emerald-400 font-mono">{importSummary.imported_count}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">Mises à jour / Dédupliquées</span>
+                  <span className="text-[10px] text-zinc-500">{tm.updatedTransactionsCount}</span>
                   <span className="text-sm font-bold text-zinc-300 font-mono">{importSummary.updated_count}</span>
                 </div>
               </div>
@@ -593,7 +594,7 @@ Exemple :
               onClick={handleReset}
               className="mt-2 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-xs h-10 px-6 rounded-xl cursor-pointer"
             >
-              Fermer
+              {tc.close}
             </Button>
           </div>
         )}

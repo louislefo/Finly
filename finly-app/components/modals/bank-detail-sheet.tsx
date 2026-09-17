@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Account } from "@/lib/types/finance"
 
 interface BankDetailSheetProps {
@@ -34,6 +35,9 @@ export function BankDetailSheet({
   bankName,
   accounts,
 }: BankDetailSheetProps) {
+  const { t } = useI18n()
+  const tc = t.common
+  const tm = t.bankDetailSheet
   const { formatAmount } = usePrivacy()
 
   if (!bankName) return null
@@ -83,13 +87,13 @@ export function BankDetailSheet({
                     {bankName}
                   </SheetTitle>
                   <span className="text-xs text-zinc-400">
-                    {bankAccounts.length} compte{bankAccounts.length > 1 ? "s" : ""} rattaché{bankAccounts.length > 1 ? "s" : ""}
+                    {bankAccounts.length} {bankAccounts.length > 1 ? tm.linkedAccountsPlural : tm.linkedAccounts}
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-col items-end">
-                <span className="text-[11px] text-zinc-400">Total détenu</span>
+                <span className="text-[11px] text-zinc-400">{tm.totalHeld}</span>
                 <span className="text-lg font-extrabold font-mono text-white">
                   {formatAmount(totalBankBalance)}
                 </span>
@@ -143,7 +147,7 @@ export function BankDetailSheet({
               onClick={onClose}
               className="w-full border-white/10 bg-zinc-900 text-zinc-300 text-xs py-4"
             >
-              Fermer
+              {tc.close}
             </Button>
           </div>
         </div>

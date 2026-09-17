@@ -33,6 +33,7 @@ import {
   PiggyBank,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -51,6 +52,7 @@ import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
 export function DashboardView() {
   const router = useRouter()
   const { formatAmount } = usePrivacy()
+  const { t, format } = useI18n()
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [isConnectedAccountsOpen, setIsConnectedAccountsOpen] = useState<boolean>(false)
   const [selectedBankForDetail, setSelectedBankForDetail] = useState<string | null>(null)
@@ -118,8 +120,6 @@ export function DashboardView() {
   )
 
   const recentTransactions = checkingTransactions.slice(0, 4)
-  const totalInflow = checkingTransactions.filter((t) => t.amount > 0).reduce((acc, t) => acc + t.amount, 0)
-  const totalOutflow = checkingTransactions.filter((t) => t.amount < 0).reduce((acc, t) => acc + Math.abs(t.amount), 0)
 
   const handleManualSync = async () => {
     setIsSyncing(true)
@@ -130,16 +130,16 @@ export function DashboardView() {
       await loadData()
       const newTxCount = res?.result?.new_transactions ?? res?.data?.new_transactions
       if (typeof newTxCount === "number" && newTxCount > 0) {
-        setSyncSuccessMessage(`${newTxCount} nouvelle(s) opération(s) synchronisée(s)`)
+        setSyncSuccessMessage(`${newTxCount} ${t.dashboard.newTransactionsSynced}`)
       } else {
-        setSyncSuccessMessage("Soldes et opérations à jour")
+        setSyncSuccessMessage(t.dashboard.balancesUpToDate)
       }
       setTimeout(() => {
         setSyncSuccessMessage(null)
       }, 3000)
     } catch {
       await loadData()
-      setSyncSuccessMessage("Actualisation terminée")
+      setSyncSuccessMessage(t.dashboard.refreshFinished)
       setTimeout(() => {
         setSyncSuccessMessage(null)
       }, 2500)
@@ -150,20 +150,6 @@ export function DashboardView() {
 
   const handleBankConnected = async () => {
     await loadData()
-  }
-
-  const getTxIcon = (category: string) => {
-    switch (category) {
-      case "Alimentation":
-        return ShoppingBag
-      case "Transports":
-        return Car
-      case "Revenus":
-      case "Virement Reçu":
-        return ArrowDownRight
-      default:
-        return Film
-    }
   }
 
   return (
@@ -183,7 +169,7 @@ export function DashboardView() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              Solde Compte Courant
+              {t.dashboard.checkingBalance}
             </span>
             <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
               {formatAmount(checkingBalance)}
@@ -192,10 +178,10 @@ export function DashboardView() {
             {accounts.length > 0 && (
               <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-400 flex-wrap">
                 <span className="p-1.5 px-2.5 rounded-lg bg-zinc-900/80 border border-white/5">
-                  Patrimoine Global : <strong className="text-white font-mono">{formatAmount(totalBalance)}</strong>
+                  {t.dashboard.netWorth} : <strong className="text-white font-mono">{formatAmount(totalBalance)}</strong>
                 </span>
                 <span className="p-1.5 px-2.5 rounded-lg bg-zinc-900/80 border border-white/5">
-                  Épargne & Placements : <strong className="text-emerald-400 font-mono">{formatAmount(savingsBalance + investmentBalance)}</strong>
+                  {t.dashboard.savingsAndInvestments} : <strong className="text-emerald-400 font-mono">{formatAmount(savingsBalance + investmentBalance)}</strong>
                 </span>
               </div>
             )}
@@ -207,27 +193,27 @@ export function DashboardView() {
               disabled={isSyncing}
               variant="outline"
               size="sm"
-              className="gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800"
+              className="gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-              <span>{isSyncing ? "Actualisation..." : "Actualiser"}</span>
+              <span>{isSyncing ? t.common.refreshing : t.common.refresh}</span>
             </Button>
 
             <Button
-              className="flex-1 sm:flex-none gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20"
+              className="flex-1 sm:flex-none gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20 cursor-pointer"
               size="sm"
               onClick={() => router.push("/depenses")}
             >
-              <Plus className="w-4 h-4" /> Dépenses Courantes
+              <Plus className="w-4 h-4" /> {t.dashboard.currentExpenses}
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsExportOpen(true)}
-              className="gap-2 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+              className="gap-2 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Exporter
+              <FileSpreadsheet className="w-3.5 h-3.5" /> {t.common.export}
             </Button>
           </div>
         </div>
@@ -237,14 +223,14 @@ export function DashboardView() {
       <div className="flex flex-col gap-3">
         <div className="flex justify-between items-center px-1">
           <h2 className="text-sm font-semibold text-zinc-300 flex items-center gap-1.5">
-            <Wallet className="w-4 h-4 text-indigo-400" /> Compte Courant
+            <Wallet className="w-4 h-4 text-indigo-400" /> {t.dashboard.checkingAccounts}
           </h2>
           {accounts.length > 0 && (
             <button
               onClick={() => setIsConnectedAccountsOpen(true)}
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
             >
-              Gérer les comptes ({accounts.length})
+              {t.dashboard.manageAccounts} ({accounts.length})
             </button>
           )}
         </div>
@@ -257,7 +243,7 @@ export function DashboardView() {
             >
               <PlusCircle className="w-5 h-5 text-zinc-400" />
               <span className="text-xs font-medium text-zinc-300">
-                Connecter un compte courant
+                {t.dashboard.connectCheckingAccount}
               </span>
             </Card>
           ) : (
@@ -270,14 +256,14 @@ export function DashboardView() {
                 <div className="flex justify-between items-start mb-3">
                   <BankLogo bankId={acc.bank} className="w-9 h-9 shrink-0" />
                   <Badge variant="outline" className="text-[10px] font-normal py-0">
-                    {acc.type || "Courant"}
+                    {acc.type || "Checking"}
                   </Badge>
                 </div>
                 <div>
                   <h3 className="text-xs text-zinc-400 group-hover:text-white transition-colors truncate">
                     {acc.name || acc.bank}
                   </h3>
-                  <p className="text-2xl font-bold text-white tracking-tight mt-0.5">
+                  <p className="text-2xl font-bold text-white tracking-tight mt-0.5 font-mono">
                     {formatAmount(acc.balance)}
                   </p>
                 </div>
@@ -292,7 +278,7 @@ export function DashboardView() {
             >
               <PlusCircle className="w-5 h-5 text-zinc-400" />
               <span className="text-xs font-medium text-zinc-300">
-                Ajouter une banque
+                {t.dashboard.addBank}
               </span>
             </Card>
           )}
@@ -304,10 +290,10 @@ export function DashboardView() {
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center px-1">
             <h2 className="text-sm font-semibold text-zinc-300 flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-emerald-400" /> Mes Banques Connectées
+              <Building2 className="w-4 h-4 text-emerald-400" /> {t.dashboard.connectedBanks}
             </h2>
             <span className="text-xs text-zinc-500">
-              Cliquez sur une banque pour voir tous ses comptes
+              {t.dashboard.clickBankToView}
             </span>
           </div>
 
@@ -321,7 +307,7 @@ export function DashboardView() {
                 <div className="flex justify-between items-start mb-3">
                   <BankLogo bankId={group.bankName} className="w-10 h-10 shrink-0" />
                   <Badge variant="outline" className="text-[10px] py-0 border-white/10 text-zinc-300">
-                    {group.accounts.length} compte{group.accounts.length > 1 ? "s" : ""}
+                    {group.accounts.length} {t.admin.accountsColumn.toLowerCase()}
                   </Badge>
                 </div>
 
@@ -330,7 +316,7 @@ export function DashboardView() {
                     <h3 className="text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors">
                       {group.bankName}
                     </h3>
-                    <p className="text-lg font-bold text-white tracking-tight mt-0.5">
+                    <p className="text-lg font-bold text-white tracking-tight mt-0.5 font-mono">
                       {formatAmount(group.totalBalance)}
                     </p>
                   </div>
@@ -356,16 +342,16 @@ export function DashboardView() {
           {/* Top Expenses Widget */}
           <Card className="p-5 border-white/10 bg-[#18181B] flex flex-col justify-between">
             <div className="flex justify-between items-center mb-3">
-              <CardTitle className="text-sm font-semibold">Dépenses Courantes</CardTitle>
+              <CardTitle className="text-sm font-semibold">{t.dashboard.currentExpenses}</CardTitle>
               <Link href="/depenses" className="text-xs text-zinc-400 hover:text-white">
-                Voir tout
+                {t.common.viewAll}
               </Link>
             </div>
 
             <div className="flex flex-col divide-y divide-white/5">
               {recentTransactions.length === 0 ? (
                 <div className="py-5 text-center text-xs text-zinc-500">
-                  Aucune dépense enregistrée
+                  {t.dashboard.noExpensesRecorded}
                 </div>
               ) : (
                 recentTransactions.slice(0, 3).map((tx) => (
@@ -385,16 +371,16 @@ export function DashboardView() {
           {/* Projects Widget */}
           <Card className="p-5 border-white/10 bg-[#18181B] flex flex-col justify-between">
             <div className="flex justify-between items-center mb-3">
-              <CardTitle className="text-sm font-semibold">Objectifs</CardTitle>
+              <CardTitle className="text-sm font-semibold">{t.dashboard.goals}</CardTitle>
               <Link href="/projets" className="text-xs text-zinc-400 hover:text-white">
-                Voir tout
+                {t.common.viewAll}
               </Link>
             </div>
 
             <div className="flex flex-col gap-3">
               {projects.length === 0 ? (
                 <div className="py-5 text-center text-xs text-zinc-500">
-                  Aucun objectif actif
+                  {t.dashboard.noActiveGoals}
                 </div>
               ) : (
                 projects.slice(0, 2).map((proj) => {
@@ -418,14 +404,14 @@ export function DashboardView() {
       {/* Recent Transactions Section */}
       <Card className="p-6 border-white/10 bg-[#18181B]">
         <div className="flex justify-between items-center mb-4">
-          <CardTitle className="text-base font-semibold">Historique Compte Courant</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.dashboard.historyCurrentAccount}</CardTitle>
           <Link href="/depenses">
             <Button
               variant="outline"
               size="sm"
-              className="text-xs border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+              className="text-xs border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
             >
-              Fil complet
+              {t.dashboard.fullFeed}
             </Button>
           </Link>
         </div>
@@ -433,7 +419,7 @@ export function DashboardView() {
         <div className="flex flex-col divide-y divide-white/5">
           {recentTransactions.length === 0 ? (
             <div className="py-6 text-center text-xs text-zinc-500">
-              Aucune opération enregistrée sur le compte courant.
+              {t.dashboard.noTransactionsOnChecking}
             </div>
           ) : (
             recentTransactions.map((tx) => {
@@ -454,7 +440,7 @@ export function DashboardView() {
                     />
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-white">{tx.merchant}</span>
-                      <span className="text-[11px] text-zinc-400">{tx.category} • {tx.date}</span>
+                      <span className="text-[11px] text-zinc-400">{t.categories[tx.category] || tx.category} • {tx.date}</span>
                     </div>
                   </div>
                   <span className={`text-sm font-bold font-mono ${isPositive ? 'text-emerald-400' : 'text-white'}`}>
@@ -467,7 +453,7 @@ export function DashboardView() {
         </div>
       </Card>
 
-      {/* Interactive Expenses Map (mapcn Dark & White) */}
+      {/* Interactive Expenses Map */}
       <ExpensesMap transactions={transactions} />
 
       {/* Modals & Sheets */}
@@ -496,7 +482,7 @@ export function DashboardView() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         defaultScope="summary"
-        title="Exporter la Synthèse"
+        title={t.common.export}
         accounts={accounts}
         transactions={transactions}
         projects={projects}

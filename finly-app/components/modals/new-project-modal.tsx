@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Project, Account, RealEstateData, AddressSearchResult, RealEstateEstimate } from "@/lib/types/finance"
+import { useI18n } from "@/components/i18n-context"
 
 interface NewProjectModalProps {
   isOpen: boolean
@@ -45,6 +46,9 @@ export function NewProjectModal({
   projectToEdit,
   accounts = [],
 }: NewProjectModalProps) {
+  const { t } = useI18n()
+  const tm = t.newProjectModal
+  const tc = t.common
   // Common project state
   const [name, setName] = useState<string>("")
   const [description, setDescription] = useState<string>("")
@@ -337,7 +341,7 @@ export function NewProjectModal({
             ) : (
               <Target className="w-5 h-5 text-indigo-400" />
             )}
-            <span>{projectToEdit ? "Modifier le Projet" : "Nouveau Projet / Achat"}</span>
+            <span>{projectToEdit ? tm.editTitle : tm.newTitle}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -356,7 +360,7 @@ export function NewProjectModal({
                   : "text-zinc-400 hover:text-white"
               }`}
             >
-              Épargne & Objectif Financier
+              {tm.tabStandard}
             </button>
             <button
               type="button"
@@ -370,7 +374,7 @@ export function NewProjectModal({
                   : "text-zinc-400 hover:text-white"
               }`}
             >
-              Bien & Achat Immobilier
+              {tm.tabRealEstate}
             </button>
           </div>
 
@@ -385,7 +389,7 @@ export function NewProjectModal({
                   : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white"
               }`}
             >
-              {projectType === "real_estate" ? "Bien acquis / En cours" : "Projet en cours"}
+              {projectType === "real_estate" ? tm.statusInProgressRealEstate : tm.statusInProgressStandard}
             </button>
             <button
               type="button"
@@ -396,7 +400,7 @@ export function NewProjectModal({
                   : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white"
               }`}
             >
-              Projet futur / Préparation
+              {tm.statusFuture}
             </button>
           </div>
 
@@ -404,11 +408,11 @@ export function NewProjectModal({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-zinc-300">
-                {projectType === "real_estate" ? "Nom du bien immobilier *" : "Nom du projet *"}
+                {projectType === "real_estate" ? tm.projectNameRealEstate : tm.projectNameStandard}
               </label>
               <Input
                 type="text"
-                placeholder={projectType === "real_estate" ? "Ex: Résidence Principale Lyon 6, T2 Locatif Paris 11" : "Ex: Vacances Tokyo, Fonds d'urgence"}
+                placeholder={projectType === "real_estate" ? tm.projectPlaceholderRealEstate : tm.projectPlaceholderStandard}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -421,19 +425,19 @@ export function NewProjectModal({
               <div className="flex flex-col gap-4 p-4 rounded-2xl bg-zinc-900/60 border border-white/10">
                 <span className="text-xs font-bold text-white flex items-center gap-1.5">
                   <Home className="w-4 h-4 text-indigo-400" />
-                  Caractéristiques & Adresse du Bien
+                  {tm.reSectionTitle}
                 </span>
 
                 {/* Address Autocomplete Input */}
                 <div className="relative flex flex-col gap-1">
                   <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Adresse du bien (Recherche BAN officielle gratuite)</span>
+                    <span>{tm.addressLabel}</span>
                   </label>
                   <div className="relative">
                     <Input
                       type="text"
-                      placeholder="Tapez une adresse (ex: 15 rue de la République, Lyon)"
+                      placeholder={tm.addressPlaceholder}
                       value={addressInput}
                       onChange={(e) => handleAddressChange(e.target.value)}
                       className="bg-zinc-950 border-white/10 text-white text-xs rounded-xl h-10 pl-9"
@@ -441,7 +445,7 @@ export function NewProjectModal({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     {isSearchingAddress && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 animate-pulse">
-                        Recherche...
+                        {tm.searching}
                       </span>
                     )}
                   </div>
@@ -471,7 +475,7 @@ export function NewProjectModal({
                 {/* Surface & Property Type */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Surface (m²) *</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.surfaceLabel}</label>
                     <Input
                       type="number"
                       placeholder="65"
@@ -482,17 +486,17 @@ export function NewProjectModal({
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Type de bien</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.propertyTypeLabel}</label>
                     <select
                       value={rePropertyType}
                       onChange={(e) => setRePropertyType(e.target.value)}
                       className="p-2.5 rounded-xl bg-zinc-950 border border-white/10 text-white text-xs h-10 focus:ring-indigo-500 cursor-pointer"
                     >
-                      <option value="apartment">Appartement</option>
-                      <option value="house">Maison / Villa</option>
-                      <option value="building">Immeuble entier</option>
-                      <option value="parking">Parking / Garage / Box</option>
-                      <option value="commercial">Local Commercial</option>
+                      <option value="apartment">{tm.propertyTypeApartment}</option>
+                      <option value="house">{tm.propertyTypeHouse}</option>
+                      <option value="building">{tm.propertyTypeBuilding}</option>
+                      <option value="parking">{tm.propertyTypeParking}</option>
+                      <option value="commercial">{tm.propertyTypeCommercial}</option>
                     </select>
                   </div>
                 </div>
@@ -500,7 +504,7 @@ export function NewProjectModal({
                 {/* Purchase Price & Real-Time Estimated Valuation */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Prix d&apos;achat initial (€) *</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.purchasePriceLabel}</label>
                     <Input
                       type="number"
                       placeholder="250000"
@@ -514,7 +518,7 @@ export function NewProjectModal({
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
                         <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Valeur actuelle estimée (€)</span>
+                        <span>{tm.currentValuationLabel}</span>
                       </label>
                       <button
                         type="button"
@@ -523,7 +527,7 @@ export function NewProjectModal({
                         className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer font-semibold"
                       >
                         <Sparkles className="w-3 h-3" />
-                        <span>Estimer en direct</span>
+                        <span>{tm.estimateLive}</span>
                       </button>
                     </div>
                     <Input
@@ -540,10 +544,10 @@ export function NewProjectModal({
                 {estimate && (
                   <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between">
                     <span>
-                      Prix m² estimé : <strong className="font-mono">{estimate.price_per_m2.median} €/m²</strong> (Fourchette : {estimate.price_range.low} € – {estimate.price_range.high} €)
+                      {tm.estimatedPricePerM2} <strong className="font-mono">{estimate.price_per_m2.median} €/m²</strong> ({tm.range} {estimate.price_range.low} € – {estimate.price_range.high} €)
                     </span>
                     <Badge variant="outline" className="border-emerald-500/30 text-[10px] text-emerald-300">
-                      Tendance 1 an : {estimate.market_trend_1y > 0 ? `+${estimate.market_trend_1y}%` : `${estimate.market_trend_1y}%`}
+                      {tm.trend1y} {estimate.market_trend_1y > 0 ? `+${estimate.market_trend_1y}%` : `${estimate.market_trend_1y}%`}
                     </Badge>
                   </div>
                 )}
@@ -560,7 +564,7 @@ export function NewProjectModal({
                       />
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
                         <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
-                        Financement & Prêt Immobilier Associé
+                        {tm.loanSectionTitle}
                       </span>
                     </label>
                   </div>
@@ -568,7 +572,7 @@ export function NewProjectModal({
                   {hasLoan && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-zinc-400">Montant emprunté (€)</label>
+                        <label className="text-[10px] text-zinc-400">{tm.loanAmountLabel}</label>
                         <Input
                           type="number"
                           value={loanAmount}
@@ -578,22 +582,22 @@ export function NewProjectModal({
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-zinc-400">Durée (ans)</label>
+                        <label className="text-[10px] text-zinc-400">{tm.loanDurationLabel}</label>
                         <select
                           value={loanDurationYears}
                           onChange={(e) => setLoanDurationYears(Number(e.target.value))}
                           className="p-1.5 rounded-lg bg-zinc-950 border border-white/10 text-white text-xs h-8 font-mono cursor-pointer"
                         >
-                          <option value={7}>7 ans</option>
-                          <option value={10}>10 ans</option>
-                          <option value={15}>15 ans</option>
-                          <option value={20}>20 ans</option>
-                          <option value={25}>25 ans</option>
+                          <option value={7}>7 {tm.years}</option>
+                          <option value={10}>10 {tm.years}</option>
+                          <option value={15}>15 {tm.years}</option>
+                          <option value={20}>20 {tm.years}</option>
+                          <option value={25}>25 {tm.years}</option>
                         </select>
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-zinc-400">Taux intérêt (%)</label>
+                        <label className="text-[10px] text-zinc-400">{tm.interestRateLabel}</label>
                         <Input
                           type="number"
                           step="0.01"
@@ -604,7 +608,7 @@ export function NewProjectModal({
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-zinc-400">Début du prêt</label>
+                        <label className="text-[10px] text-zinc-400">{tm.loanStartDateLabel}</label>
                         <Input
                           type="month"
                           value={loanStartDate}
@@ -626,14 +630,14 @@ export function NewProjectModal({
                       className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-0 cursor-pointer"
                     />
                     <span className="text-xs font-semibold text-zinc-300">
-                      Investissement Locatif (Revenus & Loyer)
+                      {tm.rentalSectionTitle}
                     </span>
                   </label>
 
                   {isRental && (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-zinc-400">Loyer mensuel perçu (€)</label>
+                        <label className="text-[10px] text-zinc-400">{tm.monthlyRentLabel}</label>
                         <Input
                           type="number"
                           placeholder="Ex: 850"
@@ -651,7 +655,7 @@ export function NewProjectModal({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Objectif Cible (€) *</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.targetAmountLabel}</label>
                     <Input
                       type="number"
                       placeholder="Ex: 5000"
@@ -663,7 +667,7 @@ export function NewProjectModal({
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Déjà Épargné (€)</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.alreadySavedLabel}</label>
                     <Input
                       type="number"
                       placeholder="0"
@@ -676,7 +680,7 @@ export function NewProjectModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Épargne Mensuelle (€)</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.monthlySavingsLabel}</label>
                     <Input
                       type="number"
                       placeholder="Ex: 200"
@@ -687,18 +691,18 @@ export function NewProjectModal({
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Catégorie</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.categoryLabel}</label>
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                       className="p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs h-10 focus:ring-indigo-500 cursor-pointer"
                     >
-                      <option value="Voyage">Voyage</option>
-                      <option value="Épargne">Épargne & Investissement</option>
-                      <option value="Logement">Logement & Travaux</option>
-                      <option value="Véhicule">Véhicule</option>
-                      <option value="Tech">Matériel High-Tech</option>
-                      <option value="Sécurité">Fonds d&apos;Urgence</option>
+                      <option value="Voyage">{tm.catTravel}</option>
+                      <option value="Épargne">{tm.catSavings}</option>
+                      <option value="Logement">{tm.catHousing}</option>
+                      <option value="Véhicule">{tm.catVehicle}</option>
+                      <option value="Tech">{tm.catTech}</option>
+                      <option value="Sécurité">{tm.catEmergency}</option>
                     </select>
                   </div>
                 </div>
@@ -706,13 +710,13 @@ export function NewProjectModal({
                 {/* Linked Account Selector */}
                 {accounts.length > 0 && (
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-zinc-300">Compte ou Livret Associé</label>
+                    <label className="text-xs font-semibold text-zinc-300">{tm.linkedAccountLabel}</label>
                     <select
                       value={linkedAccountId}
                       onChange={(e) => setLinkedAccountId(e.target.value)}
                       className="p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs h-10 focus:ring-indigo-500 cursor-pointer"
                     >
-                      <option value="">Aucun compte associé</option>
+                      <option value="">{tm.noLinkedAccount}</option>
                       {accounts.map((acc) => (
                         <option key={acc.id} value={acc.id}>
                           {acc.name} ({acc.bank})
@@ -726,7 +730,7 @@ export function NewProjectModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-zinc-300">Date cible / Échéance</label>
+                <label className="text-xs font-semibold text-zinc-300">{tm.deadlineLabel}</label>
                 <Input
                   type="text"
                   placeholder="Ex: 31 Août 2026"
@@ -737,7 +741,7 @@ export function NewProjectModal({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-zinc-300">Description / Notes</label>
+                <label className="text-xs font-semibold text-zinc-300">{tm.descriptionLabel}</label>
                 <Input
                   type="text"
                   placeholder="Notes..."
@@ -754,7 +758,7 @@ export function NewProjectModal({
               type="submit"
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl cursor-pointer shadow-lg shadow-indigo-600/20 text-xs h-10"
             >
-              {projectToEdit ? "Mettre à jour" : "Enregistrer le Bien / Projet"}
+              {projectToEdit ? tm.saveBtnUpdate : tm.saveBtnCreate}
             </Button>
             <Button
               type="button"
@@ -762,7 +766,7 @@ export function NewProjectModal({
               onClick={onClose}
               className="border-white/10 bg-zinc-900 text-zinc-300 rounded-xl cursor-pointer text-xs h-10 px-4"
             >
-              Annuler
+              {tc.cancel}
             </Button>
           </div>
         </form>

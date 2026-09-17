@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Lock, KeyRound, Check, ShieldCheck } from "lucide-react"
+import { Lock, KeyRound, Check } from "lucide-react"
 import { FinlyAPI } from "@/lib/api/finly-api"
+import { useI18n } from "@/components/i18n-context"
 
 interface ChangePasswordModalProps {
   isOpen: boolean
@@ -18,6 +19,9 @@ interface ChangePasswordModalProps {
 }
 
 export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProps) {
+  const { t } = useI18n()
+  const tc = t.common
+  const tm = t.changePasswordModal
   const [currentPassword, setCurrentPassword] = useState<string>("")
   const [newPassword, setNewPassword] = useState<string>("")
   const [confirmPassword, setConfirmPassword] = useState<string>("")
@@ -31,12 +35,12 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
     setSuccessMsg(null)
 
     if (newPassword.length < 6) {
-      setErrorMsg("Le nouveau mot de passe doit comporter au moins 6 caractères.")
+      setErrorMsg(tm.errorMinLength)
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMsg("La confirmation ne correspond pas au nouveau mot de passe.")
+      setErrorMsg(tm.errorMismatch)
       return
     }
 
@@ -46,7 +50,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
         current_password: currentPassword,
         new_password: newPassword,
       })
-      setSuccessMsg("Mot de passe mis à jour avec succès.")
+      setSuccessMsg(tm.success)
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
@@ -55,7 +59,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
         setSuccessMsg(null)
       }, 1500)
     } catch (err: any) {
-      setErrorMsg(err.message || "Erreur lors de la modification du mot de passe.")
+      setErrorMsg(err.message || tc.error)
     } finally {
       setIsLoading(false)
     }
@@ -76,7 +80,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
         <DialogHeader className="p-0 text-left">
           <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-indigo-400" />
-            Modifier mon Mot de Passe
+            {tm.title}
           </DialogTitle>
         </DialogHeader>
 
@@ -96,7 +100,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-300">
-              Mot de passe actuel
+              {tm.currentPasswordLabel}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -113,7 +117,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-300">
-              Nouveau mot de passe
+              {tm.newPasswordLabel}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -121,7 +125,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                 type="password"
                 required
                 minLength={6}
-                placeholder="Au moins 6 caractères"
+                placeholder={tm.minCharacters}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="pl-9 bg-zinc-950 border-white/10 text-white text-xs h-10 rounded-xl"
@@ -131,7 +135,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-300">
-              Confirmer le nouveau mot de passe
+              {tm.confirmPasswordLabel}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -139,7 +143,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                 type="password"
                 required
                 minLength={6}
-                placeholder="Répétez le nouveau mot de passe"
+                placeholder={tm.repeatPassword}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pl-9 bg-zinc-950 border-white/10 text-white text-xs h-10 rounded-xl"
@@ -153,7 +157,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
               disabled={isLoading}
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-10 rounded-xl font-semibold cursor-pointer shadow-md shadow-indigo-600/30"
             >
-              {isLoading ? "Enregistrement..." : "Enregistrer"}
+              {isLoading ? tc.saving : tc.save}
             </Button>
             <Button
               type="button"
@@ -161,7 +165,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
               onClick={handleClose}
               className="border-white/10 bg-zinc-900 text-zinc-300 text-xs h-10 rounded-xl cursor-pointer"
             >
-              Annuler
+              {tc.cancel}
             </Button>
           </div>
         </form>

@@ -18,17 +18,19 @@ const API_BASE_URL = typeof window !== "undefined"
   : (process.env.BACKEND_INTERNAL_URL || "http://127.0.0.1:8000/api/v1")
 
 function getAuthHeaders(): HeadersInit {
-  if (typeof window === "undefined") return { "Content-Type": "application/json" }
+  if (typeof window === "undefined") return { "Content-Type": "application/json", "Accept-Language": "en" }
   const token = localStorage.getItem("finly_token")
+  const lang = localStorage.getItem("finly_language") || "en"
   return {
     "Content-Type": "application/json",
+    "Accept-Language": lang,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 }
 
 export const FinlyAPI = {
   // 0. Authentication
-  async register(data: { email: string; password: string; full_name: string }): Promise<{ access_token: string; user: User }> {
+  async register(data: { email: string; password: string; full_name: string; language?: string }): Promise<{ access_token: string; user: User }> {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -94,7 +96,8 @@ export const FinlyAPI = {
     auto_sync_enabled: boolean
     sync_interval_hours?: number
     sync_time?: string
-  }): Promise<{ status: string; message: string; auto_sync_enabled: boolean; sync_interval_hours: number; sync_time: string }> {
+    language?: string
+  }): Promise<{ status: string; message: string; auto_sync_enabled: boolean; sync_interval_hours: number; sync_time: string; language?: string }> {
     const res = await fetch(`${API_BASE_URL}/auth/sync-settings`, {
       method: "PATCH",
       headers: getAuthHeaders(),
@@ -105,6 +108,28 @@ export const FinlyAPI = {
       throw new Error(err.detail || "Erreur lors de l'enregistrement des préférences.")
     }
     return await res.json()
+  },
+
+  async updatePreferences(params: {
+    language?: string
+    auto_sync_enabled?: boolean
+    sync_interval_hours?: number
+    sync_time?: string
+  }): Promise<{ status: string; message: string; user: User }> {
+    const res = await fetch(`${API_BASE_URL}/auth/preferences`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'enregistrement des préférences.")
+    }
+    const result = await res.json()
+    if (typeof window !== "undefined" && result.user) {
+      localStorage.setItem("finly_user", JSON.stringify(result.user))
+    }
+    return result
   },
 
   logout(): void {

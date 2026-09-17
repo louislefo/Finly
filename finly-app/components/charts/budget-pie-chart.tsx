@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "recharts"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 
 interface BudgetPieChartProps {
   data?: {
@@ -48,6 +49,7 @@ export function BudgetPieChart({
   selectedCategory,
 }: BudgetPieChartProps) {
   const { formatAmount } = usePrivacy()
+  const { t, language } = useI18n()
   const [isMounted, setIsMounted] = useState<boolean>(false)
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function BudgetPieChart({
   if (!isMounted) {
     return (
       <div className="h-64 w-full flex items-center justify-center text-xs text-zinc-500">
-        Chargement de la répartition...
+        {t.dashboard.loadingMap}
       </div>
     )
   }
@@ -77,8 +79,8 @@ export function BudgetPieChart({
   if (chartData.length === 0) {
     return (
       <div className="h-64 w-full flex flex-col items-center justify-center text-xs text-zinc-500 gap-1.5 p-6 text-center rounded-2xl bg-zinc-950/40 border border-white/5">
-        <span className="font-medium text-zinc-400">Aucune dépense enregistrée</span>
-        <span className="text-[11px] text-zinc-600">Vos opérations catégorisées apparaîtront ici</span>
+        <span className="font-medium text-zinc-400">{t.dashboard.noExpensesRecorded}</span>
+        <span className="text-[11px] text-zinc-600">{language === "fr" ? "Vos opérations catégorisées apparaîtront ici" : "Your categorized transactions will appear here"}</span>
       </div>
     )
   }
@@ -94,16 +96,17 @@ export function BudgetPieChart({
                 if (active && payload && payload.length) {
                   const item = payload[0]
                   const percent = totalSpent > 0 ? ((Number(item.value) / totalSpent) * 100).toFixed(1) : "0"
+                  const displayName = t.categories[item.name as string] || item.name
 
                   return (
                     <div className="bg-[#18181B] border border-white/10 p-3 rounded-2xl shadow-2xl text-xs flex flex-col gap-1 min-w-[140px]">
-                      <span className="font-bold text-white">{item.name}</span>
+                      <span className="font-bold text-white">{displayName}</span>
                       <div className="flex justify-between items-center text-zinc-300">
-                        <span>Montant</span>
+                        <span>{language === "fr" ? "Montant" : "Amount"}</span>
                         <span className="font-mono font-bold text-white">{formatAmount(Number(item.value))}</span>
                       </div>
                       <div className="flex justify-between items-center text-zinc-400 text-[11px] pt-1 border-t border-white/5">
-                        <span>Part</span>
+                        <span>{language === "fr" ? "Part" : "Share"}</span>
                         <span className="font-mono">{percent}%</span>
                       </div>
                     </div>
@@ -151,7 +154,7 @@ export function BudgetPieChart({
         {/* Centered Total in Donut Hole */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
           <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
-            Total Dépensé
+            {language === "fr" ? "Total Dépensé" : "Total Spent"}
           </span>
           <span className="text-base font-bold font-mono text-white mt-0.5">
             {formatAmount(totalSpent)}
@@ -167,6 +170,7 @@ export function BudgetPieChart({
             FALLBACK_COLORS[idx % FALLBACK_COLORS.length]
           const percent = totalSpent > 0 ? ((item.value / totalSpent) * 100).toFixed(0) : "0"
           const isSelected = selectedCategory === item.name
+          const displayName = t.categories[item.name] || item.name
 
           return (
             <button
@@ -184,7 +188,7 @@ export function BudgetPieChart({
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: color }}
                 />
-                <span className="truncate font-medium text-xs">{item.name}</span>
+                <span className="truncate font-medium text-xs">{displayName}</span>
                 <span className="text-[10px] text-zinc-400 font-mono px-1.5 py-0.5 rounded-md bg-white/5">
                   {percent}%
                 </span>

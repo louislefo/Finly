@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
+import { useI18n } from "@/components/i18n-context"
 
 interface BankItem {
   id: string
@@ -48,6 +49,9 @@ interface WoobModalProps {
 }
 
 export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) {
+  const { t } = useI18n()
+  const tc = t.common
+  const tm = t.woobModal
   const [step, setStep] = useState<"select" | "credentials" | "2fa" | "connecting" | "success" | "success_import">("select")
   const [selectedBank, setSelectedBank] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -221,20 +225,20 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
             <div className="flex flex-col pr-4">
               <DialogTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-indigo-400 shrink-0" />
-                {step === "select" && "Ajouter une banque ou importer"}
+                {step === "select" && tm.titleSelect}
                 {step === "credentials" && `${currentBankObj?.name}`}
-                {step === "2fa" && "Validation Requise"}
-                {step === "connecting" && "Synchronisation Sécurisée"}
-                {step === "success" && "Établissement Relié"}
-                {step === "success_import" && "Sauvegarde Restaurée"}
+                {step === "2fa" && tm.title2fa}
+                {step === "connecting" && tm.titleConnecting}
+                {step === "success" && tm.titleSuccess}
+                {step === "success_import" && tm.titleSuccessImport}
               </DialogTitle>
               <DialogDescription className="text-xs text-zinc-400 mt-1">
-                {step === "select" && "Reliez un compte bancaire en direct ou restaurez une sauvegarde JSON."}
-                {step === "credentials" && "Identifiants chiffrés en local (AES-256) sur votre machine."}
-                {step === "2fa" && "Validez l'accès sur votre application bancaire mobile."}
-                {step === "connecting" && "Négociation de session et récupération sécurisée des soldes."}
-                {step === "success" && "Vos comptes et opérations sont prêts."}
-                {step === "success_import" && "Vos données financières ont été importées avec succès."}
+                {step === "select" && tm.descSelect}
+                {step === "credentials" && tm.descCredentials}
+                {step === "2fa" && tm.desc2fa}
+                {step === "connecting" && tm.descConnecting}
+                {step === "success" && tm.descSuccess}
+                {step === "success_import" && tm.descSuccessImport}
               </DialogDescription>
             </div>
           </div>
@@ -255,7 +259,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <Input
                 type="text"
-                placeholder="Rechercher une banque..."
+                placeholder={tm.searchBankPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-9 bg-zinc-950 border-white/10 text-white text-xs h-10 sm:h-11 rounded-xl"
@@ -295,7 +299,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
 
               {filteredBanks.length === 0 && (
                 <div className="col-span-full py-8 text-center text-xs text-zinc-500">
-                  Aucun établissement trouvé pour cette recherche.
+                  {tm.noBanksFound}
                 </div>
               )}
             </div>
@@ -312,10 +316,10 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-xs font-bold text-white group-hover:text-emerald-300">
-                    Ajouter mes dépenses en CSV
+                    {tm.importCsvBtn}
                   </span>
                   <span className="text-[11px] text-zinc-400 leading-relaxed">
-                    Reconnaissance automatique des colonnes depuis n&apos;importe quel relevé bancaire
+                    {tm.importCsvDesc}
                   </span>
                 </div>
               </div>
@@ -325,10 +329,10 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
             <div className="shrink-0 p-2.5 sm:p-3 rounded-xl bg-zinc-950/50 border border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Connexion locale chiffrée AES-256
+                {tm.localEncryption}
               </span>
               <span className="text-zinc-500">
-                {banks.length} banques certifiées
+                {banks.length} {tm.certifiedBanks}
               </span>
             </div>
           </div>
@@ -366,7 +370,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Code secret / Mot de passe
+                {tm.passwordLabel}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -386,7 +390,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                 type="submit"
                 className="w-full sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
               >
-                Se connecter
+                {tm.connectBtn}
               </Button>
               <Button
                 type="button"
@@ -394,7 +398,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                 onClick={() => setStep("select")}
                 className="w-full sm:w-auto border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 rounded-xl cursor-pointer"
               >
-                Retour
+                {tc.back}
               </Button>
             </div>
           </form>
@@ -406,20 +410,20 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
             <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs flex items-start gap-3">
               <Smartphone className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
               <div className="flex flex-col gap-1">
-                <span className="font-semibold text-white">Validation requise</span>
+                <span className="font-semibold text-white">{tm.validationRequiredTitle}</span>
                 <span className="text-zinc-300 text-[11px] leading-relaxed">
-                  {statusMessage || "Veuillez accepter la demande de connexion sur votre application mobile bancaire."}
+                  {statusMessage || tm.desc2fa}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-300">
-                Code OTP (facultatif si notification in-app)
+                {tm.otpCodeLabel}
               </label>
               <Input
                 type="text"
-                placeholder="Code SMS / OTP (si applicable)"
+                placeholder={tm.otpPlaceholder}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
                 className="bg-zinc-950 border-white/10 text-white text-center font-mono text-sm h-11 rounded-xl"
@@ -431,7 +435,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                 type="submit"
                 className="w-full sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
               >
-                J&apos;ai validé sur mon téléphone
+                {tm.validatedOnPhoneBtn}
               </Button>
               <Button
                 type="button"
@@ -439,7 +443,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                 onClick={() => setStep("credentials")}
                 className="w-full sm:w-auto border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 rounded-xl cursor-pointer"
               >
-                Retour
+                {tc.back}
               </Button>
             </div>
           </form>
@@ -450,10 +454,10 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
           <div className="flex flex-col items-center justify-center flex-1 py-10 gap-3 text-center">
             <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
             <span className="text-sm font-semibold text-white">
-              {statusMessage || "Connexion et négociation de session..."}
+              {statusMessage || tm.titleConnecting}
             </span>
             <span className="text-xs text-zinc-500">
-              Veuillez patienter quelques instants pendant la synchronisation
+              {tm.syncingWait}
             </span>
           </div>
         )}
@@ -464,16 +468,16 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <span className="text-base font-bold text-white">Compte bancaire relié avec succès</span>
+            <span className="text-base font-bold text-white">{tm.bankConnectedSuccess}</span>
             <p className="text-xs text-zinc-400 max-w-sm">
-              Vos soldes et dernières opérations ont été importés et chiffrés en local dans votre espace Finly.
+              {tm.bankConnectedDesc}
             </p>
 
             <Button
               onClick={handleReset}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
             >
-              Voir mes comptes
+              {tm.viewMyAccounts}
             </Button>
           </div>
         )}
@@ -484,27 +488,27 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
             <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
               <Check className="w-6 h-6" />
             </div>
-            <span className="text-base font-bold text-white">Sauvegarde JSON restaurée</span>
+            <span className="text-base font-bold text-white">{tm.backupRestoredSuccess}</span>
             <p className="text-xs text-zinc-400 max-w-sm">
-              L&apos;intégralité de vos comptes, transactions, projets et budgets ont été réintégrés avec succès.
+              {tm.backupRestoredDesc}
             </p>
 
             {importSummary && (
               <div className="grid grid-cols-2 gap-2 w-full max-w-xs my-2 text-left">
                 <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">Comptes</span>
+                  <span className="text-[10px] text-zinc-500">{t.admin.accountsColumn}</span>
                   <span className="text-sm font-bold text-white font-mono">{importSummary.accounts}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">Transactions</span>
+                  <span className="text-[10px] text-zinc-500">{t.admin.transactionsColumn}</span>
                   <span className="text-sm font-bold text-white font-mono">{importSummary.transactions}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">Projets</span>
+                  <span className="text-[10px] text-zinc-500">{t.projects.title}</span>
                   <span className="text-sm font-bold text-white font-mono">{importSummary.projects}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">Budgets</span>
+                  <span className="text-[10px] text-zinc-500">{t.budgets.title}</span>
                   <span className="text-sm font-bold text-white font-mono">{importSummary.budgets}</span>
                 </div>
               </div>
@@ -522,14 +526,14 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                   }}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
                 >
-                  Activer la synchronisation ({pendingImportedBanks[0].bank_name})
+                  {tm.activateSync} ({pendingImportedBanks[0].bank_name})
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleReset}
                   className="w-full border-white/10 bg-zinc-900 text-zinc-400 hover:text-white text-xs h-9 rounded-xl cursor-pointer"
                 >
-                  Terminer sans synchronisation directe
+                  {tm.finishWithoutSync}
                 </Button>
               </div>
             ) : (
@@ -537,7 +541,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
                 onClick={handleReset}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
               >
-                Terminer et voir mon tableau de bord
+                {tm.finishAndGoDashboard}
               </Button>
             )}
           </div>

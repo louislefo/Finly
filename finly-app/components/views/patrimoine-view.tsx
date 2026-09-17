@@ -11,28 +11,18 @@ import {
   CreditCard,
   Plus,
   RefreshCw,
-  ArrowRight,
-  ShieldCheck,
-  Percent,
-  Calendar,
-  Layers,
-  ChevronRight,
-  Sliders,
-  DollarSign,
-  Briefcase,
   Home,
   MapPin,
   Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
   Edit2,
   Trash2,
+  Layers,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { NewProjectModal } from "@/components/modals/new-project-modal"
@@ -42,6 +32,7 @@ import { Account, Project, BankConnection, RealEstateData } from "@/lib/types/fi
 export function PatrimoineView() {
   const router = useRouter()
   const { formatAmount } = usePrivacy()
+  const { t, language, format } = useI18n()
 
   // Data States
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -101,13 +92,13 @@ export function PatrimoineView() {
     const investmentsAccs: Account[] = []
 
     for (const a of accounts) {
-      const t = (a.type || "").toLowerCase()
+      const tStr = (a.type || "").toLowerCase()
       const n = (a.name || "").toLowerCase()
 
-      if (["pea", "titre", "bourse", "placement", "assurance"].some((k) => t.includes(k) || n.includes(k))) {
+      if (["pea", "titre", "bourse", "placement", "assurance", "brokerage", "investment"].some((k) => tStr.includes(k) || n.includes(k))) {
         investments += a.balance
         investmentsAccs.push(a)
-      } else if (["livret", "epargne", "épargne", "ldd", "lep"].some((k) => t.includes(k) || n.includes(k))) {
+      } else if (["livret", "epargne", "épargne", "ldd", "lep", "savings"].some((k) => tStr.includes(k) || n.includes(k))) {
         savings += a.balance
         savingsAccs.push(a)
       } else {
@@ -221,18 +212,18 @@ export function PatrimoineView() {
       }
       await loadData()
     } catch (err: any) {
-      alert(err.message || "Erreur lors de l'enregistrement.")
+      alert(err.message || (language === "fr" ? "Erreur lors de l'enregistrement." : "Error saving property."))
     }
   }
 
   // Delete Real Estate Project
   const handleDeleteProject = async (projectId: string) => {
-    if (!confirm("Voulez-vous supprimer ce bien immobilier de votre patrimoine ?")) return
+    if (!confirm(language === "fr" ? "Voulez-vous supprimer ce bien immobilier de votre patrimoine ?" : "Do you want to delete this real estate property?")) return
     try {
       await FinlyAPI.deleteProject(projectId)
       await loadData()
     } catch (err: any) {
-      alert(err.message || "Erreur suppression.")
+      alert(err.message || (language === "fr" ? "Erreur suppression." : "Error deleting property."))
     }
   }
 
@@ -263,9 +254,9 @@ export function PatrimoineView() {
       {/* Top Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex flex-col">
-          <h1 className="text-xl font-bold text-white tracking-tight">Patrimoine & Allocation</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">{t.wealth.title}</h1>
           <span className="text-xs text-zinc-400 mt-0.5">
-            Synthèse de votre situation nette, valorisation immobilière en temps réel et projections financières
+            {t.wealth.subtitle}
           </span>
         </div>
 
@@ -279,7 +270,7 @@ export function PatrimoineView() {
             className="h-9 px-3.5 gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-2xl cursor-pointer text-xs font-semibold"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${isSyncing ? "animate-spin" : ""}`} />
-            <span>{isSyncing ? "Synchronisation..." : "Actualiser"}</span>
+            <span>{isSyncing ? t.common.syncing : t.common.refresh}</span>
           </Button>
 
           <Button
@@ -291,7 +282,7 @@ export function PatrimoineView() {
             className="h-9 px-3.5 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Ajouter un Bien / Projet</span>
+            <span>{t.wealth.addProperty}</span>
           </Button>
         </div>
       </div>
@@ -301,7 +292,7 @@ export function PatrimoineView() {
         {/* Patrimoine Net Total */}
         <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">Patrimoine Net Total</span>
+            <span className="text-xs font-semibold text-zinc-400">{t.wealth.totalNetWorth}</span>
             <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
               <Landmark className="w-4 h-4" />
             </div>
@@ -311,7 +302,7 @@ export function PatrimoineView() {
               {formatAmount(assetCategories.netWorth)}
             </span>
             <span className="block text-[11px] text-zinc-500 mt-0.5">
-              Actif Brut : {formatAmount(assetCategories.grossAssets)}
+              {t.wealth.grossAssets} : {formatAmount(assetCategories.grossAssets)}
             </span>
           </div>
         </Card>
@@ -319,7 +310,7 @@ export function PatrimoineView() {
         {/* Immobilier Net & Encours */}
         <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">Patrimoine Immobilier (Net)</span>
+            <span className="text-xs font-semibold text-zinc-400">{t.wealth.realEstateNet}</span>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
               <Home className="w-4 h-4" />
             </div>
@@ -329,7 +320,7 @@ export function PatrimoineView() {
               {formatAmount(assetCategories.realEstateNetEquity)}
             </span>
             <span className="block text-[11px] text-zinc-500 mt-0.5">
-              Valo Brute : {formatAmount(assetCategories.realEstateGrossValue)} {assetCategories.totalRealEstateDebt > 0 && `• Dette : ${formatAmount(assetCategories.totalRealEstateDebt)}`}
+              {language === "fr" ? "Valo Brute" : "Gross Val."} : {formatAmount(assetCategories.realEstateGrossValue)} {assetCategories.totalRealEstateDebt > 0 && `• ${language === "fr" ? "Dette" : "Debt"} : ${formatAmount(assetCategories.totalRealEstateDebt)}`}
             </span>
           </div>
         </Card>
@@ -337,7 +328,7 @@ export function PatrimoineView() {
         {/* Épargne Sécurisée & Placements */}
         <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">Épargne & Placements</span>
+            <span className="text-xs font-semibold text-zinc-400">{t.accounts.savingsAndPlacements}</span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
               <PiggyBank className="w-4 h-4" />
             </div>
@@ -347,7 +338,7 @@ export function PatrimoineView() {
               {formatAmount(assetCategories.savings + assetCategories.investments)}
             </span>
             <span className="block text-[11px] text-zinc-500 mt-0.5">
-              {assetCategories.savingsAccs.length + assetCategories.investmentsAccs.length} comptes de placement
+              {assetCategories.savingsAccs.length + assetCategories.investmentsAccs.length} {language === "fr" ? "comptes de placement" : "savings & investment accounts"}
             </span>
           </div>
         </Card>
@@ -355,7 +346,7 @@ export function PatrimoineView() {
         {/* Liquidités Disponibles */}
         <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">Liquidités (Comptes Courants)</span>
+            <span className="text-xs font-semibold text-zinc-400">{t.wealth.liquidities}</span>
             <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
               <Wallet className="w-4 h-4" />
             </div>
@@ -365,7 +356,7 @@ export function PatrimoineView() {
               {formatAmount(assetCategories.liquidities)}
             </span>
             <span className="block text-[11px] text-zinc-500 mt-0.5">
-              {assetCategories.liquiditiesAccs.length} compte{assetCategories.liquiditiesAccs.length > 1 ? "s" : ""} disponible{assetCategories.liquiditiesAccs.length > 1 ? "s" : ""}
+              {assetCategories.liquiditiesAccs.length} {language === "fr" ? `compte${assetCategories.liquiditiesAccs.length > 1 ? "s" : ""} disponible${assetCategories.liquiditiesAccs.length > 1 ? "s" : ""}` : `checking account${assetCategories.liquiditiesAccs.length > 1 ? "s" : ""}`}
             </span>
           </div>
         </Card>
@@ -376,9 +367,9 @@ export function PatrimoineView() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-base font-bold text-white tracking-tight">Biens Immobiliers & Emprunts Associés</h2>
+            <h2 className="text-base font-bold text-white tracking-tight">{t.wealth.realEstateProperties}</h2>
             <Badge variant="outline" className="border-white/10 text-xs text-zinc-400">
-              {realEstateProjects.length} bien{realEstateProjects.length > 1 ? "s" : ""}
+              {realEstateProjects.length} {language === "fr" ? `bien${realEstateProjects.length > 1 ? "s" : ""}` : `propert${realEstateProjects.length > 1 ? "ies" : "y"}`}
             </Badge>
           </div>
 
@@ -392,7 +383,7 @@ export function PatrimoineView() {
             className="h-8 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-xl cursor-pointer text-xs"
           >
             <Plus className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Ajouter un Achat Immobilier</span>
+            <span>{t.wealth.addProperty}</span>
           </Button>
         </div>
 
@@ -402,9 +393,9 @@ export function PatrimoineView() {
               <Home className="w-8 h-8 text-indigo-400" />
             </div>
             <div className="flex flex-col gap-1 max-w-sm">
-              <h3 className="text-sm font-bold text-white">Aucun bien immobilier enregistré</h3>
+              <h3 className="text-sm font-bold text-white">{t.wealth.noRealEstate}</h3>
               <p className="text-xs text-zinc-400">
-                Ajoutez votre résidence principale ou investissement locatif pour suivre sa valeur en temps réel et l&apos;amortissement de votre prêt.
+                {t.wealth.noRealEstateDesc}
               </p>
             </div>
             <Button
@@ -415,7 +406,7 @@ export function PatrimoineView() {
               size="sm"
               className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3.5 font-semibold"
             >
-              Ajouter un bien
+              {t.wealth.addProperty}
             </Button>
           </Card>
         ) : (
@@ -442,11 +433,11 @@ export function PatrimoineView() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-white">{p.name}</span>
                           <Badge variant="outline" className="border-white/10 bg-zinc-900 text-[10px] text-zinc-400">
-                            {re.surfaceM2 ? `${re.surfaceM2} m²` : "Immobilier"}
+                            {re.surfaceM2 ? `${re.surfaceM2} m²` : (language === "fr" ? "Immobilier" : "Real Estate")}
                           </Badge>
                           {re.isRental && (
                             <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px]">
-                              Locatif ({re.grossYield ? `${re.grossYield}% brut` : "Loué"})
+                              {language === "fr" ? `Locatif (${re.grossYield ? `${re.grossYield}% brut` : "Loué"})` : `Rental (${re.grossYield ? `${re.grossYield}% gross` : "Rented"})`}
                             </Badge>
                           )}
                         </div>
@@ -466,7 +457,7 @@ export function PatrimoineView() {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
-                        title="Réestimer la valeur en direct"
+                        title={t.wealth.reestimateLive}
                       >
                         <Sparkles className={`w-3.5 h-3.5 text-emerald-400 ${isUpdating ? "animate-spin" : ""}`} />
                       </Button>
@@ -479,7 +470,7 @@ export function PatrimoineView() {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-                        title="Modifier"
+                        title={t.projects.editProject}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </Button>
@@ -489,7 +480,7 @@ export function PatrimoineView() {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                        title="Supprimer"
+                        title={t.projects.deleteProject}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -499,7 +490,7 @@ export function PatrimoineView() {
                   {/* Valuation & Equity Metrics */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-zinc-900/60 border border-white/5 text-xs">
                     <div className="flex flex-col">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Valeur Estimée</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{t.wealth.estimatedValue}</span>
                       <span className="text-sm font-bold font-mono text-white">{formatAmount(currentVal)}</span>
                       {re.estimatedPricePerM2 && (
                         <span className="text-[10px] text-zinc-400 font-mono">{re.estimatedPricePerM2} €/m²</span>
@@ -507,7 +498,7 @@ export function PatrimoineView() {
                     </div>
 
                     <div className="flex flex-col">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Prix d&apos;Achat</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{t.wealth.purchasePrice}</span>
                       <span className="text-sm font-bold font-mono text-zinc-300">{formatAmount(purchasePrice)}</span>
                       <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${gain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                         {gain >= 0 ? "+" : ""}{formatAmount(gain)} ({gainPct}%)
@@ -515,9 +506,9 @@ export function PatrimoineView() {
                     </div>
 
                     <div className="flex flex-col">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Valeur Nette Acquis</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{t.wealth.netEquity}</span>
                       <span className="text-sm font-bold font-mono text-emerald-400">{formatAmount(netEquity)}</span>
-                      <span className="text-[10px] text-zinc-500">Hors dette</span>
+                      <span className="text-[10px] text-zinc-500">{t.wealth.excludingDebt}</span>
                     </div>
                   </div>
 
@@ -527,14 +518,14 @@ export function PatrimoineView() {
                       <div className="flex items-center justify-between text-zinc-400">
                         <div className="flex items-center gap-1.5">
                           <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
-                          <span>Prêt : {formatAmount(re.loanAmount)} ({re.loanDurationYears} ans à {re.interestRate}%)</span>
+                          <span>{language === "fr" ? `Prêt : ${formatAmount(re.loanAmount)} (${re.loanDurationYears} ans à ${re.interestRate}%)` : `Loan: ${formatAmount(re.loanAmount)} (${re.loanDurationYears} yrs @ ${re.interestRate}%)`}</span>
                         </div>
-                        <span className="font-mono font-bold text-white">{re.monthlyPayment} € / mois</span>
+                        <span className="font-mono font-bold text-white">{re.monthlyPayment} € {language === "fr" ? "/ mois" : "/ mo"}</span>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-zinc-500">Capital restant dû : <strong className="font-mono text-zinc-300">{formatAmount(debt)}</strong></span>
-                        <span className="text-emerald-400 font-semibold">Amorti : {formatAmount(re.capitalAmortized || (re.loanAmount - debt))}</span>
+                        <span className="text-zinc-500">{language === "fr" ? "Capital restant dû :" : "Remaining balance:"} <strong className="font-mono text-zinc-300">{formatAmount(debt)}</strong></span>
+                        <span className="text-emerald-400 font-semibold">{language === "fr" ? "Amorti :" : "Amortized:"} {formatAmount(re.capitalAmortized || (re.loanAmount - debt))}</span>
                       </div>
 
                       {/* Progress bar of loan amortization */}
@@ -560,10 +551,10 @@ export function PatrimoineView() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-bold text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-400" />
-              <span>Répartition Globale par Classe d&apos;Actifs</span>
+              <span>{t.wealth.assetClassAllocation}</span>
             </CardTitle>
             <span className="text-xs font-mono font-semibold text-zinc-400">
-              Total Actif Brut : {formatAmount(assetCategories.grossAssets)}
+              {t.wealth.grossAssets} : {formatAmount(assetCategories.grossAssets)}
             </span>
           </div>
 
@@ -575,28 +566,28 @@ export function PatrimoineView() {
                   <div
                     style={{ width: `${(assetCategories.liquidities / assetCategories.grossAssets) * 100}%` }}
                     className="bg-blue-500 h-full transition-all"
-                    title={`Liquidités: ${formatAmount(assetCategories.liquidities)}`}
+                    title={`${t.wealth.liquidities}: ${formatAmount(assetCategories.liquidities)}`}
                   />
                 )}
                 {assetCategories.savings > 0 && (
                   <div
                     style={{ width: `${(assetCategories.savings / assetCategories.grossAssets) * 100}%` }}
                     className="bg-emerald-500 h-full transition-all"
-                    title={`Épargne: ${formatAmount(assetCategories.savings)}`}
+                    title={`${t.wealth.savings}: ${formatAmount(assetCategories.savings)}`}
                   />
                 )}
                 {assetCategories.investments > 0 && (
                   <div
                     style={{ width: `${(assetCategories.investments / assetCategories.grossAssets) * 100}%` }}
                     className="bg-purple-500 h-full transition-all"
-                    title={`Investissements: ${formatAmount(assetCategories.investments)}`}
+                    title={`${t.wealth.investments}: ${formatAmount(assetCategories.investments)}`}
                   />
                 )}
                 {assetCategories.realEstateGrossValue > 0 && (
                   <div
                     style={{ width: `${(assetCategories.realEstateGrossValue / assetCategories.grossAssets) * 100}%` }}
                     className="bg-amber-500 h-full transition-all"
-                    title={`Immobilier: ${formatAmount(assetCategories.realEstateGrossValue)}`}
+                    title={`${t.wealth.realEstate}: ${formatAmount(assetCategories.realEstateGrossValue)}`}
                   />
                 )}
               </div>
@@ -606,72 +597,72 @@ export function PatrimoineView() {
                 <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                    <span className="text-xs text-zinc-400">Liquidités</span>
+                    <span className="text-xs text-zinc-400">{t.wealth.liquidities}</span>
                   </div>
                   <span className="text-sm font-bold font-mono text-white">
                     {formatAmount(assetCategories.liquidities)}
                   </span>
                   <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.liquidities / assetCategories.grossAssets) * 100) : 0}% du total
+                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.liquidities / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span className="text-xs text-zinc-400">Épargne</span>
+                    <span className="text-xs text-zinc-400">{t.wealth.savings}</span>
                   </div>
                   <span className="text-sm font-bold font-mono text-white">
                     {formatAmount(assetCategories.savings)}
                   </span>
                   <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.savings / assetCategories.grossAssets) * 100) : 0}% du total
+                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.savings / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                    <span className="text-xs text-zinc-400">Bourse & Titres</span>
+                    <span className="text-xs text-zinc-400">{t.wealth.investments}</span>
                   </div>
                   <span className="text-sm font-bold font-mono text-white">
                     {formatAmount(assetCategories.investments)}
                   </span>
                   <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.investments / assetCategories.grossAssets) * 100) : 0}% du total
+                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.investments / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span className="text-xs text-zinc-400">Immobilier Brut</span>
+                    <span className="text-xs text-zinc-400">{t.wealth.realEstate}</span>
                   </div>
                   <span className="text-sm font-bold font-mono text-white">
                     {formatAmount(assetCategories.realEstateGrossValue)}
                   </span>
                   <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.realEstateGrossValue / assetCategories.grossAssets) * 100) : 0}% du total
+                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.realEstateGrossValue / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
                   </span>
                 </div>
               </div>
             </div>
           ) : (
             <div className="py-8 text-center text-xs text-zinc-500">
-              Aucun actif détecté pour l&apos;instant.
+              {language === "fr" ? "Aucun actif détecté pour l'instant." : "No assets detected yet."}
             </div>
           )}
 
           {/* Underlying Accounts Detail List */}
           <div className="flex flex-col gap-3 pt-2">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Comptes bancaires rattachés</span>
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{t.wealth.linkedBankAccounts}</span>
             <div className="divide-y divide-white/5 border border-white/5 rounded-2xl bg-zinc-900/40 overflow-hidden">
               {accounts.map((acc) => (
                 <div key={acc.id} className="p-3 flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-zinc-400 font-medium">{acc.bank}</span>
                     <span className="text-zinc-600">•</span>
-                    <span className="text-white font-semibold truncate">{acc.name || "Compte"}</span>
+                    <span className="text-white font-semibold truncate">{acc.name || t.accounts.depositAccount}</span>
                     <Badge variant="outline" className="border-white/10 bg-zinc-900 text-zinc-400 text-[10px] py-0 px-1.5 hidden sm:inline">
                       {acc.type || "Courant"}
                     </Badge>
@@ -690,9 +681,9 @@ export function PatrimoineView() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-bold text-white flex items-center gap-2">
               <Building2 className="w-4 h-4 text-indigo-400" />
-              <span>Par Banque</span>
+              <span>{t.wealth.byBank}</span>
             </CardTitle>
-            <span className="text-xs text-zinc-400">{bankBreakdown.length} banques</span>
+            <span className="text-xs text-zinc-400">{bankBreakdown.length} {language === "fr" ? `banque${bankBreakdown.length > 1 ? "s" : ""}` : `bank${bankBreakdown.length > 1 ? "s" : ""}`}</span>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -707,12 +698,12 @@ export function PatrimoineView() {
                       </div>
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-white">{b.bankName}</span>
-                        <span className="text-[10px] text-zinc-500">{b.count} compte{b.count > 1 ? "s" : ""}</span>
+                        <span className="text-[10px] text-zinc-500">{b.count} {language === "fr" ? `compte${b.count > 1 ? "s" : ""}` : `account${b.count > 1 ? "s" : ""}`}</span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
                       <span className="text-xs font-bold font-mono text-white">{formatAmount(b.total)}</span>
-                      <span className="text-[10px] text-zinc-500">{pct}% des liquidités</span>
+                      <span className="text-[10px] text-zinc-500">{pct}% {language === "fr" ? "des liquidités" : "of liquidities"}</span>
                     </div>
                   </div>
                   <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
@@ -731,10 +722,10 @@ export function PatrimoineView() {
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-emerald-400" />
             <CardTitle className="text-base font-bold text-white">
-              Simulateur d&apos;Évolution Patrimoniale
+              {t.wealth.wealthEvolutionSimulator}
             </CardTitle>
           </div>
-          <span className="text-xs text-zinc-400">Projection mathématique à intérêts composés</span>
+          <span className="text-xs text-zinc-400">{t.wealth.compoundInterestProjection}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -743,8 +734,8 @@ export function PatrimoineView() {
             {/* Monthly Savings Input */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between text-xs font-medium">
-                <span className="text-zinc-400">Épargne mensuelle ajoutée</span>
-                <span className="text-white font-mono font-bold">{simMonthlySavings} € / mois</span>
+                <span className="text-zinc-400">{t.wealth.monthlySavingsAdded}</span>
+                <span className="text-white font-mono font-bold">{simMonthlySavings} € {language === "fr" ? "/ mois" : "/ mo"}</span>
               </div>
               <input
                 type="range"
@@ -760,8 +751,8 @@ export function PatrimoineView() {
             {/* Annual Yield Input */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between text-xs font-medium">
-                <span className="text-zinc-400">Rendement annuel estimé</span>
-                <span className="text-white font-mono font-bold">{simAnnualRate} % / an</span>
+                <span className="text-zinc-400">{t.wealth.estimatedAnnualYield}</span>
+                <span className="text-white font-mono font-bold">{simAnnualRate} % {language === "fr" ? "/ an" : "/ yr"}</span>
               </div>
               <input
                 type="range"
@@ -776,7 +767,7 @@ export function PatrimoineView() {
 
             {/* Time Horizon */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-zinc-400">Horizon d&apos;investissement</span>
+              <span className="text-xs font-medium text-zinc-400">{t.wealth.investmentHorizon}</span>
               <div className="flex items-center gap-2">
                 {[1, 3, 5, 10, 15].map((y) => (
                   <button
@@ -789,7 +780,7 @@ export function PatrimoineView() {
                         : "bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white"
                     }`}
                   >
-                    {y} an{y > 1 ? "s" : ""}
+                    {y} {language === "fr" ? `an${y > 1 ? "s" : ""}` : `yr${y > 1 ? "s" : ""}`}
                   </button>
                 ))}
               </div>
@@ -799,7 +790,7 @@ export function PatrimoineView() {
           {/* Projected Result Card */}
           <div className="p-5 rounded-3xl bg-zinc-900/90 border border-white/10 flex flex-col justify-between gap-4">
             <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              Patrimoine Net dans {simYears} an{simYears > 1 ? "s" : ""}
+              {format(t.wealth.projectedWealthInYears, { count: simYears })}
             </span>
             <div className="flex flex-col">
               <span className="text-3xl font-extrabold font-mono text-white tracking-tight">
@@ -807,11 +798,11 @@ export function PatrimoineView() {
               </span>
               <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-white/10 text-xs text-zinc-400">
                 <div className="flex justify-between">
-                  <span>Capital de départ + versements :</span>
+                  <span>{t.wealth.totalContributed} :</span>
                   <span className="font-mono text-zinc-300 font-semibold">{formatAmount(projectedWealth.contributed)}</span>
                 </div>
                 <div className="flex justify-between text-emerald-400">
-                  <span>Intérêts composés générés :</span>
+                  <span>{t.wealth.generatedInterest} :</span>
                   <span className="font-mono font-bold">+{formatAmount(projectedWealth.interest)}</span>
                 </div>
               </div>

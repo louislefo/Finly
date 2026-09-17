@@ -19,18 +19,15 @@ import {
   Mail,
   Lock,
   Download,
-  FileSpreadsheet,
-  FileCode,
   HardDrive,
   Database,
   ArrowLeft,
-  ChevronRight,
   AlertTriangle,
-  Sparkles,
-  ExternalLink,
+  Globe,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
+import { useI18n } from "@/components/i18n-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -53,6 +50,7 @@ export function AccountView() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const { formatAmount } = usePrivacy()
+  const { t, language, setLanguage, format } = useI18n()
 
   // Navigation Tab State
   const [activeTab, setActiveTab] = useState<"banks" | "profile" | "backup">("banks")
@@ -101,6 +99,7 @@ export function AccountView() {
     projects: number
     budgets: number
   } | null>(null)
+
   // Sync Settings States
   const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(false)
   const [syncInterval, setSyncInterval] = useState<number>(12)
@@ -144,7 +143,7 @@ export function AccountView() {
     for (const a of accounts) {
       const t = (a.type || "").toLowerCase()
       const n = (a.name || "").toLowerCase()
-      const isSav = ["livret", "epargne", "épargne", "ldd", "lep", "pea", "assurance", "titre", "placement"].some(
+      const isSav = ["livret", "epargne", "épargne", "ldd", "lep", "pea", "assurance", "titre", "placement", "savings", "investment"].some(
         (k) => t.includes(k) || n.includes(k)
       )
 
@@ -194,13 +193,13 @@ export function AccountView() {
       await loadData()
       setSyncFeedback({
         type: "success",
-        message: res.message || "Synchronisation bancaire réussie.",
+        message: res.message || (language === "fr" ? "Synchronisation bancaire réussie." : "Bank synchronization successful."),
       })
       setTimeout(() => setSyncFeedback(null), 5000)
     } catch (err: any) {
       setSyncFeedback({
         type: "error",
-        message: err.message || "Erreur lors de la synchronisation.",
+        message: err.message || (language === "fr" ? "Erreur lors de la synchronisation." : "Error during synchronization."),
       })
     } finally {
       setIsSyncingAll(false)
@@ -228,7 +227,7 @@ export function AccountView() {
       await loadData()
       setEditingAccount(null)
     } catch (err: any) {
-      alert(err.message || "Erreur lors de la mise à jour du compte.")
+      alert(err.message || (language === "fr" ? "Erreur lors de la mise à jour du compte." : "Error updating account."))
     } finally {
       setIsSavingAccount(false)
     }
@@ -243,7 +242,7 @@ export function AccountView() {
       await loadData()
       setAccountToDelete(null)
     } catch (err: any) {
-      alert(err.message || "Erreur lors de la suppression.")
+      alert(err.message || (language === "fr" ? "Erreur lors de la suppression." : "Error deleting account."))
     } finally {
       setIsDeleting(false)
     }
@@ -258,7 +257,7 @@ export function AccountView() {
       await loadData()
       setBankToDelete(null)
     } catch (err: any) {
-      alert(err.message || "Erreur lors de la suppression de la banque.")
+      alert(err.message || (language === "fr" ? "Erreur lors de la suppression de la banque." : "Error disconnecting bank."))
     } finally {
       setIsDeleting(false)
     }
@@ -273,15 +272,15 @@ export function AccountView() {
 
   // Account Type Icon Helper
   const getAccountIcon = (type: string, name?: string) => {
-    const t = (type || "").toLowerCase()
+    const tStr = (type || "").toLowerCase()
     const n = (name || "").toLowerCase()
-    if (["livret", "epargne", "épargne", "ldd", "lep"].some((k) => t.includes(k) || n.includes(k))) {
+    if (["livret", "epargne", "épargne", "ldd", "lep", "savings"].some((k) => tStr.includes(k) || n.includes(k))) {
       return <PiggyBank className="w-4 h-4 text-emerald-400" />
     }
-    if (["carte", "credit", "crédit", "debit"].some((k) => t.includes(k) || n.includes(k))) {
+    if (["carte", "credit", "crédit", "debit", "card"].some((k) => tStr.includes(k) || n.includes(k))) {
       return <CreditCard className="w-4 h-4 text-amber-400" />
     }
-    if (["pea", "titre", "bourse", "placement", "assurance"].some((k) => t.includes(k) || n.includes(k))) {
+    if (["pea", "titre", "bourse", "placement", "assurance", "brokerage", "investment"].some((k) => tStr.includes(k) || n.includes(k))) {
       return <Landmark className="w-4 h-4 text-violet-400" />
     }
     return <Wallet className="w-4 h-4 text-indigo-400" />
@@ -294,11 +293,11 @@ export function AccountView() {
     setPwdSuccessMsg(null)
 
     if (newPassword.length < 6) {
-      setPwdErrorMsg("Le nouveau mot de passe doit comporter au moins 6 caractères.")
+      setPwdErrorMsg(language === "fr" ? "Le nouveau mot de passe doit comporter au moins 6 caractères." : "New password must be at least 6 characters.")
       return
     }
     if (newPassword !== confirmPassword) {
-      setPwdErrorMsg("La confirmation ne correspond pas au nouveau mot de passe.")
+      setPwdErrorMsg(t.accounts.passwordMismatch)
       return
     }
 
@@ -308,12 +307,12 @@ export function AccountView() {
         current_password: currentPassword,
         new_password: newPassword,
       })
-      setPwdSuccessMsg("Votre mot de passe a été modifié avec succès.")
+      setPwdSuccessMsg(t.accounts.passwordModifiedSuccess)
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch (err: any) {
-      setPwdErrorMsg(err.message || "Erreur lors de la modification du mot de passe.")
+      setPwdErrorMsg(err.message || (language === "fr" ? "Erreur lors de la modification du mot de passe." : "Error modifying password."))
     } finally {
       setIsUpdatingPwd(false)
     }
@@ -339,7 +338,7 @@ export function AccountView() {
         sync_interval_hours: Number(syncInterval),
         sync_time: syncTime,
       })
-      setSyncSettingsSuccessMsg("Préférences de synchronisation enregistrées.")
+      setSyncSettingsSuccessMsg(t.accounts.preferencesSavedSuccess)
       setTimeout(() => setSyncSettingsSuccessMsg(null), 3500)
     } catch {
       // Error handling
@@ -361,16 +360,16 @@ export function AccountView() {
       const link = document.createElement("a")
       const dateStr = new Date().toISOString().split("T")[0]
       link.href = url
-      link.download = `finly_sauvegarde_integrale_${dateStr}.json`
+      link.download = `finly_backup_${dateStr}.json`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
-      setExportSuccessMsg("Sauvegarde intégrale JSON générée et téléchargée.")
+      setExportSuccessMsg(language === "fr" ? "Sauvegarde intégrale JSON téléchargée." : "Complete JSON backup downloaded.")
       setTimeout(() => setExportSuccessMsg(null), 5000)
     } catch (err: any) {
-      setImportErrorMsg(err.message || "Erreur lors de l'exportation.")
+      setImportErrorMsg(err.message || (language === "fr" ? "Erreur lors de l'exportation." : "Error exporting backup."))
     } finally {
       setIsExportingJSON(false)
     }
@@ -394,12 +393,12 @@ export function AccountView() {
         const parsed = JSON.parse(content)
 
         if (!parsed || (!parsed.accounts && !parsed.transactions && !parsed.categories && !parsed.projects)) {
-          throw new Error("Format de sauvegarde JSON non reconnu ou données manquantes.")
+          throw new Error(language === "fr" ? "Format de sauvegarde JSON non reconnu ou données manquantes." : "Unrecognized JSON backup format or missing data.")
         }
 
         const res = await FinlyAPI.importJsonBackup(parsed)
         setImportSummary(res.imported)
-        setImportSuccessMsg("Sauvegarde intégrale restaurée avec succès.")
+        setImportSuccessMsg(t.accounts.restoreSuccess)
         await loadData()
 
         if (res.pending_connections && res.pending_connections.length > 0) {
@@ -409,7 +408,7 @@ export function AccountView() {
 
         setTimeout(() => setImportSuccessMsg(null), 8000)
       } catch (err: any) {
-        setImportErrorMsg(err.message || "Fichier JSON invalide ou corrompu.")
+        setImportErrorMsg(err.message || (language === "fr" ? "Fichier JSON invalide ou corrompu." : "Invalid or corrupt JSON file."))
       } finally {
         setIsImportingJSON(false)
         if (fileInputRef.current) {
@@ -418,7 +417,7 @@ export function AccountView() {
       }
     }
     reader.onerror = () => {
-      setImportErrorMsg("Erreur lors de la lecture du fichier.")
+      setImportErrorMsg(language === "fr" ? "Erreur lors de la lecture du fichier." : "Error reading file.")
       setIsImportingJSON(false)
     }
     reader.readAsText(file)
@@ -448,9 +447,9 @@ export function AccountView() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-white tracking-tight">Gestion des Banques & Comptes</h1>
+            <h1 className="text-xl font-bold text-white tracking-tight">{t.accounts.title}</h1>
             <span className="text-xs text-zinc-400 mt-0.5">
-              {bankGroups.length} établissement{bankGroups.length > 1 ? "s" : ""} relié{bankGroups.length > 1 ? "s" : ""} • {accounts.length} compte{accounts.length > 1 ? "s" : ""} actif{accounts.length > 1 ? "s" : ""}
+              {bankGroups.length} {language === "fr" ? `établissement${bankGroups.length > 1 ? "s" : ""} relié${bankGroups.length > 1 ? "s" : ""}` : `connected institution${bankGroups.length > 1 ? "s" : ""}`} • {accounts.length} {language === "fr" ? `compte${accounts.length > 1 ? "s" : ""} actif${accounts.length > 1 ? "s" : ""}` : `active account${accounts.length > 1 ? "s" : ""}`}
             </span>
           </div>
         </div>
@@ -465,7 +464,7 @@ export function AccountView() {
             className="h-9 px-3.5 gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-2xl cursor-pointer text-xs font-semibold"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${isSyncingAll ? "animate-spin" : ""}`} />
-            <span>{isSyncingAll ? "Synchronisation..." : "Actualiser tout"}</span>
+            <span>{isSyncingAll ? t.common.syncing : t.accounts.syncAll}</span>
           </Button>
 
           <Button
@@ -474,7 +473,7 @@ export function AccountView() {
             className="h-9 px-3.5 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Connecter une Banque</span>
+            <span>{t.accounts.connectBank}</span>
           </Button>
         </div>
       </div>
@@ -494,7 +493,7 @@ export function AccountView() {
             onClick={() => setSyncFeedback(null)}
             className="text-zinc-400 hover:text-white text-xs cursor-pointer font-bold"
           >
-            Fermer
+            {t.common.close}
           </button>
         </div>
       )}
@@ -511,7 +510,7 @@ export function AccountView() {
           }`}
         >
           <Building2 className="w-3.5 h-3.5" />
-          <span>Banques & Comptes</span>
+          <span>{t.accounts.banksAndAccountsTab}</span>
         </button>
         <button
           type="button"
@@ -523,7 +522,7 @@ export function AccountView() {
           }`}
         >
           <UserIcon className="w-3.5 h-3.5" />
-          <span>Profil & Sécurité</span>
+          <span>{t.accounts.profileAndSecurityTab}</span>
         </button>
         <button
           type="button"
@@ -535,7 +534,7 @@ export function AccountView() {
           }`}
         >
           <Database className="w-3.5 h-3.5" />
-          <span>Sauvegarde & Données</span>
+          <span>{t.accounts.backupAndDataTab}</span>
         </button>
       </div>
 
@@ -546,7 +545,7 @@ export function AccountView() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-400">Patrimoine Agrégé</span>
+                <span className="text-xs font-semibold text-zinc-400">{t.accounts.aggregatedWealth}</span>
                 <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
                   <Landmark className="w-4 h-4" />
                 </div>
@@ -556,14 +555,14 @@ export function AccountView() {
                   {formatAmount(totalBalance)}
                 </span>
                 <span className="block text-[11px] text-zinc-500 mt-0.5">
-                  {accounts.length} compte{accounts.length > 1 ? "s" : ""} dans {bankGroups.length} banque{bankGroups.length > 1 ? "s" : ""}
+                  {accounts.length} {language === "fr" ? `compte${accounts.length > 1 ? "s" : ""}` : `account${accounts.length > 1 ? "s" : ""}`} • {bankGroups.length} {language === "fr" ? `banque${bankGroups.length > 1 ? "s" : ""}` : `bank${bankGroups.length > 1 ? "s" : ""}`}
                 </span>
               </div>
             </Card>
 
             <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-400">Comptes de Dépôt / Courants</span>
+                <span className="text-xs font-semibold text-zinc-400">{t.accounts.checkingDeposits}</span>
                 <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
                   <Wallet className="w-4 h-4" />
                 </div>
@@ -573,14 +572,14 @@ export function AccountView() {
                   {formatAmount(checkingTotal)}
                 </span>
                 <span className="block text-[11px] text-zinc-500 mt-0.5">
-                  {checkingCount} compte{checkingCount > 1 ? "s" : ""} de liquidités
+                  {checkingCount} {language === "fr" ? `compte${checkingCount > 1 ? "s" : ""} de liquidités` : `checking account${checkingCount > 1 ? "s" : ""}`}
                 </span>
               </div>
             </Card>
 
             <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-400">Épargne & Placements</span>
+                <span className="text-xs font-semibold text-zinc-400">{t.accounts.savingsAndPlacements}</span>
                 <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
                   <PiggyBank className="w-4 h-4" />
                 </div>
@@ -590,7 +589,7 @@ export function AccountView() {
                   {formatAmount(savingsTotal)}
                 </span>
                 <span className="block text-[11px] text-zinc-500 mt-0.5">
-                  {savingsCount} compte{savingsCount > 1 ? "s" : ""} d&apos;épargne
+                  {savingsCount} {language === "fr" ? `compte${savingsCount > 1 ? "s" : ""} d'épargne` : `savings account${savingsCount > 1 ? "s" : ""}`}
                 </span>
               </div>
             </Card>
@@ -603,9 +602,9 @@ export function AccountView() {
                 <Building2 className="w-10 h-10 text-indigo-400" />
               </div>
               <div className="flex flex-col gap-1 max-w-sm">
-                <h3 className="text-base font-bold text-white">Aucun compte bancaire relié</h3>
+                <h3 className="text-base font-bold text-white">{t.accounts.noConnectedBank}</h3>
                 <p className="text-xs text-zinc-400">
-                  Connectez votre première banque via Woob pour synchroniser automatiquement vos comptes et opérations.
+                  {t.accounts.noConnectedBankDesc}
                 </p>
               </div>
               <Button
@@ -613,7 +612,7 @@ export function AccountView() {
                 className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs h-9 px-4 gap-2 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Connecter une banque</span>
+                <span>{t.accounts.connectBank}</span>
               </Button>
             </Card>
           ) : (
@@ -630,23 +629,23 @@ export function AccountView() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-base font-bold text-white">{group.bankName}</span>
                           <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2">
-                            Connecté
+                            {t.accounts.connectedBadge}
                           </Badge>
                           {group.connection?.last_synced_at && (
                             <span className="text-[10px] text-zinc-500">
-                              Dernière synchro : {new Date(group.connection.last_synced_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                              {t.accounts.lastSynced} : {new Date(group.connection.last_synced_at).toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                             </span>
                           )}
                         </div>
                         <span className="text-xs text-zinc-400 mt-0.5">
-                          {group.accounts.length} sous-compte{group.accounts.length > 1 ? "s" : ""}
+                          {group.accounts.length} {language === "fr" ? `sous-compte${group.accounts.length > 1 ? "s" : ""}` : `sub-account${group.accounts.length > 1 ? "s" : ""}`}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-3">
                       <div className="flex flex-col items-start sm:items-end">
-                        <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">Solde Établissement</span>
+                        <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">{t.accounts.institutionBalance}</span>
                         <span className="text-lg font-bold font-mono text-white">
                           {formatAmount(group.totalBalance)}
                         </span>
@@ -657,10 +656,10 @@ export function AccountView() {
                         variant="ghost"
                         size="sm"
                         className="h-8 px-2.5 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl cursor-pointer text-xs gap-1.5 transition-colors"
-                        title={`Supprimer ${group.bankName}`}
+                        title={t.accounts.disconnectBank}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline text-[11px]">Déconnecter</span>
+                        <span className="hidden sm:inline text-[11px]">{t.accounts.disconnectBank}</span>
                       </Button>
                     </div>
                   </div>
@@ -679,7 +678,7 @@ export function AccountView() {
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-white truncate">
-                                {acc.name || "Compte de dépôt"}
+                                {acc.name || t.accounts.depositAccount}
                               </span>
                               <Badge variant="outline" className="border-white/10 bg-zinc-900 text-zinc-400 text-[10px] py-0 px-2">
                                 {acc.type || "Compte Courant"}
@@ -696,7 +695,7 @@ export function AccountView() {
                                   type="button"
                                   onClick={() => handleCopyIban(acc.iban!, acc.id)}
                                   className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
-                                  title="Copier l'IBAN"
+                                  title={t.accounts.copyIban}
                                 >
                                   {copiedId === acc.id ? (
                                     <Check className="w-3 h-3 text-emerald-400" />
@@ -721,7 +720,7 @@ export function AccountView() {
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-                              title="Modifier le compte"
+                              title={t.accounts.editAccount}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
@@ -731,7 +730,7 @@ export function AccountView() {
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                              title="Supprimer ce compte"
+                              title={t.accounts.deleteAccount}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -760,9 +759,9 @@ export function AccountView() {
               </Avatar>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-bold text-white">{user?.full_name || "Utilisateur"}</span>
+                  <span className="text-base font-bold text-white">{user?.full_name || (language === "fr" ? "Utilisateur" : "User")}</span>
                   <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2">
-                    Actif
+                    {t.accounts.activeUser}
                   </Badge>
                 </div>
                 <span className="text-xs text-zinc-400 mt-0.5">{user?.email}</span>
@@ -776,8 +775,56 @@ export function AccountView() {
               className="border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-white h-9 px-3.5 gap-1.5 rounded-xl cursor-pointer font-semibold text-xs"
             >
               <UserIcon className="w-3.5 h-3.5" />
-              <span>Se déconnecter</span>
+              <span>{t.auth.logout}</span>
             </Button>
+          </Card>
+
+          {/* Language Preference Card */}
+          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                <Globe className="w-4 h-4 text-indigo-400" />
+                <span>{t.accounts.languagePreference}</span>
+              </CardTitle>
+              <p className="text-xs text-zinc-400 mt-1">
+                {t.accounts.languagePreferenceDesc}
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setLanguage("en")}
+                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                    language === "en"
+                      ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
+                      : "bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white">{t.accounts.english}</span>
+                    <span className="text-xs text-zinc-400 mt-0.5">English (Default)</span>
+                  </div>
+                  {language === "en" && <Check className="w-4 h-4 text-indigo-400" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLanguage("fr")}
+                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                    language === "fr"
+                      ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
+                      : "bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white">{t.accounts.french}</span>
+                    <span className="text-xs text-zinc-400 mt-0.5">Français (France)</span>
+                  </div>
+                  {language === "fr" && <Check className="w-4 h-4 text-indigo-400" />}
+                </button>
+              </div>
+            </CardContent>
           </Card>
 
           {/* Change Password Card */}
@@ -785,7 +832,7 @@ export function AccountView() {
             <CardHeader className="p-0 pb-4">
               <CardTitle className="text-base font-bold text-white flex items-center gap-2">
                 <Lock className="w-4 h-4 text-indigo-400" />
-                <span>Modifier mon mot de passe</span>
+                <span>{t.accounts.changePasswordTitle}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -803,7 +850,7 @@ export function AccountView() {
                 )}
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-400">Mot de passe actuel</label>
+                  <label className="text-xs font-semibold text-zinc-400">{t.accounts.currentPassword}</label>
                   <Input
                     type="password"
                     placeholder="••••••••"
@@ -816,10 +863,10 @@ export function AccountView() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-zinc-400">Nouveau mot de passe</label>
+                    <label className="text-xs font-semibold text-zinc-400">{t.accounts.newPassword}</label>
                     <Input
                       type="password"
-                      placeholder="Au moins 6 caractères"
+                      placeholder={language === "fr" ? "Au moins 6 caractères" : "At least 6 characters"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
@@ -828,10 +875,10 @@ export function AccountView() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-zinc-400">Confirmation</label>
+                    <label className="text-xs font-semibold text-zinc-400">{t.accounts.confirmPassword}</label>
                     <Input
                       type="password"
-                      placeholder="Répéter le mot de passe"
+                      placeholder={language === "fr" ? "Répéter le mot de passe" : "Repeat new password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
@@ -846,7 +893,7 @@ export function AccountView() {
                     disabled={isUpdatingPwd}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
                   >
-                    {isUpdatingPwd ? "Modification..." : "Enregistrer le mot de passe"}
+                    {isUpdatingPwd ? t.common.loading : t.accounts.savePassword}
                   </Button>
                 </div>
               </form>
@@ -858,7 +905,7 @@ export function AccountView() {
             <CardHeader className="p-0 pb-4">
               <CardTitle className="text-base font-bold text-white flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-indigo-400" />
-                <span>Synchronisation automatique</span>
+                <span>{t.accounts.autoSyncTitle}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -872,9 +919,9 @@ export function AccountView() {
 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-950 border border-white/5">
                   <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-white">Actualisation périodique</span>
+                    <span className="text-xs font-semibold text-white">{t.accounts.periodicRefresh}</span>
                     <span className="text-[11px] text-zinc-500">
-                      Synchronise automatiquement les soldes et opérations bancaires en arrière-plan.
+                      {t.accounts.periodicRefreshDesc}
                     </span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -891,20 +938,20 @@ export function AccountView() {
                 {autoSyncEnabled && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">Fréquence de synchronisation</label>
+                      <label className="text-xs font-semibold text-zinc-400">{t.accounts.syncFrequency}</label>
                       <select
                         value={syncInterval}
                         onChange={(e) => setSyncInterval(Number(e.target.value))}
                         className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-9 px-3 outline-none focus:border-indigo-500 cursor-pointer"
                       >
-                        <option value={6}>Toutes les 6 heures</option>
-                        <option value={12}>Toutes les 12 heures</option>
-                        <option value={24}>Une fois par jour (24h)</option>
+                        <option value={6}>{t.accounts.every6Hours}</option>
+                        <option value={12}>{t.accounts.every12Hours}</option>
+                        <option value={24}>{t.accounts.every24Hours}</option>
                       </select>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">Heure de référence</label>
+                      <label className="text-xs font-semibold text-zinc-400">{t.accounts.referenceTime}</label>
                       <Input
                         type="time"
                         value={syncTime}
@@ -921,7 +968,7 @@ export function AccountView() {
                     disabled={isSavingSyncSettings}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
                   >
-                    {isSavingSyncSettings ? "Enregistrement..." : "Enregistrer les préférences"}
+                    {isSavingSyncSettings ? t.common.loading : t.accounts.savePreferences}
                   </Button>
                 </div>
               </form>
@@ -940,9 +987,9 @@ export function AccountView() {
                 <Download className="w-5 h-5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-white">Sauvegarde intégrale JSON</span>
+                <span className="text-sm font-bold text-white">{t.accounts.jsonBackupTitle}</span>
                 <span className="text-xs text-zinc-400 mt-0.5">
-                  Exporte l&apos;ensemble de vos comptes, transactions, projets, budgets et règles.
+                  {t.accounts.jsonBackupDesc}
                 </span>
               </div>
             </div>
@@ -952,7 +999,7 @@ export function AccountView() {
               disabled={isExportingJSON}
               className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-4 rounded-xl cursor-pointer font-semibold shrink-0 shadow-md shadow-indigo-600/20"
             >
-              {isExportingJSON ? "Génération..." : "Télécharger la sauvegarde"}
+              {isExportingJSON ? t.common.loading : t.accounts.downloadBackup}
             </Button>
           </Card>
 
@@ -970,9 +1017,9 @@ export function AccountView() {
                 <HardDrive className="w-5 h-5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-white">Restaurer une sauvegarde JSON</span>
+                <span className="text-sm font-bold text-white">{t.accounts.restoreBackupTitle}</span>
                 <span className="text-xs text-zinc-400 mt-0.5">
-                  Importez un fichier de sauvegarde Finly pour restaurer votre historique.
+                  {t.accounts.restoreBackupDesc}
                 </span>
               </div>
             </div>
@@ -992,7 +1039,7 @@ export function AccountView() {
                 variant="outline"
                 className="border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs h-9 px-4 rounded-xl cursor-pointer font-semibold"
               >
-                {isImportingJSON ? "Restauration en cours..." : "Sélectionner un fichier JSON"}
+                {isImportingJSON ? t.common.loading : t.accounts.selectJsonFile}
               </Button>
             </div>
 
@@ -1004,7 +1051,7 @@ export function AccountView() {
                 </div>
                 {importSummary && (
                   <span className="text-[11px] text-emerald-400/80 pl-6">
-                    {importSummary.accounts} comptes, {importSummary.transactions} transactions, {importSummary.projects} projets importés.
+                    {importSummary.accounts} {language === "fr" ? "comptes" : "accounts"}, {importSummary.transactions} transactions, {importSummary.projects} {language === "fr" ? "projets importés" : "goals imported"}.
                   </span>
                 )}
               </div>
@@ -1025,35 +1072,35 @@ export function AccountView() {
           <DialogHeader className="p-0 text-left">
             <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
               <Edit2 className="w-4 h-4 text-indigo-400" />
-              <span>Modifier le compte</span>
+              <span>{t.accounts.editAccount}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 mt-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400">Nom du compte</label>
+              <label className="text-xs font-semibold text-zinc-400">{t.accounts.accountName}</label>
               <Input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Ex: Compte Courant Principal"
+                placeholder="Ex: Main Checking Account"
                 className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400">Type de compte</label>
+              <label className="text-xs font-semibold text-zinc-400">{t.accounts.accountType}</label>
               <select
                 value={editType}
                 onChange={(e) => setEditType(e.target.value)}
                 className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-9 px-3 outline-none focus:border-indigo-500 cursor-pointer"
               >
-                <option value="Compte Courant">Compte Courant / Dépôt</option>
-                <option value="Livret d'Épargne">Livret d&apos;Épargne (Livret A, LDDS, LEP)</option>
-                <option value="Carte Bancaire">Carte Bancaire / Débit différé</option>
-                <option value="Compte Titres / PEA">Compte Titres / PEA / Bourse</option>
-                <option value="Assurance-Vie">Assurance-Vie / Placement</option>
-                <option value="Autre">Autre compte</option>
+                <option value="Compte Courant">{t.accounts.checkingType}</option>
+                <option value="Livret d'Épargne">{t.accounts.savingsType}</option>
+                <option value="Carte Bancaire">{t.accounts.cardType}</option>
+                <option value="Compte Titres / PEA">{t.accounts.investmentType}</option>
+                <option value="Assurance-Vie">{t.accounts.lifeInsuranceType}</option>
+                <option value="Autre">{t.accounts.otherType}</option>
               </select>
             </div>
           </div>
@@ -1065,7 +1112,7 @@ export function AccountView() {
               onClick={() => setEditingAccount(null)}
               className="border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl text-xs h-9 px-3.5"
             >
-              Annuler
+              {t.common.cancel}
             </Button>
             <Button
               type="button"
@@ -1073,7 +1120,7 @@ export function AccountView() {
               disabled={isSavingAccount}
               className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
             >
-              {isSavingAccount ? "Enregistrement..." : "Enregistrer"}
+              {isSavingAccount ? t.common.loading : t.common.save}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1085,14 +1132,24 @@ export function AccountView() {
           <DialogHeader className="p-0 text-left">
             <DialogTitle className="text-base font-bold text-rose-400 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-400" />
-              <span>Supprimer ce compte</span>
+              <span>{t.accounts.confirmDeleteAccountTitle}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="py-2 text-xs text-zinc-300 leading-relaxed">
-            Êtes-vous sûr de vouloir supprimer le compte <strong className="text-white">{accountToDelete?.name || accountToDelete?.bank}</strong> ({accountToDelete?.iban || accountToDelete?.type}) ?
-            <br /><br />
-            <span className="text-rose-400 font-medium">Toutes les transactions associées à ce compte seront également supprimées.</span>
+            {language === "fr" ? (
+              <>
+                Êtes-vous sûr de vouloir supprimer le compte <strong className="text-white">{accountToDelete?.name || accountToDelete?.bank}</strong> ({accountToDelete?.iban || accountToDelete?.type}) ?
+                <br /><br />
+                <span className="text-rose-400 font-medium">Toutes les transactions associées à ce compte seront également supprimées.</span>
+              </>
+            ) : (
+              <>
+                Are you sure you want to delete the account <strong className="text-white">{accountToDelete?.name || accountToDelete?.bank}</strong> ({accountToDelete?.iban || accountToDelete?.type})?
+                <br /><br />
+                <span className="text-rose-400 font-medium">{t.accounts.confirmDeleteAccountDesc}</span>
+              </>
+            )}
           </div>
 
           <DialogFooter className="mt-4 flex justify-end gap-2">
@@ -1102,7 +1159,7 @@ export function AccountView() {
               onClick={() => setAccountToDelete(null)}
               className="border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl text-xs h-9 px-3.5"
             >
-              Annuler
+              {t.common.cancel}
             </Button>
             <Button
               type="button"
@@ -1110,7 +1167,7 @@ export function AccountView() {
               disabled={isDeleting}
               className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-rose-600/20 cursor-pointer"
             >
-              {isDeleting ? "Suppression..." : "Confirmer la suppression"}
+              {isDeleting ? t.common.loading : t.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1122,16 +1179,28 @@ export function AccountView() {
           <DialogHeader className="p-0 text-left">
             <DialogTitle className="text-base font-bold text-rose-400 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-400" />
-              <span>Déconnecter l&apos;établissement bancaire</span>
+              <span>{t.accounts.confirmDeleteBankTitle}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="py-2 text-xs text-zinc-300 leading-relaxed">
-            Êtes-vous sûr de vouloir déconnecter <strong className="text-white">{bankToDelete}</strong> ?
-            <br /><br />
-            <span className="text-rose-400 font-medium">
-              Tous les sous-comptes et l&apos;ensemble des opérations rattachés à cette banque seront définitivement retirés de votre profil.
-            </span>
+            {language === "fr" ? (
+              <>
+                Êtes-vous sûr de vouloir déconnecter <strong className="text-white">{bankToDelete}</strong> ?
+                <br /><br />
+                <span className="text-rose-400 font-medium">
+                  Tous les sous-comptes et l&apos;ensemble des opérations rattachés à cette banque seront définitivement retirés de votre profil.
+                </span>
+              </>
+            ) : (
+              <>
+                Are you sure you want to disconnect <strong className="text-white">{bankToDelete}</strong>?
+                <br /><br />
+                <span className="text-rose-400 font-medium">
+                  {t.accounts.confirmDeleteBankDesc}
+                </span>
+              </>
+            )}
           </div>
 
           <DialogFooter className="mt-4 flex justify-end gap-2">
@@ -1141,7 +1210,7 @@ export function AccountView() {
               onClick={() => setBankToDelete(null)}
               className="border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl text-xs h-9 px-3.5"
             >
-              Annuler
+              {t.common.cancel}
             </Button>
             <Button
               type="button"
@@ -1149,7 +1218,7 @@ export function AccountView() {
               disabled={isDeleting}
               className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-rose-600/20 cursor-pointer"
             >
-              {isDeleting ? "Déconnexion..." : "Déconnecter la banque"}
+              {isDeleting ? t.common.loading : t.accounts.disconnectBank}
             </Button>
           </DialogFooter>
         </DialogContent>

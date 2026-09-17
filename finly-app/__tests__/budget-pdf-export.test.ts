@@ -115,4 +115,18 @@ describe('Budget PDF Export', () => {
   it('calls doc.save with formatted file name in downloadBudgetPdf', () => {
     expect(typeof downloadBudgetPdf).toBe('function')
   })
+
+  it('generates a valid jsPDF document in English when language is en', () => {
+    const doc = exportBudgetToPdf({
+      summary: mockSummary,
+      periodName: 'September 2026',
+      accountName: 'All accounts',
+      userName: 'John Doe',
+      currency: 'EUR',
+      language: 'en',
+    })
+
+    expect(doc).toBeDefined()
+    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1)
+  })
 })
