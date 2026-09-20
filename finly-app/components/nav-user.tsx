@@ -100,6 +100,10 @@ export function NavUser() {
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger
+              openOnHover
+              delay={120}
+              closeDelay={200}
+              onClick={() => router.push("/compte")}
               render={
                 <SidebarMenuButton
                   size="lg"
@@ -126,6 +130,7 @@ export function NavUser() {
               {/* Discreet 3-dots Menu Icon */}
               <MoreVertical className="ml-auto w-4 h-4 text-zinc-400 group-hover:text-white group-data-[collapsible=icon]:hidden shrink-0 transition-colors" />
             </DropdownMenuTrigger>
+
 
             <DropdownMenuContent
               className="w-64 p-2 bg-[#18181B] border border-white/10 text-white rounded-2xl shadow-2xl backdrop-blur-xl"
