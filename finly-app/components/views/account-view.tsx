@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
   Building2,
@@ -21,9 +22,11 @@ import {
   Download,
   HardDrive,
   Database,
-  ArrowLeft,
   AlertTriangle,
   Globe,
+  X,
+  LogOut,
+  ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -45,15 +48,48 @@ import { WoobModal } from "@/components/modals/woob-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Account, BankConnection } from "@/lib/types/finance"
+import { cn } from "@/lib/utils"
+
+type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup"
 
 export function AccountView() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const { formatAmount } = usePrivacy()
-  const { t, language, setLanguage, format } = useI18n()
+  const { t, language, setLanguage } = useI18n()
 
   // Navigation Tab State
-  const [activeTab, setActiveTab] = useState<"banks" | "profile" | "backup">("banks")
+  const [activeTab, setActiveTab] = useState<AccountTab>("profile")
+
+  // Check URL param on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      const tabParam = params.get("tab") as AccountTab | null
+      if (tabParam && ["profile", "security", "preferences", "banks", "backup"].includes(tabParam)) {
+        setActiveTab(tabParam)
+      }
+    }
+  }, [])
+
+  // Close handler (X button or Escape key)
+  const handleClose = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push("/")
+    }
+  }, [router])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleClose])
 
   // Data States
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -63,12 +99,46 @@ export function AccountView() {
   const [isSyncingAll, setIsSyncingAll] = useState<boolean>(false)
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
+  // Profile Edit States
+  const [firstName, setFirstName] = useState<string>("")
+  const [lastName, setLastName] = useState<string>("")
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false)
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (user?.full_name) {
+      const parts = user.full_name.trim().split(/\s+/)
+      setFirstName(parts[0] || "")
+      setLastName(parts.slice(1).join(" ") || "")
+    } else if (user?.email) {
+      setFirstName(user.email.split("@")[0])
+      setLastName("")
+    }
+  }, [user])
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSavingProfile(true)
+    try {
+      const updatedFullName = `${firstName} ${lastName}`.trim()
+      if (user && typeof window !== "undefined") {
+        const updatedUser = { ...user, full_name: updatedFullName }
+        localStorage.setItem("finly_user", JSON.stringify(updatedUser))
+      }
+      setProfileSuccessMsg(language === "fr" ? "Profil mis à jour avec succès." : "Profile updated successfully.")
+      setTimeout(() => setProfileSuccessMsg(null), 3500)
+    } catch {
+      // Offline fallback
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
   // Modals & Actions States
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [editName, setEditName] = useState<string>("")
   const [editType, setEditType] = useState<string>("")
-  const [editColor, setEditColor] = useState<string>("")
   const [isSavingAccount, setIsSavingAccount] = useState<boolean>(false)
 
   // Deletion Confirmation States
@@ -79,7 +149,7 @@ export function AccountView() {
   // Copy Feedback
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  // Profile / Password States
+  // Password Update States
   const [currentPassword, setCurrentPassword] = useState<string>("")
   const [newPassword, setNewPassword] = useState<string>("")
   const [confirmPassword, setConfirmPassword] = useState<string>("")
@@ -109,7 +179,7 @@ export function AccountView() {
 
   const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState<boolean>(false)
   const [pendingBankConnections, setPendingBankConnections] = useState<PendingBankConnection[]>([])
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // Load Data
   const loadData = useCallback(async () => {
@@ -134,11 +204,9 @@ export function AccountView() {
   }, [loadData])
 
   // Aggregate KPI Calculations
-  const { checkingTotal, checkingCount, savingsTotal, savingsCount } = useMemo(() => {
+  const { checkingTotal, savingsTotal } = useMemo(() => {
     let chkSum = 0
-    let chkCnt = 0
     let savSum = 0
-    let savCnt = 0
 
     for (const a of accounts) {
       const t = (a.type || "").toLowerCase()
@@ -149,18 +217,14 @@ export function AccountView() {
 
       if (isSav) {
         savSum += a.balance
-        savCnt++
       } else {
         chkSum += a.balance
-        chkCnt++
       }
     }
 
     return {
       checkingTotal: chkSum,
-      checkingCount: chkCnt,
       savingsTotal: savSum,
-      savingsCount: savCnt,
     }
   }, [accounts])
 
@@ -181,10 +245,10 @@ export function AccountView() {
       map.set(bName, existing)
     }
 
-    return Array.from(map.values())
+    return Array.from(map.values()).sort((a, b) => b.totalBalance - a.totalBalance)
   }, [accounts, bankConnections])
 
-  // Trigger Immediate Synchronization
+  // Global Sync Action
   const handleSyncAll = async () => {
     setIsSyncingAll(true)
     setSyncFeedback(null)
@@ -193,28 +257,26 @@ export function AccountView() {
       await loadData()
       setSyncFeedback({
         type: "success",
-        message: res.message || (language === "fr" ? "Synchronisation bancaire réussie." : "Bank synchronization successful."),
+        message: res.message || (language === "fr" ? "Synchronisation bancaire effectuée avec succès." : "Banking synchronization completed successfully."),
       })
-      setTimeout(() => setSyncFeedback(null), 5000)
     } catch (err: any) {
       setSyncFeedback({
         type: "error",
-        message: err.message || (language === "fr" ? "Erreur lors de la synchronisation." : "Error during synchronization."),
+        message: err.message || (language === "fr" ? "Échec de la synchronisation bancaire globale." : "Failed to synchronize connected banks."),
       })
     } finally {
       setIsSyncingAll(false)
+      setTimeout(() => setSyncFeedback(null), 6000)
     }
   }
 
-  // Open Edit Account Modal
-  const handleOpenEditAccount = (acc: Account) => {
-    setEditingAccount(acc)
-    setEditName(acc.name || "")
-    setEditType(acc.type || "Compte Courant")
-    setEditColor(acc.color || "from-indigo-600 to-blue-600")
+  // Edit Account
+  const handleOpenEditAccount = (account: Account) => {
+    setEditingAccount(account)
+    setEditName(account.name || "")
+    setEditType(account.type || "")
   }
 
-  // Save Account Edit
   const handleSaveAccount = async () => {
     if (!editingAccount) return
     setIsSavingAccount(true)
@@ -222,7 +284,6 @@ export function AccountView() {
       await FinlyAPI.updateAccount(editingAccount.id, {
         name: editName,
         account_type: editType,
-        color: editColor,
       })
       await loadData()
       setEditingAccount(null)
@@ -233,7 +294,7 @@ export function AccountView() {
     }
   }
 
-  // Delete Single Account
+  // Delete Account
   const handleConfirmDeleteAccount = async () => {
     if (!accountToDelete) return
     setIsDeleting(true)
@@ -242,13 +303,13 @@ export function AccountView() {
       await loadData()
       setAccountToDelete(null)
     } catch (err: any) {
-      alert(err.message || (language === "fr" ? "Erreur lors de la suppression." : "Error deleting account."))
+      alert(err.message || (language === "fr" ? "Erreur lors de la suppression du compte." : "Error deleting account."))
     } finally {
       setIsDeleting(false)
     }
   }
 
-  // Delete Entire Bank
+  // Disconnect Bank
   const handleConfirmDeleteBank = async () => {
     if (!bankToDelete) return
     setIsDeleting(true)
@@ -257,33 +318,17 @@ export function AccountView() {
       await loadData()
       setBankToDelete(null)
     } catch (err: any) {
-      alert(err.message || (language === "fr" ? "Erreur lors de la suppression de la banque." : "Error disconnecting bank."))
+      alert(err.message || (language === "fr" ? "Erreur lors de la déconnexion de l'établissement." : "Error disconnecting bank."))
     } finally {
       setIsDeleting(false)
     }
   }
 
   // Copy IBAN
-  const handleCopyIban = (iban: string, accId: string) => {
+  const handleCopyIban = (iban: string, id: string) => {
     navigator.clipboard.writeText(iban)
-    setCopiedId(accId)
-    setTimeout(() => setCopiedId(null), 2000)
-  }
-
-  // Account Type Icon Helper
-  const getAccountIcon = (type: string, name?: string) => {
-    const tStr = (type || "").toLowerCase()
-    const n = (name || "").toLowerCase()
-    if (["livret", "epargne", "épargne", "ldd", "lep", "savings"].some((k) => tStr.includes(k) || n.includes(k))) {
-      return <PiggyBank className="w-4 h-4 text-emerald-400" />
-    }
-    if (["carte", "credit", "crédit", "debit", "card"].some((k) => tStr.includes(k) || n.includes(k))) {
-      return <CreditCard className="w-4 h-4 text-amber-400" />
-    }
-    if (["pea", "titre", "bourse", "placement", "assurance", "brokerage", "investment"].some((k) => tStr.includes(k) || n.includes(k))) {
-      return <Landmark className="w-4 h-4 text-violet-400" />
-    }
-    return <Wallet className="w-4 h-4 text-indigo-400" />
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2500)
   }
 
   // Change Password
@@ -293,9 +338,10 @@ export function AccountView() {
     setPwdSuccessMsg(null)
 
     if (newPassword.length < 6) {
-      setPwdErrorMsg(language === "fr" ? "Le nouveau mot de passe doit comporter au moins 6 caractères." : "New password must be at least 6 characters.")
+      setPwdErrorMsg(language === "fr" ? "Le nouveau mot de passe doit contenir au moins 6 caractères." : "New password must be at least 6 characters.")
       return
     }
+
     if (newPassword !== confirmPassword) {
       setPwdErrorMsg(t.accounts.passwordMismatch)
       return
@@ -351,32 +397,30 @@ export function AccountView() {
   const handleExportJSON = async () => {
     setIsExportingJSON(true)
     setExportSuccessMsg(null)
-    setImportErrorMsg(null)
     try {
-      const backupData = await FinlyAPI.exportJsonBackup()
-      const jsonStr = JSON.stringify(backupData, null, 2)
-      const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" })
+      const data = await FinlyAPI.exportJsonBackup()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
       const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
+      const a = document.createElement("a")
       const dateStr = new Date().toISOString().split("T")[0]
-      link.href = url
-      link.download = `finly_backup_${dateStr}.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      a.href = url
+      a.download = `finly_backup_${dateStr}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      setExportSuccessMsg(language === "fr" ? "Sauvegarde intégrale JSON téléchargée." : "Complete JSON backup downloaded.")
-      setTimeout(() => setExportSuccessMsg(null), 5000)
+      setExportSuccessMsg(language === "fr" ? "Fichier de sauvegarde exporté avec succès." : "Backup file exported successfully.")
+      setTimeout(() => setExportSuccessMsg(null), 4000)
     } catch (err: any) {
-      setImportErrorMsg(err.message || (language === "fr" ? "Erreur lors de l'exportation." : "Error exporting backup."))
+      alert(err.message || (language === "fr" ? "Erreur lors de l'exportation." : "Error exporting backup."))
     } finally {
       setIsExportingJSON(false)
     }
   }
 
   // Import JSON Backup
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -434,637 +478,783 @@ export function AccountView() {
     : "U"
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Top Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/")}
-            className="h-9 w-9 p-0 rounded-2xl border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-white tracking-tight">{t.accounts.title}</h1>
-            <span className="text-xs text-zinc-400 mt-0.5">
-              {bankGroups.length} {language === "fr" ? `établissement${bankGroups.length > 1 ? "s" : ""} relié${bankGroups.length > 1 ? "s" : ""}` : `connected institution${bankGroups.length > 1 ? "s" : ""}`} • {accounts.length} {language === "fr" ? `compte${accounts.length > 1 ? "s" : ""} actif${accounts.length > 1 ? "s" : ""}` : `active account${accounts.length > 1 ? "s" : ""}`}
-            </span>
+    <div className="fixed inset-0 z-[100] bg-[#09090B] overflow-y-auto min-h-screen text-white">
+      <div className="max-w-6xl mx-auto px-5 py-6 sm:px-10 sm:py-8 flex flex-col min-h-full">
+        {/* Top Header Bar */}
+        <header className="w-full flex items-center justify-between pb-8">
+          <div className="hidden sm:flex items-center gap-2">
+            <Image
+              src="/logo-full.png"
+              alt="Finly"
+              width={140}
+              height={39}
+              className="h-7 sm:h-8 w-auto object-contain"
+              priority
+            />
           </div>
-        </div>
 
-        {/* Global Actions */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            onClick={handleSyncAll}
-            disabled={isSyncingAll}
-            variant="outline"
-            size="sm"
-            className="h-9 px-3.5 gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-2xl cursor-pointer text-xs font-semibold"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${isSyncingAll ? "animate-spin" : ""}`} />
-            <span>{isSyncingAll ? t.common.syncing : t.accounts.syncAll}</span>
-          </Button>
-
-          <Button
-            onClick={() => setIsWoobOpen(true)}
-            size="sm"
-            className="h-9 px-3.5 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t.accounts.connectBank}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Sync Feedback Toast Banner */}
-      {syncFeedback && (
-        <div
-          className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200 ${
-            syncFeedback.type === "success"
-              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
-              : "bg-rose-500/10 border-rose-500/20 text-rose-300"
-          }`}
-        >
-          <span>{syncFeedback.message}</span>
           <button
             type="button"
-            onClick={() => setSyncFeedback(null)}
-            className="text-zinc-400 hover:text-white text-xs cursor-pointer font-bold"
+            onClick={handleClose}
+            aria-label="Fermer"
+            className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 hover:border-white/20 hover:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-all cursor-pointer shadow-lg"
           >
-            {t.common.close}
+            <X className="w-5 h-5" />
           </button>
+        </header>
+
+        {/* Page Title */}
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            {t.accounts.manageAccount || "Gérer mon compte"}
+          </h1>
         </div>
-      )}
 
-      {/* Segmented Navigation Tabs */}
-      <div className="flex items-center p-1 rounded-2xl bg-zinc-900 border border-white/10 text-xs w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveTab("banks")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all cursor-pointer ${
-            activeTab === "banks"
-              ? "bg-indigo-600 text-white shadow-sm font-semibold"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          <span>{t.accounts.banksAndAccountsTab}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("profile")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all cursor-pointer ${
-            activeTab === "profile"
-              ? "bg-indigo-600 text-white shadow-sm font-semibold"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <UserIcon className="w-3.5 h-3.5" />
-          <span>{t.accounts.profileAndSecurityTab}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("backup")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all cursor-pointer ${
-            activeTab === "backup"
-              ? "bg-indigo-600 text-white shadow-sm font-semibold"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <Database className="w-3.5 h-3.5" />
-          <span>{t.accounts.backupAndDataTab}</span>
-        </button>
-      </div>
-
-      {/* TAB 1: BANQUES & COMPTES */}
-      {activeTab === "banks" && (
-        <div className="flex flex-col gap-6">
-          {/* Summary KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-400">{t.accounts.aggregatedWealth}</span>
-                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-                  <Landmark className="w-4 h-4" />
-                </div>
+        {/* Two-Column Layout */}
+        <div className="flex flex-col md:flex-row items-start gap-8 lg:gap-12 w-full flex-1 pb-16">
+          {/* Left Navigation Sidebar */}
+          <aside className="w-full md:w-64 lg:w-72 shrink-0 flex flex-col gap-6">
+            {/* Group 1: Gérer mon compte */}
+            <div className="flex flex-col gap-1">
+              <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider px-3 mb-1.5">
+                {t.accounts.groupAccount || "Gérer mon compte"}
               </div>
-              <div className="mt-3">
-                <span className="text-2xl font-bold font-mono tracking-tight text-white">
-                  {formatAmount(totalBalance)}
-                </span>
-                <span className="block text-[11px] text-zinc-500 mt-0.5">
-                  {accounts.length} {language === "fr" ? `compte${accounts.length > 1 ? "s" : ""}` : `account${accounts.length > 1 ? "s" : ""}`} • {bankGroups.length} {language === "fr" ? `banque${bankGroups.length > 1 ? "s" : ""}` : `bank${bankGroups.length > 1 ? "s" : ""}`}
-                </span>
-              </div>
-            </Card>
-
-            <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-400">{t.accounts.checkingDeposits}</span>
-                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-                  <Wallet className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-bold font-mono tracking-tight text-white">
-                  {formatAmount(checkingTotal)}
-                </span>
-                <span className="block text-[11px] text-zinc-500 mt-0.5">
-                  {checkingCount} {language === "fr" ? `compte${checkingCount > 1 ? "s" : ""} de liquidités` : `checking account${checkingCount > 1 ? "s" : ""}`}
-                </span>
-              </div>
-            </Card>
-
-            <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-400">{t.accounts.savingsAndPlacements}</span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                  <PiggyBank className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-bold font-mono tracking-tight text-white">
-                  {formatAmount(savingsTotal)}
-                </span>
-                <span className="block text-[11px] text-zinc-500 mt-0.5">
-                  {savingsCount} {language === "fr" ? `compte${savingsCount > 1 ? "s" : ""} d'épargne` : `savings account${savingsCount > 1 ? "s" : ""}`}
-                </span>
-              </div>
-            </Card>
-          </div>
-
-          {/* Bank Institutions Cards List */}
-          {bankGroups.length === 0 ? (
-            <Card className="p-12 border-white/10 bg-[#18181B] rounded-3xl text-center flex flex-col items-center justify-center gap-4">
-              <div className="p-4 rounded-3xl bg-zinc-900 border border-white/10 text-zinc-500">
-                <Building2 className="w-10 h-10 text-indigo-400" />
-              </div>
-              <div className="flex flex-col gap-1 max-w-sm">
-                <h3 className="text-base font-bold text-white">{t.accounts.noConnectedBank}</h3>
-                <p className="text-xs text-zinc-400">
-                  {t.accounts.noConnectedBankDesc}
-                </p>
-              </div>
-              <Button
-                onClick={() => setIsWoobOpen(true)}
-                className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs h-9 px-4 gap-2 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "profile"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
               >
-                <Plus className="w-4 h-4" />
-                <span>{t.accounts.connectBank}</span>
-              </Button>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {bankGroups.map((group) => (
-                <Card key={group.bankName} className="border-white/10 bg-[#18181B] rounded-3xl shadow-xl overflow-hidden">
-                  {/* Bank Header */}
-                  <div className="p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/40">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 shadow-sm">
-                        <BankLogo bankName={group.bankName} className="w-5 h-5" />
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-base font-bold text-white">{group.bankName}</span>
-                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2">
-                            {t.accounts.connectedBadge}
-                          </Badge>
-                          {group.connection?.last_synced_at && (
-                            <span className="text-[10px] text-zinc-500">
-                              {t.accounts.lastSynced} : {new Date(group.connection.last_synced_at).toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-zinc-400 mt-0.5">
-                          {group.accounts.length} {language === "fr" ? `sous-compte${group.accounts.length > 1 ? "s" : ""}` : `sub-account${group.accounts.length > 1 ? "s" : ""}`}
-                        </span>
-                      </div>
-                    </div>
+                <UserIcon className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.profileNav || "Mon profil"}</span>
+              </button>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3">
-                      <div className="flex flex-col items-start sm:items-end">
-                        <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">{t.accounts.institutionBalance}</span>
-                        <span className="text-lg font-bold font-mono text-white">
-                          {formatAmount(group.totalBalance)}
-                        </span>
-                      </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("security")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "security"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
+              >
+                <Lock className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.securityNav || "Sécurité"}</span>
+              </button>
 
-                      <Button
-                        onClick={() => setBankToDelete(group.bankName)}
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2.5 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl cursor-pointer text-xs gap-1.5 transition-colors"
-                        title={t.accounts.disconnectBank}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline text-[11px]">{t.accounts.disconnectBank}</span>
-                      </Button>
-                    </div>
-                  </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("preferences")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "preferences"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
+              >
+                <Globe className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.preferencesNav || "Préférences"}</span>
+              </button>
+            </div>
 
-                  {/* Sub-Accounts List */}
-                  <div className="divide-y divide-white/5">
-                    {group.accounts.map((acc) => (
-                      <div
-                        key={acc.id}
-                        className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
-                            {getAccountIcon(acc.type, acc.name)}
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-white truncate">
-                                {acc.name || t.accounts.depositAccount}
-                              </span>
-                              <Badge variant="outline" className="border-white/10 bg-zinc-900 text-zinc-400 text-[10px] py-0 px-2">
-                                {acc.type || "Compte Courant"}
-                              </Badge>
-                            </div>
+            {/* Group 2: Comptes & Banques */}
+            <div className="flex flex-col gap-1">
+              <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider px-3 mb-1.5">
+                {t.accounts.groupBanks || "Comptes & Banques"}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("banks")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "banks"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
+              >
+                <Building2 className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.banksNav || "Comptes synchronisés"}</span>
+              </button>
+            </div>
 
-                            {/* IBAN / Account ID */}
-                            {acc.iban && (
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[11px] font-mono text-zinc-500 truncate">
-                                  {acc.iban}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyIban(acc.iban!, acc.id)}
-                                  className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
-                                  title={t.accounts.copyIban}
-                                >
-                                  {copiedId === acc.id ? (
-                                    <Check className="w-3 h-3 text-emerald-400" />
-                                  ) : (
-                                    <Copy className="w-3 h-3" />
-                                  )}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+            {/* Group 3: Sauvegarde & Données */}
+            <div className="flex flex-col gap-1">
+              <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider px-3 mb-1.5">
+                {t.accounts.groupData || "Données & Sécurité"}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("backup")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "backup"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
+              >
+                <Database className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.backupNav || "Sauvegarde & Données"}</span>
+              </button>
+            </div>
 
-                        {/* Account Balance & Action Controls */}
-                        <div className="flex items-center justify-between sm:justify-end gap-3 pl-12 sm:pl-0">
-                          <span className="text-base font-bold font-mono text-white">
-                            {formatAmount(acc.balance)}
+            {/* Logout Button */}
+            <div className="pt-4 border-t border-white/5">
+              <button
+                type="button"
+                onClick={logout}
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors w-full text-left cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>{t.auth.logout || "Se déconnecter"}</span>
+              </button>
+            </div>
+          </aside>
+
+          {/* Right Content Panel */}
+          <main className="flex-1 min-w-0 w-full">
+            {/* TAB 1: MON PROFIL */}
+            {activeTab === "profile" && (
+              <div className="flex flex-col gap-6 max-w-2xl">
+                <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+                  <div className="flex flex-col gap-6">
+                    {/* Header with Avatar and User Information */}
+                    <div className="flex items-center gap-5 pb-6 border-b border-white/5">
+                      <Avatar className="h-16 w-16 ring-2 ring-indigo-500/30">
+                        <AvatarFallback className="bg-indigo-600 text-white font-bold text-xl">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span className="text-lg font-bold text-white">
+                            {user?.full_name || (language === "fr" ? "Utilisateur" : "User")}
                           </span>
+                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0.5 px-2">
+                            {t.accounts.verifiedBadge || "VÉRIFIÉ"}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-zinc-400">{user?.email}</span>
+                      </div>
+                    </div>
 
-                          <div className="flex items-center gap-1">
-                            <Button
-                              onClick={() => handleOpenEditAccount(acc)}
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-                              title={t.accounts.editAccount}
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </Button>
+                    {/* Form Fields: Prénom, Nom, Email */}
+                    <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">
+                            {t.accounts.firstName || "Prénom"}
+                          </label>
+                          <Input
+                            type="text"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
+                          />
+                        </div>
 
-                            <Button
-                              onClick={() => setAccountToDelete(acc)}
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                              title={t.accounts.deleteAccount}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">
+                            {t.accounts.lastName || "Nom"}
+                          </label>
+                          <Input
+                            type="text"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 sm:col-span-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-zinc-400">
+                              {t.accounts.email || "Adresse email"}
+                            </label>
+                            <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              {t.accounts.verifiedBadge || "Vérifié"}
+                            </span>
                           </div>
+                          <Input
+                            type="email"
+                            value={user?.email || ""}
+                            disabled
+                            className="bg-zinc-900/60 border-white/5 text-zinc-300 rounded-xl text-xs h-10 cursor-not-allowed opacity-80"
+                          />
                         </div>
                       </div>
-                    ))}
+
+                      {profileSuccessMsg && (
+                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                          <Check className="w-4 h-4 shrink-0" />
+                          <span>{profileSuccessMsg}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          type="submit"
+                          disabled={isSavingProfile}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-10 px-5 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+                        >
+                          {isSavingProfile ? t.common.loading : (language === "fr" ? "Enregistrer les modifications" : "Save changes")}
+                        </Button>
+                      </div>
+                    </form>
                   </div>
                 </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 2: PROFIL & SECURITE */}
-      {activeTab === "profile" && (
-        <div className="flex flex-col gap-6 max-w-3xl">
-          {/* User Profile Details Card */}
-          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Avatar size="lg" className="w-14 h-14">
-                <AvatarFallback className="bg-indigo-600 text-white font-bold text-lg">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-bold text-white">{user?.full_name || (language === "fr" ? "Utilisateur" : "User")}</span>
-                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2">
-                    {t.accounts.activeUser}
-                  </Badge>
-                </div>
-                <span className="text-xs text-zinc-400 mt-0.5">{user?.email}</span>
               </div>
-            </div>
+            )}
 
-            <Button
-              onClick={logout}
-              variant="outline"
-              size="sm"
-              className="border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-white h-9 px-3.5 gap-1.5 rounded-xl cursor-pointer font-semibold text-xs"
-            >
-              <UserIcon className="w-3.5 h-3.5" />
-              <span>{t.auth.logout}</span>
-            </Button>
-          </Card>
+            {/* TAB 2: SÉCURITÉ */}
+            {activeTab === "security" && (
+              <div className="flex flex-col gap-6 max-w-2xl">
+                <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+                  <CardHeader className="p-0 pb-5">
+                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-indigo-400" />
+                      <span>{t.accounts.changePasswordTitle}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                      {pwdErrorMsg && (
+                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                          {pwdErrorMsg}
+                        </div>
+                      )}
+                      {pwdSuccessMsg && (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                          <Check className="w-4 h-4 shrink-0" />
+                          <span>{pwdSuccessMsg}</span>
+                        </div>
+                      )}
 
-          {/* Language Preference Card */}
-          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                <Globe className="w-4 h-4 text-indigo-400" />
-                <span>{t.accounts.languagePreference}</span>
-              </CardTitle>
-              <p className="text-xs text-zinc-400 mt-1">
-                {t.accounts.languagePreferenceDesc}
-              </p>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setLanguage("en")}
-                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                    language === "en"
-                      ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
-                      : "bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
-                  }`}
-                >
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-zinc-400">{t.accounts.currentPassword}</label>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          required
+                          className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">{t.accounts.newPassword}</label>
+                          <Input
+                            type="password"
+                            placeholder={language === "fr" ? "Au moins 6 caractères" : "At least 6 characters"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required
+                            className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">{t.accounts.confirmPassword}</label>
+                          <Input
+                            type="password"
+                            placeholder={language === "fr" ? "Répéter le mot de passe" : "Repeat new password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end mt-2">
+                        <Button
+                          type="submit"
+                          disabled={isUpdatingPwd}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-10 px-5 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+                        >
+                          {isUpdatingPwd ? t.common.loading : t.accounts.savePassword}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Security Guarantee Box */}
+                <Card className="p-5 border-white/10 bg-zinc-900/40 rounded-2xl flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white">{t.accounts.english}</span>
-                    <span className="text-xs text-zinc-400 mt-0.5">English (Default)</span>
-                  </div>
-                  {language === "en" && <Check className="w-4 h-4 text-indigo-400" />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setLanguage("fr")}
-                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                    language === "fr"
-                      ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
-                      : "bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
-                  }`}
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white">{t.accounts.french}</span>
-                    <span className="text-xs text-zinc-400 mt-0.5">Français (France)</span>
-                  </div>
-                  {language === "fr" && <Check className="w-4 h-4 text-indigo-400" />}
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Change Password Card */}
-          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                <Lock className="w-4 h-4 text-indigo-400" />
-                <span>{t.accounts.changePasswordTitle}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-                {pwdErrorMsg && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-                    {pwdErrorMsg}
-                  </div>
-                )}
-                {pwdSuccessMsg && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-                    <Check className="w-4 h-4 shrink-0" />
-                    <span>{pwdSuccessMsg}</span>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-400">{t.accounts.currentPassword}</label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-zinc-400">{t.accounts.newPassword}</label>
-                    <Input
-                      type="password"
-                      placeholder={language === "fr" ? "Au moins 6 caractères" : "At least 6 characters"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-zinc-400">{t.accounts.confirmPassword}</label>
-                    <Input
-                      type="password"
-                      placeholder={language === "fr" ? "Répéter le mot de passe" : "Repeat new password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-2">
-                  <Button
-                    type="submit"
-                    disabled={isUpdatingPwd}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
-                  >
-                    {isUpdatingPwd ? t.common.loading : t.accounts.savePassword}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Auto-Sync Settings Card */}
-          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-indigo-400" />
-                <span>{t.accounts.autoSyncTitle}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <form onSubmit={handleSaveSyncSettings} className="flex flex-col gap-4">
-                {syncSettingsSuccessMsg && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-                    <Check className="w-4 h-4 shrink-0" />
-                    <span>{syncSettingsSuccessMsg}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-950 border border-white/5">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-white">{t.accounts.periodicRefresh}</span>
-                    <span className="text-[11px] text-zinc-500">
-                      {t.accounts.periodicRefreshDesc}
+                    <span className="text-xs font-bold text-white">
+                      {language === "fr" ? "Chiffrement AES-256 local & Sessions sécurisées" : "AES-256 local encryption & Secure sessions"}
+                    </span>
+                    <span className="text-[11px] text-zinc-400 mt-0.5">
+                      {language === "fr"
+                        ? "Vos identifiants et clés bancaires ne transitent jamais en clair."
+                        : "Your credentials and banking keys are never stored or transmitted in plain text."}
                     </span>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={autoSyncEnabled}
-                      onChange={(e) => setAutoSyncEnabled(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
+                </Card>
+              </div>
+            )}
+
+            {/* TAB 3: PRÉFÉRENCES */}
+            {activeTab === "preferences" && (
+              <div className="flex flex-col gap-6 max-w-2xl">
+                <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+                  <CardHeader className="p-0 pb-5">
+                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-indigo-400" />
+                      <span>{t.accounts.languagePreference}</span>
+                    </CardTitle>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      {t.accounts.languagePreferenceDesc}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setLanguage("en")}
+                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                          language === "en"
+                            ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
+                            : "bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-white">{t.accounts.english}</span>
+                          <span className="text-xs text-zinc-400 mt-0.5">English</span>
+                        </div>
+                        {language === "en" && <Check className="w-4 h-4 text-indigo-400" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setLanguage("fr")}
+                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                          language === "fr"
+                            ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
+                            : "bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-white">{t.accounts.french}</span>
+                          <span className="text-xs text-zinc-400 mt-0.5">Français (France)</span>
+                        </div>
+                        {language === "fr" && <Check className="w-4 h-4 text-indigo-400" />}
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* TAB 4: COMPTES SYNCHRONISÉS */}
+            {activeTab === "banks" && (
+              <div className="flex flex-col gap-6">
+                {/* Actions & Summary Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-400 font-mono">
+                      {bankGroups.length} {language === "fr" ? `établissement${bankGroups.length > 1 ? "s" : ""} relié${bankGroups.length > 1 ? "s" : ""}` : `connected institution${bankGroups.length > 1 ? "s" : ""}`} • {accounts.length} {language === "fr" ? `compte${accounts.length > 1 ? "s" : ""} actif${accounts.length > 1 ? "s" : ""}` : `active account${accounts.length > 1 ? "s" : ""}`}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <Button
+                      onClick={handleSyncAll}
+                      disabled={isSyncingAll}
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3.5 gap-1.5 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-xl cursor-pointer text-xs font-semibold"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${isSyncingAll ? "animate-spin" : ""}`} />
+                      <span>{isSyncingAll ? t.common.syncing : t.accounts.syncAll}</span>
+                    </Button>
+
+                    <Button
+                      onClick={() => setIsWoobOpen(true)}
+                      size="sm"
+                      className="h-9 px-4 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t.accounts.connectBank}</span>
+                    </Button>
+                  </div>
                 </div>
 
-                {autoSyncEnabled && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">{t.accounts.syncFrequency}</label>
-                      <select
-                        value={syncInterval}
-                        onChange={(e) => setSyncInterval(Number(e.target.value))}
-                        className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-9 px-3 outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value={6}>{t.accounts.every6Hours}</option>
-                        <option value={12}>{t.accounts.every12Hours}</option>
-                        <option value={24}>{t.accounts.every24Hours}</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">{t.accounts.referenceTime}</label>
-                      <Input
-                        type="time"
-                        value={syncTime}
-                        onChange={(e) => setSyncTime(e.target.value)}
-                        className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
-                      />
-                    </div>
+                {/* Sync Feedback Toast */}
+                {syncFeedback && (
+                  <div
+                    className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200 ${
+                      syncFeedback.type === "success"
+                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                        : "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                    }`}
+                  >
+                    <span>{syncFeedback.message}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSyncFeedback(null)}
+                      className="text-zinc-400 hover:text-white text-xs cursor-pointer font-bold"
+                    >
+                      {t.common.close}
+                    </button>
                   </div>
                 )}
 
-                <div className="flex justify-end mt-2">
-                  <Button
-                    type="submit"
-                    disabled={isSavingSyncSettings}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-9 px-4 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
-                  >
-                    {isSavingSyncSettings ? t.common.loading : t.accounts.savePreferences}
-                  </Button>
+                {/* Summary KPI Strip */}
+                <div className="flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-zinc-950/60 border border-white/5 font-mono text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-500">{t.accounts.aggregatedWealth} :</span>
+                    <strong className="text-base font-bold text-white">{formatAmount(totalBalance)}</strong>
+                  </div>
+                  <span className="text-zinc-700 hidden sm:inline">•</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-500">{t.accounts.checkingDeposits} :</span>
+                    <span className="font-semibold text-zinc-300">{formatAmount(checkingTotal)}</span>
+                  </div>
+                  <span className="text-zinc-700 hidden sm:inline">•</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-500">{t.accounts.savingsAndPlacements} :</span>
+                    <span className="font-semibold text-emerald-400">{formatAmount(savingsTotal)}</span>
+                  </div>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
-      {/* TAB 3: SAUVEGARDE & DONNEES */}
-      {activeTab === "backup" && (
-        <div className="flex flex-col gap-6 max-w-3xl">
-          {/* Export JSON Card */}
-          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                <Download className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-white">{t.accounts.jsonBackupTitle}</span>
-                <span className="text-xs text-zinc-400 mt-0.5">
-                  {t.accounts.jsonBackupDesc}
-                </span>
-              </div>
-            </div>
+                {/* Bank Institutions Cards List */}
+                {bankGroups.length === 0 ? (
+                  <Card className="p-12 border-white/10 bg-[#18181B] rounded-3xl text-center flex flex-col items-center justify-center gap-4">
+                    <div className="p-4 rounded-3xl bg-zinc-900 border border-white/10 text-zinc-500">
+                      <Building2 className="w-10 h-10 text-indigo-400" />
+                    </div>
+                    <div className="flex flex-col gap-1 max-w-sm">
+                      <h3 className="text-base font-bold text-white">{t.accounts.noConnectedBank}</h3>
+                      <p className="text-xs text-zinc-400">
+                        {t.accounts.noConnectedBankDesc}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setIsWoobOpen(true)}
+                      className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs h-9 px-4 gap-2 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{t.accounts.connectBank}</span>
+                    </Button>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col gap-5">
+                    {bankGroups.map((group) => (
+                      <Card key={group.bankName} className="border-white/10 bg-[#18181B] rounded-3xl shadow-xl overflow-hidden">
+                        {/* Bank Header */}
+                        <div className="p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900/40">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 shadow-sm">
+                              <BankLogo bankName={group.bankName} className="w-5 h-5" />
+                            </div>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-base font-bold text-white">{group.bankName}</span>
+                                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2">
+                                  {t.accounts.connectedBadge}
+                                </Badge>
+                                {group.connection?.last_synced_at && (
+                                  <span className="text-[10px] text-zinc-500">
+                                    {t.accounts.lastSynced} : {new Date(group.connection.last_synced_at).toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-zinc-400 mt-0.5">
+                                {group.accounts.length} {language === "fr" ? `compte${group.accounts.length > 1 ? "s" : ""}` : `account${group.accounts.length > 1 ? "s" : ""}`}
+                              </span>
+                            </div>
+                          </div>
 
-            <Button
-              onClick={handleExportJSON}
-              disabled={isExportingJSON}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-4 rounded-xl cursor-pointer font-semibold shrink-0 shadow-md shadow-indigo-600/20"
-            >
-              {isExportingJSON ? t.common.loading : t.accounts.downloadBackup}
-            </Button>
-          </Card>
+                          <div className="flex items-center gap-3 self-end sm:self-auto">
+                            <div className="text-right hidden sm:flex flex-col">
+                              <span className="text-[11px] text-zinc-500">{t.accounts.institutionBalance}</span>
+                              <span className="font-mono text-sm font-bold text-white">
+                                {formatAmount(group.totalBalance)}
+                              </span>
+                            </div>
 
-          {exportSuccessMsg && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0" />
-              <span>{exportSuccessMsg}</span>
-            </div>
-          )}
+                            <Button
+                              onClick={() => setBankToDelete(group.bankName)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 h-8 px-2.5 rounded-xl text-xs gap-1.5 cursor-pointer"
+                              title={t.accounts.disconnectBank}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{t.accounts.disconnectBank}</span>
+                            </Button>
+                          </div>
+                        </div>
 
-          {/* Import JSON Card */}
-          <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                <HardDrive className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-white">{t.accounts.restoreBackupTitle}</span>
-                <span className="text-xs text-zinc-400 mt-0.5">
-                  {t.accounts.restoreBackupDesc}
-                </span>
-              </div>
-            </div>
+                        {/* Accounts List */}
+                        <div className="divide-y divide-white/5">
+                          {group.accounts.map((acc) => (
+                            <div
+                              key={acc.id}
+                              className="p-4 sm:px-6 hover:bg-white/[0.02] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-zinc-900 border border-white/5 text-zinc-400 shrink-0">
+                                  {acc.type?.toLowerCase().includes("livret") || acc.type?.toLowerCase().includes("epargne") ? (
+                                    <PiggyBank className="w-4 h-4 text-emerald-400" />
+                                  ) : acc.type?.toLowerCase().includes("carte") ? (
+                                    <CreditCard className="w-4 h-4 text-amber-400" />
+                                  ) : acc.type?.toLowerCase().includes("titre") || acc.type?.toLowerCase().includes("pea") ? (
+                                    <Landmark className="w-4 h-4 text-cyan-400" />
+                                  ) : (
+                                    <Wallet className="w-4 h-4 text-indigo-400" />
+                                  )}
+                                </div>
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImportFile}
-              accept=".json"
-              className="hidden"
-            />
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-semibold text-white">{acc.name}</span>
+                                    <Badge variant="outline" className="border-white/10 bg-zinc-900 text-zinc-400 text-[10px] py-0 px-2">
+                                      {acc.type || t.accounts.depositAccount}
+                                    </Badge>
+                                  </div>
 
-            <div className="flex justify-start">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isImportingJSON}
-                variant="outline"
-                className="border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs h-9 px-4 rounded-xl cursor-pointer font-semibold"
-              >
-                {isImportingJSON ? t.common.loading : t.accounts.selectJsonFile}
-              </Button>
-            </div>
+                                  {acc.iban && (
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="font-mono text-[11px] text-zinc-500 tracking-wider">
+                                        {acc.iban.slice(0, 4)} •••• {acc.iban.slice(-4)}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyIban(acc.iban!, acc.id)}
+                                        className="text-zinc-500 hover:text-zinc-300 p-0.5 cursor-pointer transition-colors"
+                                        title={t.accounts.copyIban}
+                                      >
+                                        {copiedId === acc.id ? (
+                                          <Check className="w-3 h-3 text-emerald-400" />
+                                        ) : (
+                                          <Copy className="w-3 h-3" />
+                                        )}
+                                      </button>
+                                      {copiedId === acc.id && (
+                                        <span className="text-[10px] text-emerald-400 font-medium">
+                                          {t.accounts.ibanCopied}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
 
-            {importSuccessMsg && (
-              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 shrink-0" />
-                  <span className="font-semibold">{importSuccessMsg}</span>
-                </div>
-                {importSummary && (
-                  <span className="text-[11px] text-emerald-400/80 pl-6">
-                    {importSummary.accounts} {language === "fr" ? "comptes" : "accounts"}, {importSummary.transactions} transactions, {importSummary.projects} {language === "fr" ? "projets importés" : "goals imported"}.
-                  </span>
+                              <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                <span className="font-mono text-sm font-bold text-white">
+                                  {formatAmount(acc.balance)}
+                                </span>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    onClick={() => handleOpenEditAccount(acc)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
+                                    title={t.accounts.editAccount}
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </Button>
+
+                                  <Button
+                                    onClick={() => setAccountToDelete(acc)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                                    title={t.accounts.deleteAccount}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
 
-            {importErrorMsg && (
-              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-                {importErrorMsg}
+            {/* TAB 5: SAUVEGARDE & DONNÉES */}
+            {activeTab === "backup" && (
+              <div className="flex flex-col gap-6 max-w-2xl">
+                {/* Export JSON Card */}
+                <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                      <Download className="w-5 h-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white">{t.accounts.jsonBackupTitle}</span>
+                      <span className="text-xs text-zinc-400 mt-0.5">
+                        {t.accounts.jsonBackupDesc}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleExportJSON}
+                    disabled={isExportingJSON}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-10 px-5 rounded-xl cursor-pointer font-semibold shrink-0 shadow-md shadow-indigo-600/20"
+                  >
+                    {isExportingJSON ? t.common.loading : t.accounts.downloadBackup}
+                  </Button>
+                </Card>
+
+                {exportSuccessMsg && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span>{exportSuccessMsg}</span>
+                  </div>
+                )}
+
+                {/* Import JSON Card */}
+                <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                      <HardDrive className="w-5 h-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white">{t.accounts.restoreBackupTitle}</span>
+                      <span className="text-xs text-zinc-400 mt-0.5">
+                        {t.accounts.restoreBackupDesc}
+                      </span>
+                    </div>
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImportFile}
+                    accept=".json"
+                    className="hidden"
+                  />
+
+                  <div className="flex justify-start">
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isImportingJSON}
+                      variant="outline"
+                      className="border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs h-10 px-5 rounded-xl cursor-pointer font-semibold"
+                    >
+                      {isImportingJSON ? t.common.loading : t.accounts.selectJsonFile}
+                    </Button>
+                  </div>
+
+                  {importSuccessMsg && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 shrink-0" />
+                        <span className="font-semibold">{importSuccessMsg}</span>
+                      </div>
+                      {importSummary && (
+                        <span className="text-[11px] text-emerald-400/80 pl-6">
+                          {importSummary.accounts} {language === "fr" ? "comptes" : "accounts"}, {importSummary.transactions} transactions, {importSummary.projects} {language === "fr" ? "projets importés" : "goals imported"}.
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {importErrorMsg && (
+                    <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                      {importErrorMsg}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Auto-Sync Settings Card */}
+                <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+                  <CardHeader className="p-0 pb-4">
+                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-indigo-400" />
+                      <span>{t.accounts.autoSyncTitle}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <form onSubmit={handleSaveSyncSettings} className="flex flex-col gap-4">
+                      {syncSettingsSuccessMsg && (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                          <Check className="w-4 h-4 shrink-0" />
+                          <span>{syncSettingsSuccessMsg}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-950 border border-white/5">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-white">{t.accounts.periodicRefresh}</span>
+                          <span className="text-[11px] text-zinc-500">
+                            {t.accounts.periodicRefreshDesc}
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={autoSyncEnabled}
+                            onChange={(e) => setAutoSyncEnabled(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                      </div>
+
+                      {autoSyncEnabled && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-zinc-400">{t.accounts.syncFrequency}</label>
+                            <select
+                              value={syncInterval}
+                              onChange={(e) => setSyncInterval(Number(e.target.value))}
+                              className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-10 px-3 outline-none focus:border-indigo-500 cursor-pointer"
+                            >
+                              <option value={6}>{t.accounts.every6Hours}</option>
+                              <option value={12}>{t.accounts.every12Hours}</option>
+                              <option value={24}>{t.accounts.every24Hours}</option>
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-zinc-400">{t.accounts.referenceTime}</label>
+                            <Input
+                              type="time"
+                              value={syncTime}
+                              onChange={(e) => setSyncTime(e.target.value)}
+                              className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end mt-2">
+                        <Button
+                          type="submit"
+                          disabled={isSavingSyncSettings}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-10 px-5 font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+                        >
+                          {isSavingSyncSettings ? t.common.loading : t.accounts.savePreferences}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
               </div>
             )}
-          </Card>
+          </main>
         </div>
-      )}
+      </div>
 
       {/* MODAL: EDIT ACCOUNT */}
       <Dialog open={Boolean(editingAccount)} onOpenChange={(open) => !open && setEditingAccount(null)}>
@@ -1084,7 +1274,7 @@ export function AccountView() {
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="Ex: Main Checking Account"
-                className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-9 focus:border-indigo-500"
+                className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
               />
             </div>
 
@@ -1093,7 +1283,7 @@ export function AccountView() {
               <select
                 value={editType}
                 onChange={(e) => setEditType(e.target.value)}
-                className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-9 px-3 outline-none focus:border-indigo-500 cursor-pointer"
+                className="bg-zinc-900 border border-white/10 text-white rounded-xl text-xs h-10 px-3 outline-none focus:border-indigo-500 cursor-pointer"
               >
                 <option value="Compte Courant">{t.accounts.checkingType}</option>
                 <option value="Livret d'Épargne">{t.accounts.savingsType}</option>
