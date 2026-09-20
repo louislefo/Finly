@@ -57,6 +57,13 @@ export interface TranslationDictionary {
     wealth: string
     accounts: string
     admin: string
+    analysis: string
+    tools: string
+    crypto: string
+    addTool: string
+    myAccount: string
+    connectedAccounts: string
+    security: string
     login: string
     logout: string
     loggingOut: string
@@ -64,6 +71,8 @@ export interface TranslationDictionary {
     userViewMode: string
     exitUserView: string
     connectBank: string
+    openSidebar: string
+    closeSidebar: string
   }
   auth: {
     loginTitle: string
@@ -148,6 +157,7 @@ export interface TranslationDictionary {
     assetClassAllocation: string
     savings: string
     investments: string
+    crypto: string
     realEstate: string
     liquiditiesLegend: string
     savingsLegend: string
@@ -305,6 +315,19 @@ export interface TranslationDictionary {
     linkedAccount: string
   }
   accounts: {
+    manageAccount: string
+    profileNav: string
+    securityNav: string
+    preferencesNav: string
+    banksNav: string
+    backupNav: string
+    groupAccount: string
+    groupBanks: string
+    groupData: string
+    firstName: string
+    lastName: string
+    email: string
+    verifiedBadge: string
     title: string
     subtitle: string
     syncAll: string
@@ -595,6 +618,25 @@ export interface TranslationDictionary {
     activateSyncBtn: string
     connecting: string
     laterBtn: string
+  }
+  cryptoMarket: {
+    title: string
+    subtitle: string
+    searchPlaceholder: string
+    topCryptos: string
+    price: string
+    change24h: string
+    high24h: string
+    low24h: string
+    volume24h: string
+    rank: string
+    marketCap: string
+    chartPeriod: string
+    allTimeHigh: string
+    movingAverage: string
+    noData: string
+    poweredBy: string
+    liveRates: string
   }
   categories: Record<string, string>
 }
