@@ -6,9 +6,5 @@ export const metadata = {
 }
 
 export default function PatrimoinePage() {
-  return (
-    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-[#09090B] text-white">
-      <PatrimoineView />
-    </main>
-  )
+  return <PatrimoineView />
 }

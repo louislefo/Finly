@@ -3,31 +3,25 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
-  Landmark,
-  Wallet,
-  PiggyBank,
-  TrendingUp,
-  Building2,
-  CreditCard,
   Plus,
   RefreshCw,
-  Home,
   MapPin,
   Sparkles,
   Edit2,
   Trash2,
-  Layers,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { NewProjectModal } from "@/components/modals/new-project-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
+import { cn } from "@/lib/utils"
 import { Account, Project, BankConnection, RealEstateData } from "@/lib/types/finance"
+
+export type WealthCategoryMode = "all" | "liquidities" | "savings" | "investments" | "crypto" | "real_estate"
 
 export function PatrimoineView() {
   const router = useRouter()
@@ -45,6 +39,7 @@ export function PatrimoineView() {
   const [isNewProjectOpen, setIsNewProjectOpen] = useState<boolean>(false)
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
   const [reEstimatingId, setReEstimatingId] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<WealthCategoryMode>("all")
 
   // Simulation parameters
   const [simMonthlySavings, setSimMonthlySavings] = useState<number>(500)
@@ -91,14 +86,21 @@ export function PatrimoineView() {
     let investments = 0
     const investmentsAccs: Account[] = []
 
+    let crypto = 0
+    const cryptoAccs: Account[] = []
+
     for (const a of accounts) {
       const tStr = (a.type || "").toLowerCase()
       const n = (a.name || "").toLowerCase()
+      const combined = `${tStr} ${n}`
 
-      if (["pea", "titre", "bourse", "placement", "assurance", "brokerage", "investment"].some((k) => tStr.includes(k) || n.includes(k))) {
+      if (["crypto", "binance", "coinbase", "kraken", "ledger", "bitget", "bybit", "metamask", "btc", "eth"].some((k) => combined.includes(k))) {
+        crypto += a.balance
+        cryptoAccs.push(a)
+      } else if (["pea", "titre", "bourse", "placement", "assurance", "brokerage", "investment", "cto", "action", "trading"].some((k) => combined.includes(k))) {
         investments += a.balance
         investmentsAccs.push(a)
-      } else if (["livret", "epargne", "épargne", "ldd", "lep", "savings"].some((k) => tStr.includes(k) || n.includes(k))) {
+      } else if (["livret", "epargne", "épargne", "ldd", "lep", "pel", "cel", "savings"].some((k) => combined.includes(k))) {
         savings += a.balance
         savingsAccs.push(a)
       } else {
@@ -122,7 +124,7 @@ export function PatrimoineView() {
       realEstateNetEquity += Math.max(0, val - debt)
     }
 
-    const financialAssets = liquidities + savings + investments
+    const financialAssets = liquidities + savings + investments + crypto
     const grossAssets = financialAssets + realEstateGrossValue
     const netWorth = financialAssets + realEstateNetEquity
 
@@ -133,6 +135,8 @@ export function PatrimoineView() {
       savingsAccs,
       investments,
       investmentsAccs,
+      crypto,
+      cryptoAccs,
       financialAssets,
       realEstateGrossValue,
       totalRealEstateDebt,
@@ -154,6 +158,48 @@ export function PatrimoineView() {
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total)
   }, [accounts])
+
+  // Category accounts according to active selection
+  const currentCategoryAccounts = useMemo(() => {
+    switch (selectedCategory) {
+      case "liquidities":
+        return assetCategories.liquiditiesAccs
+      case "savings":
+        return assetCategories.savingsAccs
+      case "investments":
+        return assetCategories.investmentsAccs
+      case "crypto":
+        return assetCategories.cryptoAccs
+      default:
+        return accounts
+    }
+  }, [selectedCategory, assetCategories, accounts])
+
+  const currentCategoryTotal = useMemo(() => {
+    switch (selectedCategory) {
+      case "liquidities":
+        return assetCategories.liquidities
+      case "savings":
+        return assetCategories.savings
+      case "investments":
+        return assetCategories.investments
+      case "crypto":
+        return assetCategories.crypto
+      case "real_estate":
+        return assetCategories.realEstateNetEquity
+      default:
+        return assetCategories.netWorth
+    }
+  }, [selectedCategory, assetCategories])
+
+  const categoryTabs = useMemo(() => [
+    { id: "all" as const, label: language === "fr" ? "Tout" : "All" },
+    { id: "liquidities" as const, label: language === "fr" ? "Liquidités" : "Cash" },
+    { id: "savings" as const, label: language === "fr" ? "Épargne" : "Savings" },
+    { id: "investments" as const, label: language === "fr" ? "Investissements" : "Investments" },
+    { id: "crypto" as const, label: "Crypto" },
+    { id: "real_estate" as const, label: language === "fr" ? "Immobilier" : "Real Estate" },
+  ], [language])
 
   // Synchronize All
   const handleSyncAll = async () => {
@@ -250,424 +296,306 @@ export function PatrimoineView() {
   }, [assetCategories.netWorth, simMonthlySavings, simAnnualRate, simYears])
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Top Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex flex-col">
-          <h1 className="text-xl font-bold text-white tracking-tight">{t.wealth.title}</h1>
-          <span className="text-xs text-zinc-400 mt-0.5">
-            {t.wealth.subtitle}
-          </span>
+    <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto pb-24 md:pb-8">
+      {/* Top Header: Left = Category Mode Selector, Right = Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        {/* Left: Mode Selector (Tout, Liquidités, Épargne, Investissements, Crypto, Immobilier) */}
+        <div className="flex items-center bg-[#18181B] p-1 rounded-xl border border-white/10 w-fit select-none shrink-0 overflow-x-auto max-w-full scrollbar-none">
+          {categoryTabs.map((tab) => {
+            const isActive = selectedCategory === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedCategory(tab.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer select-none whitespace-nowrap",
+                  isActive
+                    ? "bg-white text-zinc-950 font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                )}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
 
-        {/* Header Actions */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Right Actions */}
+        <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
           <Button
             onClick={handleSyncAll}
             disabled={isSyncing}
             variant="outline"
             size="sm"
-            className="h-9 px-3.5 gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-2xl cursor-pointer text-xs font-semibold"
+            className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer text-xs font-semibold"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${isSyncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             <span>{isSyncing ? t.common.syncing : t.common.refresh}</span>
           </Button>
 
-          <Button
-            onClick={() => {
-              setProjectToEdit(null)
-              setIsNewProjectOpen(true)
-            }}
-            size="sm"
-            className="h-9 px-3.5 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t.wealth.addProperty}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Main KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Patrimoine Net Total */}
-        <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">{t.wealth.totalNetWorth}</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-              <Landmark className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold font-mono tracking-tight text-white">
-              {formatAmount(assetCategories.netWorth)}
-            </span>
-            <span className="block text-[11px] text-zinc-500 mt-0.5">
-              {t.wealth.grossAssets} : {formatAmount(assetCategories.grossAssets)}
-            </span>
-          </div>
-        </Card>
-
-        {/* Immobilier Net & Encours */}
-        <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">{t.wealth.realEstateNet}</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-              <Home className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold font-mono tracking-tight text-white">
-              {formatAmount(assetCategories.realEstateNetEquity)}
-            </span>
-            <span className="block text-[11px] text-zinc-500 mt-0.5">
-              {language === "fr" ? "Valo Brute" : "Gross Val."} : {formatAmount(assetCategories.realEstateGrossValue)} {assetCategories.totalRealEstateDebt > 0 && `• ${language === "fr" ? "Dette" : "Debt"} : ${formatAmount(assetCategories.totalRealEstateDebt)}`}
-            </span>
-          </div>
-        </Card>
-
-        {/* Épargne Sécurisée & Placements */}
-        <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">{t.accounts.savingsAndPlacements}</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <PiggyBank className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold font-mono tracking-tight text-white">
-              {formatAmount(assetCategories.savings + assetCategories.investments)}
-            </span>
-            <span className="block text-[11px] text-zinc-500 mt-0.5">
-              {assetCategories.savingsAccs.length + assetCategories.investmentsAccs.length} {language === "fr" ? "comptes de placement" : "savings & investment accounts"}
-            </span>
-          </div>
-        </Card>
-
-        {/* Liquidités Disponibles */}
-        <Card className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-400">{t.wealth.liquidities}</span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-              <Wallet className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold font-mono tracking-tight text-white">
-              {formatAmount(assetCategories.liquidities)}
-            </span>
-            <span className="block text-[11px] text-zinc-500 mt-0.5">
-              {assetCategories.liquiditiesAccs.length} {language === "fr" ? `compte${assetCategories.liquiditiesAccs.length > 1 ? "s" : ""} disponible${assetCategories.liquiditiesAccs.length > 1 ? "s" : ""}` : `checking account${assetCategories.liquiditiesAccs.length > 1 ? "s" : ""}`}
-            </span>
-          </div>
-        </Card>
-      </div>
-
-      {/* REAL ESTATE PROPERTIES SECTION */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-base font-bold text-white tracking-tight">{t.wealth.realEstateProperties}</h2>
-            <Badge variant="outline" className="border-white/10 text-xs text-zinc-400">
-              {realEstateProjects.length} {language === "fr" ? `bien${realEstateProjects.length > 1 ? "s" : ""}` : `propert${realEstateProjects.length > 1 ? "ies" : "y"}`}
-            </Badge>
-          </div>
-
-          <Button
-            onClick={() => {
-              setProjectToEdit(null)
-              setIsNewProjectOpen(true)
-            }}
-            variant="outline"
-            size="sm"
-            className="h-8 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-xl cursor-pointer text-xs"
-          >
-            <Plus className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{t.wealth.addProperty}</span>
-          </Button>
-        </div>
-
-        {realEstateProjects.length === 0 ? (
-          <Card className="p-8 border-white/10 bg-[#18181B] rounded-3xl text-center flex flex-col items-center justify-center gap-3">
-            <div className="p-3 rounded-2xl bg-zinc-900 border border-white/10 text-zinc-500">
-              <Home className="w-8 h-8 text-indigo-400" />
-            </div>
-            <div className="flex flex-col gap-1 max-w-sm">
-              <h3 className="text-sm font-bold text-white">{t.wealth.noRealEstate}</h3>
-              <p className="text-xs text-zinc-400">
-                {t.wealth.noRealEstateDesc}
-              </p>
-            </div>
+          {selectedCategory === "all" || selectedCategory === "real_estate" ? (
             <Button
               onClick={() => {
                 setProjectToEdit(null)
                 setIsNewProjectOpen(true)
               }}
               size="sm"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3.5 font-semibold"
+              className="h-9 px-3.5 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer text-xs font-semibold"
             >
-              {t.wealth.addProperty}
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t.wealth.addProperty}</span>
             </Button>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {realEstateProjects.map((p) => {
-              const re = p.realEstateData!
-              const currentVal = re.currentEstimatedValue || re.propertyPrice || 0
-              const purchasePrice = re.propertyPrice || 0
-              const gain = currentVal - purchasePrice
-              const gainPct = purchasePrice > 0 ? Math.round((gain / purchasePrice) * 1000) / 10 : 0
-              const debt = re.hasLoan !== false ? re.remainingLoanBalance ?? re.loanAmount ?? 0 : 0
-              const netEquity = Math.max(0, currentVal - debt)
-              const isUpdating = reEstimatingId === p.id
-
-              return (
-                <Card key={p.id} className="p-5 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col justify-between gap-4">
-                  {/* Property Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 text-indigo-400">
-                        <Home className="w-5 h-5" />
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-white">{p.name}</span>
-                          <Badge variant="outline" className="border-white/10 bg-zinc-900 text-[10px] text-zinc-400">
-                            {re.surfaceM2 ? `${re.surfaceM2} m²` : (language === "fr" ? "Immobilier" : "Real Estate")}
-                          </Badge>
-                          {re.isRental && (
-                            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px]">
-                              {language === "fr" ? `Locatif (${re.grossYield ? `${re.grossYield}% brut` : "Loué"})` : `Rental (${re.grossYield ? `${re.grossYield}% gross` : "Rented"})`}
-                            </Badge>
-                          )}
-                        </div>
-                        {re.address && (
-                          <div className="flex items-center gap-1 text-[11px] text-zinc-400 mt-0.5">
-                            <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
-                            <span className="truncate">{re.address}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        onClick={() => handleRefreshPropertyEstimate(p)}
-                        disabled={isUpdating}
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
-                        title={t.wealth.reestimateLive}
-                      >
-                        <Sparkles className={`w-3.5 h-3.5 text-emerald-400 ${isUpdating ? "animate-spin" : ""}`} />
-                      </Button>
-
-                      <Button
-                        onClick={() => {
-                          setProjectToEdit(p)
-                          setIsNewProjectOpen(true)
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-                        title={t.projects.editProject}
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-
-                      <Button
-                        onClick={() => handleDeleteProject(p.id)}
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                        title={t.projects.deleteProject}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Valuation & Equity Metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-zinc-900/60 border border-white/5 text-xs">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{t.wealth.estimatedValue}</span>
-                      <span className="text-sm font-bold font-mono text-white">{formatAmount(currentVal)}</span>
-                      {re.estimatedPricePerM2 && (
-                        <span className="text-[10px] text-zinc-400 font-mono">{re.estimatedPricePerM2} €/m²</span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{t.wealth.purchasePrice}</span>
-                      <span className="text-sm font-bold font-mono text-zinc-300">{formatAmount(purchasePrice)}</span>
-                      <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${gain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        {gain >= 0 ? "+" : ""}{formatAmount(gain)} ({gainPct}%)
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{t.wealth.netEquity}</span>
-                      <span className="text-sm font-bold font-mono text-emerald-400">{formatAmount(netEquity)}</span>
-                      <span className="text-[10px] text-zinc-500">{t.wealth.excludingDebt}</span>
-                    </div>
-                  </div>
-
-                  {/* Loan & Mortgage details if active */}
-                  {re.hasLoan !== false && re.loanAmount && re.loanAmount > 0 && (
-                    <div className="flex flex-col gap-2 pt-2 border-t border-white/5 text-xs">
-                      <div className="flex items-center justify-between text-zinc-400">
-                        <div className="flex items-center gap-1.5">
-                          <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
-                          <span>{language === "fr" ? `Prêt : ${formatAmount(re.loanAmount)} (${re.loanDurationYears} ans à ${re.interestRate}%)` : `Loan: ${formatAmount(re.loanAmount)} (${re.loanDurationYears} yrs @ ${re.interestRate}%)`}</span>
-                        </div>
-                        <span className="font-mono font-bold text-white">{re.monthlyPayment} € {language === "fr" ? "/ mois" : "/ mo"}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-zinc-500">{language === "fr" ? "Capital restant dû :" : "Remaining balance:"} <strong className="font-mono text-zinc-300">{formatAmount(debt)}</strong></span>
-                        <span className="text-emerald-400 font-semibold">{language === "fr" ? "Amorti :" : "Amortized:"} {formatAmount(re.capitalAmortized || (re.loanAmount - debt))}</span>
-                      </div>
-
-                      {/* Progress bar of loan amortization */}
-                      <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${re.loanAmount > 0 ? Math.min(100, Math.round(((re.loanAmount - debt) / re.loanAmount) * 100)) : 0}%` }}
-                          className="bg-emerald-500 h-full rounded-full"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              )
-            })}
-          </div>
-        )}
+          ) : (
+            <Button
+              onClick={() => router.push("/compte")}
+              size="sm"
+              className="h-9 px-3.5 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer text-xs font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{language === "fr" ? "Gérer les comptes" : "Manage accounts"}</span>
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Asset Allocation Breakdown Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Visual Allocation Card */}
-        <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl lg:col-span-2 flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-400" />
-              <span>{t.wealth.assetClassAllocation}</span>
-            </CardTitle>
-            <span className="text-xs font-mono font-semibold text-zinc-400">
-              {t.wealth.grossAssets} : {formatAmount(assetCategories.grossAssets)}
+      {/* 2 Primary Balanced Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {/* Left Card: Total Wealth & Asset Allocation (5 cols) */}
+        <Card className="lg:col-span-5 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-6">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-400">
+              {selectedCategory === "all" && t.wealth.totalNetWorth}
+              {selectedCategory === "liquidities" && (language === "fr" ? "Total Liquidités" : "Total Cash")}
+              {selectedCategory === "savings" && (language === "fr" ? "Total Épargne" : "Total Savings")}
+              {selectedCategory === "investments" && (language === "fr" ? "Total Investissements" : "Total Investments")}
+              {selectedCategory === "crypto" && (language === "fr" ? "Total Crypto-actifs" : "Total Crypto")}
+              {selectedCategory === "real_estate" && (language === "fr" ? "Équité Nette Immobilière" : "Real Estate Net Equity")}
+            </span>
+            <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">
+              {selectedCategory === "all" && formatAmount(assetCategories.netWorth)}
+              {selectedCategory === "liquidities" && formatAmount(assetCategories.liquidities)}
+              {selectedCategory === "savings" && formatAmount(assetCategories.savings)}
+              {selectedCategory === "investments" && formatAmount(assetCategories.investments)}
+              {selectedCategory === "crypto" && formatAmount(assetCategories.crypto)}
+              {selectedCategory === "real_estate" && formatAmount(assetCategories.realEstateNetEquity)}
+            </span>
+            <span className="text-[11px] text-zinc-500 font-mono mt-0.5">
+              {selectedCategory === "all" && `${t.wealth.grossAssets} : ${formatAmount(assetCategories.grossAssets)}`}
+              {selectedCategory === "liquidities" && `${Math.round((assetCategories.liquidities / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.liquiditiesAccs.length} comptes`}
+              {selectedCategory === "savings" && `${Math.round((assetCategories.savings / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.savingsAccs.length} livrets`}
+              {selectedCategory === "investments" && `${Math.round((assetCategories.investments / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.investmentsAccs.length} comptes`}
+              {selectedCategory === "crypto" && `${Math.round((assetCategories.crypto / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.cryptoAccs.length} comptes`}
+              {selectedCategory === "real_estate" && `${language === "fr" ? "Valeur brute" : "Gross value"}: ${formatAmount(assetCategories.realEstateGrossValue)} • ${language === "fr" ? "Dettes" : "Debt"}: -${formatAmount(assetCategories.totalRealEstateDebt)}`}
             </span>
           </div>
 
           {/* Allocation Bar */}
-          {assetCategories.grossAssets > 0 ? (
+          {assetCategories.grossAssets > 0 && (
             <div className="flex flex-col gap-3">
-              <div className="h-4 w-full rounded-full bg-zinc-900 border border-white/10 overflow-hidden flex">
+              <div className="h-2.5 w-full rounded-full bg-zinc-900 border border-white/5 overflow-hidden flex">
                 {assetCategories.liquidities > 0 && (
                   <div
                     style={{ width: `${(assetCategories.liquidities / assetCategories.grossAssets) * 100}%` }}
-                    className="bg-blue-500 h-full transition-all"
-                    title={`${t.wealth.liquidities}: ${formatAmount(assetCategories.liquidities)}`}
+                    className={cn(
+                      "bg-blue-500 h-full transition-all",
+                      selectedCategory !== "all" && selectedCategory !== "liquidities" && "opacity-25"
+                    )}
                   />
                 )}
                 {assetCategories.savings > 0 && (
                   <div
                     style={{ width: `${(assetCategories.savings / assetCategories.grossAssets) * 100}%` }}
-                    className="bg-emerald-500 h-full transition-all"
-                    title={`${t.wealth.savings}: ${formatAmount(assetCategories.savings)}`}
+                    className={cn(
+                      "bg-emerald-500 h-full transition-all",
+                      selectedCategory !== "all" && selectedCategory !== "savings" && "opacity-25"
+                    )}
                   />
                 )}
                 {assetCategories.investments > 0 && (
                   <div
                     style={{ width: `${(assetCategories.investments / assetCategories.grossAssets) * 100}%` }}
-                    className="bg-purple-500 h-full transition-all"
-                    title={`${t.wealth.investments}: ${formatAmount(assetCategories.investments)}`}
+                    className={cn(
+                      "bg-purple-500 h-full transition-all",
+                      selectedCategory !== "all" && selectedCategory !== "investments" && "opacity-25"
+                    )}
+                  />
+                )}
+                {assetCategories.crypto > 0 && (
+                  <div
+                    style={{ width: `${(assetCategories.crypto / assetCategories.grossAssets) * 100}%` }}
+                    className={cn(
+                      "bg-amber-500 h-full transition-all",
+                      selectedCategory !== "all" && selectedCategory !== "crypto" && "opacity-25"
+                    )}
                   />
                 )}
                 {assetCategories.realEstateGrossValue > 0 && (
                   <div
                     style={{ width: `${(assetCategories.realEstateGrossValue / assetCategories.grossAssets) * 100}%` }}
-                    className="bg-amber-500 h-full transition-all"
-                    title={`${t.wealth.realEstate}: ${formatAmount(assetCategories.realEstateGrossValue)}`}
+                    className={cn(
+                      "bg-indigo-500 h-full transition-all",
+                      selectedCategory !== "all" && selectedCategory !== "real_estate" && "opacity-25"
+                    )}
                   />
                 )}
               </div>
 
-              {/* Legend Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
+              {/* Minimalist Allocation List */}
+              <div className="flex flex-col divide-y divide-white/5 pt-1">
+                {/* Liquidités */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("liquidities")}
+                  className={cn(
+                    "flex items-center justify-between py-2 text-xs w-full text-left rounded-lg transition-colors px-1 cursor-pointer",
+                    selectedCategory === "liquidities" ? "bg-white/10" : "hover:bg-white/5"
+                  )}
+                >
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                    <span className="text-xs text-zinc-400">{t.wealth.liquidities}</span>
+                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                    <span className={selectedCategory === "liquidities" ? "text-white font-semibold" : "text-zinc-300"}>
+                      {t.wealth.liquidities}
+                    </span>
                   </div>
-                  <span className="text-sm font-bold font-mono text-white">
-                    {formatAmount(assetCategories.liquidities)}
-                  </span>
-                  <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.liquidities / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
-                  </span>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {Math.round((assetCategories.liquidities / assetCategories.grossAssets) * 100)}%
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      {formatAmount(assetCategories.liquidities)}
+                    </span>
+                  </div>
+                </button>
 
-                <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
+                {/* Épargne */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("savings")}
+                  className={cn(
+                    "flex items-center justify-between py-2 text-xs w-full text-left rounded-lg transition-colors px-1 cursor-pointer",
+                    selectedCategory === "savings" ? "bg-white/10" : "hover:bg-white/5"
+                  )}
+                >
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span className="text-xs text-zinc-400">{t.wealth.savings}</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className={selectedCategory === "savings" ? "text-white font-semibold" : "text-zinc-300"}>
+                      {t.wealth.savings}
+                    </span>
                   </div>
-                  <span className="text-sm font-bold font-mono text-white">
-                    {formatAmount(assetCategories.savings)}
-                  </span>
-                  <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.savings / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
-                  </span>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {Math.round((assetCategories.savings / assetCategories.grossAssets) * 100)}%
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      {formatAmount(assetCategories.savings)}
+                    </span>
+                  </div>
+                </button>
 
-                <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
+                {/* Investissements */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("investments")}
+                  className={cn(
+                    "flex items-center justify-between py-2 text-xs w-full text-left rounded-lg transition-colors px-1 cursor-pointer",
+                    selectedCategory === "investments" ? "bg-white/10" : "hover:bg-white/5"
+                  )}
+                >
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                    <span className="text-xs text-zinc-400">{t.wealth.investments}</span>
+                    <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                    <span className={selectedCategory === "investments" ? "text-white font-semibold" : "text-zinc-300"}>
+                      {t.wealth.investments}
+                    </span>
                   </div>
-                  <span className="text-sm font-bold font-mono text-white">
-                    {formatAmount(assetCategories.investments)}
-                  </span>
-                  <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.investments / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
-                  </span>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {Math.round((assetCategories.investments / assetCategories.grossAssets) * 100)}%
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      {formatAmount(assetCategories.investments)}
+                    </span>
+                  </div>
+                </button>
 
-                <div className="p-3 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-1">
+                {/* Crypto */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("crypto")}
+                  className={cn(
+                    "flex items-center justify-between py-2 text-xs w-full text-left rounded-lg transition-colors px-1 cursor-pointer",
+                    selectedCategory === "crypto" ? "bg-white/10" : "hover:bg-white/5"
+                  )}
+                >
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span className="text-xs text-zinc-400">{t.wealth.realEstate}</span>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                    <span className={selectedCategory === "crypto" ? "text-white font-semibold" : "text-zinc-300"}>
+                      {t.wealth.crypto}
+                    </span>
                   </div>
-                  <span className="text-sm font-bold font-mono text-white">
-                    {formatAmount(assetCategories.realEstateGrossValue)}
-                  </span>
-                  <span className="text-[10px] text-zinc-500">
-                    {assetCategories.grossAssets > 0 ? Math.round((assetCategories.realEstateGrossValue / assetCategories.grossAssets) * 100) : 0}% {language === "fr" ? "du total" : "of total"}
-                  </span>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {Math.round((assetCategories.crypto / assetCategories.grossAssets) * 100)}%
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      {formatAmount(assetCategories.crypto)}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Immobilier */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("real_estate")}
+                  className={cn(
+                    "flex items-center justify-between py-2 text-xs w-full text-left rounded-lg transition-colors px-1 cursor-pointer",
+                    selectedCategory === "real_estate" ? "bg-white/10" : "hover:bg-white/5"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                    <span className={selectedCategory === "real_estate" ? "text-white font-semibold" : "text-zinc-300"}>
+                      {t.wealth.realEstate}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {Math.round((assetCategories.realEstateGrossValue / assetCategories.grossAssets) * 100)}%
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      {formatAmount(assetCategories.realEstateGrossValue)}
+                    </span>
+                  </div>
+                </button>
               </div>
-            </div>
-          ) : (
-            <div className="py-8 text-center text-xs text-zinc-500">
-              {language === "fr" ? "Aucun actif détecté pour l'instant." : "No assets detected yet."}
             </div>
           )}
 
-          {/* Underlying Accounts Detail List */}
-          <div className="flex flex-col gap-3 pt-2">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{t.wealth.linkedBankAccounts}</span>
-            <div className="divide-y divide-white/5 border border-white/5 rounded-2xl bg-zinc-900/40 overflow-hidden">
-              {accounts.map((acc) => (
-                <div key={acc.id} className="p-3 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-zinc-400 font-medium">{acc.bank}</span>
+          {/* Linked Bank Accounts */}
+          <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                {t.wealth.linkedBankAccounts} ({currentCategoryAccounts.length})
+              </span>
+              {selectedCategory !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("all")}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                >
+                  {language === "fr" ? "Voir tout" : "View all"}
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-white/5 max-h-[180px] overflow-y-auto">
+              {currentCategoryAccounts.slice(0, 6).map((acc) => (
+                <div key={acc.id} className="py-2 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-white font-medium truncate">{acc.name || acc.bank}</span>
                     <span className="text-zinc-600">•</span>
-                    <span className="text-white font-semibold truncate">{acc.name || t.accounts.depositAccount}</span>
-                    <Badge variant="outline" className="border-white/10 bg-zinc-900 text-zinc-400 text-[10px] py-0 px-1.5 hidden sm:inline">
-                      {acc.type || "Courant"}
-                    </Badge>
+                    <span className="text-[11px] text-zinc-500">{acc.bank}</span>
                   </div>
-                  <span className="font-mono font-bold text-white shrink-0">
+                  <span className="font-mono font-semibold text-zinc-200 shrink-0">
                     {formatAmount(acc.balance)}
                   </span>
                 </div>
@@ -676,63 +604,238 @@ export function PatrimoineView() {
           </div>
         </Card>
 
-        {/* Bank Institutions Breakdown Card */}
-        <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col gap-5">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-indigo-400" />
-              <span>{t.wealth.byBank}</span>
-            </CardTitle>
-            <span className="text-xs text-zinc-400">{bankBreakdown.length} {language === "fr" ? `banque${bankBreakdown.length > 1 ? "s" : ""}` : `bank${bankBreakdown.length > 1 ? "s" : ""}`}</span>
-          </div>
+        {/* Right Card: Dynamic content according to selected category */}
+        {selectedCategory === "all" || selectedCategory === "real_estate" ? (
+          <Card className="lg:col-span-7 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <h2 className="text-sm font-semibold text-white tracking-tight">
+                {t.wealth.realEstateProperties}
+              </h2>
+              <span className="text-xs text-zinc-500 font-mono">
+                {realEstateProjects.length} {language === "fr" ? `bien${realEstateProjects.length > 1 ? "s" : ""}` : `propert${realEstateProjects.length > 1 ? "ies" : "y"}`}
+              </span>
+            </div>
 
-          <div className="flex flex-col gap-3">
-            {bankBreakdown.map((b) => {
-              const pct = assetCategories.financialAssets > 0 ? Math.round((b.total / assetCategories.financialAssets) * 100) : 0
-              return (
-                <div key={b.bankName} className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
-                        <BankLogo bankName={b.bankName} className="w-4 h-4" />
+            {realEstateProjects.length === 0 ? (
+              <div className="py-16 text-center flex flex-col items-center justify-center gap-2 text-zinc-500">
+                <span className="text-sm font-medium text-zinc-300">{t.wealth.noRealEstate}</span>
+                <p className="text-xs max-w-sm">{t.wealth.noRealEstateDesc}</p>
+                <Button
+                  onClick={() => {
+                    setProjectToEdit(null)
+                    setIsNewProjectOpen(true)
+                  }}
+                  size="sm"
+                  className="mt-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3.5 font-semibold"
+                >
+                  {t.wealth.addProperty}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-white/5">
+                {realEstateProjects.map((p) => {
+                  const re = p.realEstateData!
+                  const currentVal = re.currentEstimatedValue || re.propertyPrice || 0
+                  const purchasePrice = re.propertyPrice || 0
+                  const gain = currentVal - purchasePrice
+                  const debt = re.hasLoan !== false ? re.remainingLoanBalance ?? re.loanAmount ?? 0 : 0
+                  const netEquity = Math.max(0, currentVal - debt)
+                  const isUpdating = reEstimatingId === p.id
+
+                  return (
+                    <div key={p.id} className="py-4 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-white">{p.name}</span>
+                            {re.surfaceM2 && (
+                              <span className="text-[11px] text-zinc-400 font-mono">{re.surfaceM2} m²</span>
+                            )}
+                            {re.isRental && (
+                              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                {language === "fr" ? "Locatif" : "Rental"}
+                              </span>
+                            )}
+                          </div>
+                          {re.address && (
+                            <span className="text-xs text-zinc-500 truncate mt-0.5">{re.address}</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => handleRefreshPropertyEstimate(p)}
+                            disabled={isUpdating}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-emerald-400 cursor-pointer"
+                            title={t.wealth.reestimateLive}
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${isUpdating ? "animate-spin text-emerald-400" : ""}`} />
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setProjectToEdit(p)
+                              setIsNewProjectOpen(true)
+                            }}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
+                            title={t.projects.editProject}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteProject(p.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-rose-400 cursor-pointer"
+                            title={t.projects.deleteProject}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white">{b.bankName}</span>
-                        <span className="text-[10px] text-zinc-500">{b.count} {language === "fr" ? `compte${b.count > 1 ? "s" : ""}` : `account${b.count > 1 ? "s" : ""}`}</span>
+
+                      {/* Inline Property Metrics */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-zinc-500">{t.wealth.estimatedValue}</span>
+                          <span className="font-bold text-white">{formatAmount(currentVal)}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-zinc-500">{t.wealth.purchasePrice}</span>
+                          <span className="text-zinc-300">{formatAmount(purchasePrice)}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-zinc-500">{t.wealth.netEquity}</span>
+                          <span className="font-bold text-emerald-400">{formatAmount(netEquity)}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-zinc-500">{language === "fr" ? "Plus-value" : "Gain"}</span>
+                          <span className={`font-semibold ${gain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                            {gain >= 0 ? "+" : ""}{formatAmount(gain)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-xs font-bold font-mono text-white">{formatAmount(b.total)}</span>
-                      <span className="text-[10px] text-zinc-500">{pct}% {language === "fr" ? "des liquidités" : "of liquidities"}</span>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
+              <span>{t.wealth.propertiesCount}: {realEstateProjects.length}</span>
+              <Button
+                onClick={() => {
+                  setProjectToEdit(null)
+                  setIsNewProjectOpen(true)
+                }}
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+              >
+                + {t.wealth.addProperty}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="lg:col-span-7 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <h2 className="text-sm font-semibold text-white tracking-tight">
+                {selectedCategory === "liquidities" && (language === "fr" ? "Comptes courants & Liquidités" : "Cash & Checking Accounts")}
+                {selectedCategory === "savings" && (language === "fr" ? "Comptes d'épargne & Livrets" : "Savings Accounts & Books")}
+                {selectedCategory === "investments" && (language === "fr" ? "Comptes d'investissement (PEA, CTO, Assurance-vie)" : "Investment & Brokerage Accounts")}
+                {selectedCategory === "crypto" && (language === "fr" ? "Portefeuilles & Comptes Crypto" : "Crypto Accounts & Wallets")}
+              </h2>
+              <span className="text-xs text-zinc-500 font-mono">
+                {currentCategoryAccounts.length} {language === "fr" ? `compte${currentCategoryAccounts.length > 1 ? "s" : ""}` : `account${currentCategoryAccounts.length > 1 ? "s" : ""}`}
+              </span>
+            </div>
+
+            {currentCategoryAccounts.length === 0 ? (
+              <div className="py-16 text-center flex flex-col items-center justify-center gap-2 text-zinc-500">
+                <span className="text-sm font-medium text-zinc-300">
+                  {language === "fr" ? "Aucun compte détecté dans cette catégorie" : "No accounts found in this category"}
+                </span>
+                <p className="text-xs max-w-sm">
+                  {selectedCategory === "crypto"
+                    ? (language === "fr" ? "Connectez vos plateformes crypto (Binance, Kraken, Coinbase) ou synchronisez vos comptes dans Outils." : "Connect your crypto exchanges or wallets in Tools.")
+                    : (language === "fr" ? "Rattachez vos établissements bancaires pour faire apparaître vos comptes ici." : "Link your bank accounts to see them here.")}
+                </p>
+                <Button
+                  onClick={() => router.push("/compte")}
+                  size="sm"
+                  className="mt-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3.5 font-semibold"
+                >
+                  {language === "fr" ? "Gérer mes comptes" : "Manage accounts"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-white/5">
+                {currentCategoryAccounts.map((acc) => (
+                  <div key={acc.id} className="py-3.5 flex items-center justify-between gap-3">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold text-white truncate">{acc.name || acc.bank}</span>
+                      <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
+                        <span>{acc.bank}</span>
+                        {acc.accountNumber && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono">{acc.accountNumber}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-base font-bold font-mono text-white">
+                        {formatAmount(acc.balance)}
+                      </span>
+                      <Button
+                        onClick={() => router.push(`/depenses?accountId=${acc.id}`)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer"
+                      >
+                        {language === "fr" ? "Opérations" : "Transactions"}
+                      </Button>
                     </div>
                   </div>
-                  <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                    <div style={{ width: `${pct}%` }} className="bg-indigo-500 h-full rounded-full" />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </Card>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
+              <span>
+                {language === "fr" ? "Total catégorie" : "Category total"}:{" "}
+                <strong className="text-white font-mono">{formatAmount(currentCategoryTotal)}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => router.push("/compte")}
+                className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer transition-colors"
+              >
+                {language === "fr" ? "Gérer les banques & comptes →" : "Manage banks & accounts →"}
+              </button>
+            </div>
+          </Card>
+        )}
       </div>
 
-      {/* Wealth Simulator / Projection Section */}
-      <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-400" />
-            <CardTitle className="text-base font-bold text-white">
-              {t.wealth.wealthEvolutionSimulator}
-            </CardTitle>
-          </div>
-          <span className="text-xs text-zinc-400">{t.wealth.compoundInterestProjection}</span>
+      {/* Wealth Simulator Section */}
+      <Card className="p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-white/5">
+          <h3 className="text-sm font-semibold text-white tracking-tight">
+            {t.wealth.wealthEvolutionSimulator}
+          </h3>
+          <span className="text-xs text-zinc-500">{t.wealth.compoundInterestProjection}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           {/* Controls */}
           <div className="flex flex-col gap-4 md:col-span-2">
-            {/* Monthly Savings Input */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <div className="flex justify-between text-xs font-medium">
                 <span className="text-zinc-400">{t.wealth.monthlySavingsAdded}</span>
                 <span className="text-white font-mono font-bold">{simMonthlySavings} € {language === "fr" ? "/ mois" : "/ mo"}</span>
@@ -744,12 +847,11 @@ export function PatrimoineView() {
                 step={50}
                 value={simMonthlySavings}
                 onChange={(e) => setSimMonthlySavings(Number(e.target.value))}
-                className="w-full accent-indigo-500 bg-zinc-800 rounded-lg cursor-pointer"
+                className="w-full accent-indigo-500 bg-zinc-800 rounded-lg cursor-pointer h-1.5"
               />
             </div>
 
-            {/* Annual Yield Input */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <div className="flex justify-between text-xs font-medium">
                 <span className="text-zinc-400">{t.wealth.estimatedAnnualYield}</span>
                 <span className="text-white font-mono font-bold">{simAnnualRate} % {language === "fr" ? "/ an" : "/ yr"}</span>
@@ -761,12 +863,11 @@ export function PatrimoineView() {
                 step={0.5}
                 value={simAnnualRate}
                 onChange={(e) => setSimAnnualRate(Number(e.target.value))}
-                className="w-full accent-emerald-500 bg-zinc-800 rounded-lg cursor-pointer"
+                className="w-full accent-emerald-500 bg-zinc-800 rounded-lg cursor-pointer h-1.5"
               />
             </div>
 
-            {/* Time Horizon */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-zinc-400">{t.wealth.investmentHorizon}</span>
               <div className="flex items-center gap-2">
                 {[1, 3, 5, 10, 15].map((y) => (
@@ -774,9 +875,9 @@ export function PatrimoineView() {
                     key={y}
                     type="button"
                     onClick={() => setSimYears(y)}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       simYears === y
-                        ? "bg-indigo-600 text-white shadow-sm"
+                        ? "bg-indigo-600 text-white"
                         : "bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white"
                     }`}
                   >
@@ -787,17 +888,17 @@ export function PatrimoineView() {
             </div>
           </div>
 
-          {/* Projected Result Card */}
-          <div className="p-5 rounded-3xl bg-zinc-900/90 border border-white/10 flex flex-col justify-between gap-4">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+          {/* Projected Result Box */}
+          <div className="p-4 sm:p-5 rounded-xl bg-zinc-950/60 border border-white/5 flex flex-col justify-between gap-3">
+            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
               {format(t.wealth.projectedWealthInYears, { count: simYears })}
             </span>
             <div className="flex flex-col">
               <span className="text-3xl font-extrabold font-mono text-white tracking-tight">
                 {formatAmount(projectedWealth.futureTotal)}
               </span>
-              <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-white/10 text-xs text-zinc-400">
-                <div className="flex justify-between">
+              <div className="flex flex-col gap-1 mt-2.5 pt-2.5 border-t border-white/5 text-xs">
+                <div className="flex justify-between text-zinc-400">
                   <span>{t.wealth.totalContributed} :</span>
                   <span className="font-mono text-zinc-300 font-semibold">{formatAmount(projectedWealth.contributed)}</span>
                 </div>

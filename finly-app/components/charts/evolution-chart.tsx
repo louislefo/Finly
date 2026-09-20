@@ -345,7 +345,7 @@ export function EvolutionChart({
       {/* Responsive Chart Area with Dynamic Domain Scaling */}
       <div className="h-64 sm:h-72 w-full min-w-0 pt-1" style={{ minHeight: "240px", minWidth: 0 }}>
         {isMounted && chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240} initialDimension={{ width: 500, height: 280 }}>
             {viewMode === "sum" ? (
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>

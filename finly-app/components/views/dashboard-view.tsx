@@ -1,84 +1,325 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
-import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
-
-const ExpensesMap = dynamic(
-  () => import("@/components/charts/expenses-map").then((mod) => mod.ExpensesMap),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-[360px] md:h-[440px] rounded-3xl bg-[#18181B] border border-white/10 flex items-center justify-center text-xs text-zinc-500">
-        Chargement de la carte des dépenses...
-      </div>
-    ),
-  }
-)
 import {
-  Plus,
-  RefreshCw,
-  ArrowUpRight,
-  ArrowDownRight,
-  ShoppingBag,
-  Car,
-  Film,
-  FileSpreadsheet,
-  PlusCircle,
-  CheckCircle2,
-  Wallet,
-  Building2,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts"
+import {
+  ChevronDown,
+  PieChart as PieChartIcon,
+  LayoutGrid,
   ChevronRight,
+  Check,
+  Wallet,
   PiggyBank,
+  TrendingUp,
+  Shield,
 } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
-import { Card, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { WoobModal } from "@/components/modals/woob-modal"
-import { ConnectedAccountsModal } from "@/components/modals/connected-accounts-modal"
-import { BankDetailSheet } from "@/components/modals/bank-detail-sheet"
-import { ExportDialog } from "@/components/modals/export-dialog"
-import { EvolutionChart } from "@/components/charts/evolution-chart"
-import { BankLogo } from "@/components/ui/bank-icons"
 import { MerchantAvatar } from "@/components/ui/merchant-avatar"
+import { ExpensesMap } from "@/components/charts/expenses-map"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { Account, Transaction, Project } from "@/lib/types/finance"
-import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
+import { Account, Transaction } from "@/lib/types/finance"
+import { cn } from "@/lib/utils"
+
+type TimeRange = "1J" | "7J" | "1M" | "3M" | "6M" | "YTD" | "1A" | "TOUT"
+const TIME_RANGES: TimeRange[] = ["1J", "7J", "1M", "3M", "6M", "YTD", "1A", "TOUT"]
+
+export type CategoryKey = "comptes_courants" | "livrets" | "assurance_vie" | "pea_titres"
+
+interface CategoryDefinition {
+  key: CategoryKey
+  labelFr: string
+  labelEn: string
+  color: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+const CATEGORIES: CategoryDefinition[] = [
+  {
+    key: "comptes_courants",
+    labelFr: "Comptes courants",
+    labelEn: "Checking accounts",
+    color: "#3b82f6", // Blue
+    icon: Wallet,
+  },
+  {
+    key: "livrets",
+    labelFr: "Livrets",
+    labelEn: "Savings",
+    color: "#10b981", // Emerald
+    icon: PiggyBank,
+  },
+  {
+    key: "assurance_vie",
+    labelFr: "Assurance vie",
+    labelEn: "Life insurance",
+    color: "#8b5cf6", // Purple
+    icon: Shield,
+  },
+  {
+    key: "pea_titres",
+    labelFr: "PEA / Titres",
+    labelEn: "PEA / Brokerage",
+    color: "#f59e0b", // Amber/Gold
+    icon: TrendingUp,
+  },
+]
+
+// Accurate classifier based on account types, names, and banks
+function classifyAccount(acc: Account): CategoryKey {
+  const t = (acc.type || "").toLowerCase()
+  const n = (acc.name || "").toLowerCase()
+  const b = (acc.bank || "").toLowerCase()
+  const combined = `${t} ${n} ${b}`
+
+  // 1. Assurance vie & Retraite
+  if (
+    [
+      "assurance",
+      "vie",
+      "av",
+      "per",
+      "perp",
+      "madelin",
+      "capitalisation",
+      "retraite",
+      "life insurance",
+      "boursovie",
+      "linxea",
+      "spirica",
+      "suravenir",
+      "generali",
+    ].some((k) => combined.includes(k))
+  ) {
+    return "assurance_vie"
+  }
+
+  // 2. PEA / Titres / Bourse / Crypto / Investissement
+  if (
+    [
+      "pea",
+      "titre",
+      "titres",
+      "bourse",
+      "cto",
+      "broker",
+      "brokerage",
+      "investment",
+      "crypto",
+      "action",
+      "actions",
+      "etf",
+      "trading",
+      "degiro",
+      "trade republic",
+      "binance",
+      "kraken",
+      "coinbase",
+    ].some((k) => combined.includes(k))
+  ) {
+    return "pea_titres"
+  }
+
+  // 3. Livrets d'épargne (Livret A, LDDS, LEP, PEL, CEL, Livret Jeune, CSL...)
+  if (
+    [
+      "livret",
+      "epargne",
+      "épargne",
+      "ldd",
+      "ldds",
+      "lep",
+      "pel",
+      "cel",
+      "savings",
+      "csl",
+      "distingo",
+      "super livret",
+    ].some((k) => combined.includes(k))
+  ) {
+    return "livrets"
+  }
+
+  // 4. Par défaut: Comptes courants
+  return "comptes_courants"
+}
+
+// Treemap Box Definition
+interface TreemapRect {
+  key: CategoryKey
+  name: string
+  value: number
+  percentage: number
+  color: string
+  accountsCount: number
+  x: number // percentage 0-100
+  y: number // percentage 0-100
+  w: number // percentage 0-100
+  h: number // percentage 0-100
+}
+
+// Treemap layout with a visual floor to ensure every tile has enough room for text and figures
+function computeTreemapLayout(
+  items: {
+    key: CategoryKey
+    name: string
+    value: number
+    percentage: number
+    color: string
+    accountsCount: number
+  }[]
+): TreemapRect[] {
+  const valid = items.filter((it) => it.value > 0).sort((a, b) => b.value - a.value)
+  if (valid.length === 0) return []
+
+  const total = valid.reduce((sum, it) => sum + it.value, 0)
+  if (total === 0) return []
+
+  if (valid.length === 1) {
+    return [{ ...valid[0], x: 0, y: 0, w: 100, h: 100 }]
+  }
+
+  // Minimum visual weight floor so even a 1% or 2% category remains readable with its text
+  const rawP = valid.map((it) => it.value / total)
+  const minFloor = valid.length === 2 ? 0.22 : valid.length === 3 ? 0.18 : 0.14
+  const adjustedWeights = rawP.map((rp) => Math.max(minFloor, rp))
+  const sumWeights = adjustedWeights.reduce((a, b) => a + b, 0)
+  const visualP = adjustedWeights.map((w) => w / sumWeights)
+
+  if (valid.length === 2) {
+    const w0 = visualP[0] * 100
+    const w1 = visualP[1] * 100
+    return [
+      { ...valid[0], x: 0, y: 0, w: w0, h: 100 },
+      { ...valid[1], x: w0, y: 0, w: w1, h: 100 },
+    ]
+  }
+
+  if (valid.length === 3) {
+    const w0 = visualP[0] * 100
+    const wRight = (visualP[1] + visualP[2]) * 100
+    const h1 = (visualP[1] / (visualP[1] + visualP[2])) * 100
+    const h2 = (visualP[2] / (visualP[1] + visualP[2])) * 100
+
+    return [
+      { ...valid[0], x: 0, y: 0, w: w0, h: 100 },
+      { ...valid[1], x: w0, y: 0, w: wRight, h: h1 },
+      { ...valid[2], x: w0, y: h1, w: wRight, h: h2 },
+    ]
+  }
+
+  // 4 items: partition into 2 columns minimizing deviation from 50%
+  let bestDiff = 999
+  let bestSubset: number[] = [0]
+  const candidateSubsets = [[0], [0, 1], [0, 2], [0, 3]]
+  for (const subset of candidateSubsets) {
+    const sumSubset = subset.reduce((acc, idx) => acc + visualP[idx], 0)
+    const diff = Math.abs(sumSubset - 0.5)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestSubset = subset
+    }
+  }
+
+  const otherSubset = [0, 1, 2, 3].filter((idx) => !bestSubset.includes(idx))
+  const sumA = bestSubset.reduce((acc, idx) => acc + visualP[idx], 0)
+  const sumB = otherSubset.reduce((acc, idx) => acc + visualP[idx], 0)
+
+  const wA = sumA * 100
+  const wB = sumB * 100
+
+  const rects: TreemapRect[] = []
+
+  let currYA = 0
+  for (const idx of bestSubset) {
+    const h = (visualP[idx] / sumA) * 100
+    rects.push({
+      ...valid[idx],
+      x: 0,
+      y: currYA,
+      w: wA,
+      h: h,
+    })
+    currYA += h
+  }
+
+  let currYB = 0
+  for (const idx of otherSubset) {
+    const h = (visualP[idx] / sumB) * 100
+    rects.push({
+      ...valid[idx],
+      x: wA,
+      y: currYB,
+      w: wB,
+      h: h,
+    })
+    currYB += h
+  }
+
+  return rects
+}
 
 export function DashboardView() {
   const router = useRouter()
   const { formatAmount } = usePrivacy()
-  const { t, format } = useI18n()
-  const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
-  const [isConnectedAccountsOpen, setIsConnectedAccountsOpen] = useState<boolean>(false)
-  const [selectedBankForDetail, setSelectedBankForDetail] = useState<string | null>(null)
-  const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
-  const [isSyncing, setIsSyncing] = useState<boolean>(false)
-  const [syncSuccessMessage, setSyncSuccessMessage] = useState<string | null>(null)
+  const { language } = useI18n()
 
   const [accounts, setAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [totalBalance, setTotalBalance] = useState<number>(0)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+
+  // Filters & Controls
+  const [viewMode, setViewMode] = useState<"patrimoine" | "everyday">("patrimoine")
+  const [selectedRange, setSelectedRange] = useState<TimeRange>("TOUT")
+  const [selectedCategoryKeys, setSelectedCategoryKeys] = useState<CategoryKey[]>([
+    "comptes_courants",
+    "livrets",
+    "assurance_vie",
+    "pea_titres",
+  ])
+  const [allocationView, setAllocationView] = useState<"chart" | "treemap">("chart")
+  const [hoveredSliceIndex, setHoveredSliceIndex] = useState<number | null>(null)
+  const [isMounted, setIsMounted] = useState<boolean>(false)
+  const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const loadData = useCallback(async () => {
+    setIsLoading(true)
     try {
-      const [accRes, txRes, projRes] = await Promise.all([
+      const [accRes, txRes] = await Promise.all([
         FinlyAPI.getAccounts(),
         FinlyAPI.getTransactions(),
-        FinlyAPI.getProjects(),
       ])
-
       setAccounts(accRes.accounts || [])
-      setTotalBalance(accRes.total_balance ?? 0)
       setTransactions(txRes.transactions || [])
-      setProjects(projRes || [])
-    } catch (err) {
-      console.error("Erreur chargement données Finly:", err)
+    } catch {
+      // Offline fallback
+    } finally {
+      setIsLoading(false)
     }
   }, [])
 
@@ -86,406 +327,730 @@ export function DashboardView() {
     loadData()
   }, [loadData])
 
-  // Checking accounts (Comptes Courants)
-  const checkingAccounts = accounts.filter(
-    (a) => !a.type || a.type === "Compte Courant" || a.type.toLowerCase().includes("courant") || a.type.toLowerCase().includes("dépôt") || a.type.toLowerCase().includes("depot")
-  )
-  const savingsAccounts = accounts.filter(
-    (a) => a.type === "Épargne" || a.type.toLowerCase().includes("livret") || a.type.toLowerCase().includes("epargne") || a.type.toLowerCase().includes("épargne")
-  )
-  const investmentAccounts = accounts.filter(
-    (a) => a.type === "Investissement" || a.type === "Assurance-Vie" || a.type.toLowerCase().includes("pea") || a.type.toLowerCase().includes("vie") || a.type.toLowerCase().includes("action")
-  )
+  // Current formatted date
+  const currentDateFormatted = useMemo(() => {
+    const d = new Date()
+    return d.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+  }, [language])
 
-  const checkingBalance = checkingAccounts.reduce((acc, a) => acc + a.balance, 0)
-  const savingsBalance = savingsAccounts.reduce((acc, a) => acc + a.balance, 0)
-  const investmentBalance = investmentAccounts.reduce((acc, a) => acc + a.balance, 0)
-
-  // Group accounts by unique Bank name
-  const bankNames = Array.from(new Set(accounts.map((a) => a.bank).filter(Boolean)))
-  const bankGroups = bankNames.map((bankName) => {
-    const bankAccs = accounts.filter((a) => a.bank === bankName)
-    const bankTotal = bankAccs.reduce((sum, a) => sum + a.balance, 0)
-    return {
-      bankName,
-      accounts: bankAccs,
-      totalBalance: bankTotal,
+  // Group accounts by the 4 target categories
+  const accountsByCategory = useMemo(() => {
+    const map: Record<CategoryKey, Account[]> = {
+      comptes_courants: [],
+      livrets: [],
+      assurance_vie: [],
+      pea_titres: [],
     }
-  })
+    accounts.forEach((acc) => {
+      const cat = classifyAccount(acc)
+      map[cat].push(acc)
+    })
+    return map
+  }, [accounts])
 
-  // Checking-only transactions for everyday dashboard flow
-  const checkingAccountIds = new Set(checkingAccounts.map((a) => a.id))
-  const checkingTransactions = transactions.filter(
-    (t) => checkingAccountIds.size === 0 || checkingAccountIds.has(t.account) || !accounts.some((a) => a.id === t.account && a.type !== "Compte Courant")
-  )
+  // Balances by category
+  const categoryBalances = useMemo(() => {
+    const b: Record<CategoryKey, number> = {
+      comptes_courants: 0,
+      livrets: 0,
+      assurance_vie: 0,
+      pea_titres: 0,
+    }
+    CATEGORIES.forEach((cat) => {
+      b[cat.key] = accountsByCategory[cat.key].reduce(
+        (sum, a) => sum + (Number(a.balance) || 0),
+        0
+      )
+    })
+    return b
+  }, [accountsByCategory])
 
-  const recentTransactions = checkingTransactions.slice(0, 4)
+  // Filtered active accounts matching selected categories
+  const activeAccounts = useMemo(() => {
+    return accounts.filter((acc) => {
+      const cat = classifyAccount(acc)
+      return selectedCategoryKeys.includes(cat)
+    })
+  }, [accounts, selectedCategoryKeys])
 
-  const handleManualSync = async () => {
-    setIsSyncing(true)
-    setSyncSuccessMessage(null)
+  // Total balance of selected categories
+  const selectedTotalBalance = useMemo(() => {
+    return activeAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
+  }, [activeAccounts])
 
-    try {
-      const res: any = await FinlyAPI.triggerSync()
-      await loadData()
-      const newTxCount = res?.result?.new_transactions ?? res?.data?.new_transactions
-      if (typeof newTxCount === "number" && newTxCount > 0) {
-        setSyncSuccessMessage(`${newTxCount} ${t.dashboard.newTransactionsSynced}`)
+  // Mode Selector handlers (Patrimoine vs Vie de tous les jours)
+  const handleSelectViewMode = (mode: "patrimoine" | "everyday") => {
+    setViewMode(mode)
+    if (mode === "patrimoine") {
+      setSelectedCategoryKeys(["comptes_courants", "livrets", "assurance_vie", "pea_titres"])
+    } else {
+      setSelectedCategoryKeys(["comptes_courants"])
+    }
+  }
+
+  // Category Toggle handlers
+  const toggleCategory = (key: CategoryKey) => {
+    setSelectedCategoryKeys((prev) => {
+      let next: CategoryKey[]
+      if (prev.includes(key)) {
+        if (prev.length === 1) {
+          next = ["comptes_courants", "livrets", "assurance_vie", "pea_titres"]
+        } else {
+          next = prev.filter((k) => k !== key)
+        }
       } else {
-        setSyncSuccessMessage(t.dashboard.balancesUpToDate)
+        next = [...prev, key]
       }
-      setTimeout(() => {
-        setSyncSuccessMessage(null)
-      }, 3000)
-    } catch {
-      await loadData()
-      setSyncSuccessMessage(t.dashboard.refreshFinished)
-      setTimeout(() => {
-        setSyncSuccessMessage(null)
-      }, 2500)
-    } finally {
-      setIsSyncing(false)
-    }
+
+      if (next.length === 1 && next[0] === "comptes_courants") {
+        setViewMode("everyday")
+      } else if (next.length === 4) {
+        setViewMode("patrimoine")
+      }
+      return next
+    })
   }
 
-  const handleBankConnected = async () => {
-    await loadData()
+  const selectAllCategories = () => {
+    setViewMode("patrimoine")
+    setSelectedCategoryKeys(["comptes_courants", "livrets", "assurance_vie", "pea_titres"])
   }
+
+  // Asset Allocation data for Donut and Treemap
+  const allocationData = useMemo(() => {
+    const items = CATEGORIES.filter((cat) => selectedCategoryKeys.includes(cat.key)).map(
+      (cat) => {
+        const val = categoryBalances[cat.key]
+        const positiveVal = Math.max(0, val)
+        const pct =
+          selectedTotalBalance > 0
+            ? Math.round((positiveVal / selectedTotalBalance) * 100)
+            : 0
+        return {
+          key: cat.key,
+          name: language === "fr" ? cat.labelFr : cat.labelEn,
+          value: positiveVal,
+          realBalance: val,
+          color: cat.color,
+          percentage: pct,
+          accountsCount: accountsByCategory[cat.key].length,
+        }
+      }
+    )
+
+    const nonZeroItems = items.filter((item) => item.value > 0)
+    if (nonZeroItems.length > 0) {
+      return nonZeroItems
+    }
+
+    return items.length > 0
+      ? items
+      : [
+          {
+            key: "comptes_courants" as CategoryKey,
+            name: language === "fr" ? "Total" : "Total",
+            value: 1,
+            realBalance: 0,
+            color: "#3b82f6",
+            percentage: 100,
+            accountsCount: 0,
+          },
+        ]
+  }, [selectedCategoryKeys, categoryBalances, selectedTotalBalance, language, accountsByCategory])
+
+  // Treemap rectangles layout
+  const treemapRectangles = useMemo(() => {
+    return computeTreemapLayout(allocationData)
+  }, [allocationData])
+
+  // Realistic Historical Chart points built from actual accounts and transactions backwards
+  const chartPoints = useMemo(() => {
+    let days = 365
+    if (selectedRange === "1J") days = 1
+    else if (selectedRange === "7J") days = 7
+    else if (selectedRange === "1M") days = 30
+    else if (selectedRange === "3M") days = 90
+    else if (selectedRange === "6M") days = 180
+    else if (selectedRange === "YTD") {
+      const now = new Date()
+      const startOfYear = new Date(now.getFullYear(), 0, 1)
+      days = Math.max(1, Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)))
+    } else if (selectedRange === "1A") days = 365
+    else if (selectedRange === "TOUT") days = 730
+
+    const pointsCount = Math.min(35, Math.max(7, days))
+    const now = new Date()
+    const activeAccountIds = new Set(activeAccounts.map((a) => a.id))
+    const activeAccountNames = new Set(activeAccounts.map((a) => a.name).filter(Boolean))
+
+    const txDeltaByDate: Record<string, number> = {}
+    transactions.forEach((tx) => {
+      const dateKey = (tx.date || "").split("T")[0]
+      if (!dateKey) return
+      const isMatch =
+        (tx.account_id && activeAccountIds.has(tx.account_id)) ||
+        (tx.account && activeAccountNames.has(tx.account))
+      if (isMatch) {
+        txDeltaByDate[dateKey] = (txDeltaByDate[dateKey] || 0) + (Number(tx.amount) || 0)
+      }
+    })
+
+    let runningBalance = selectedTotalBalance
+    const rawPoints: { date: string; value: number }[] = []
+
+    for (let i = 0; i < pointsCount; i++) {
+      const targetDate = new Date(now)
+      targetDate.setDate(now.getDate() - Math.round((i * days) / pointsCount))
+      const dateKey = targetDate.toISOString().split("T")[0]
+      const formattedDate = targetDate.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US", {
+        day: "2-digit",
+        month: days > 90 ? "short" : "2-digit",
+        year: i === 0 || i === pointsCount - 1 ? "2-digit" : undefined,
+      })
+
+      rawPoints.unshift({
+        date: formattedDate,
+        value: Math.max(0, Math.round(runningBalance * 100) / 100),
+      })
+
+      const delta = txDeltaByDate[dateKey] || 0
+      runningBalance -= delta
+    }
+
+    return rawPoints
+  }, [selectedRange, activeAccounts, selectedTotalBalance, transactions, language])
+
+  // Axis bounds
+  const maxValue = useMemo(() => {
+    const max = Math.max(...chartPoints.map((p) => p.value), selectedTotalBalance)
+    return max === 0 ? 100 : Math.ceil(max * 1.15)
+  }, [chartPoints, selectedTotalBalance])
+
+  // Donut center display calculation
+  const hoveredItem =
+    hoveredSliceIndex !== null && allocationData[hoveredSliceIndex]
+      ? allocationData[hoveredSliceIndex]
+      : null
+
+  const centerAmount = hoveredItem
+    ? formatAmount(hoveredItem.realBalance)
+    : formatAmount(selectedTotalBalance)
+
+  const centerLabel = hoveredItem
+    ? `${hoveredItem.name} • ${hoveredItem.percentage}%`
+    : selectedCategoryKeys.length === 4
+    ? language === "fr" ? "Total" : "Total"
+    : language === "fr" ? "Sélection" : "Selection"
+
+  // Dynamic font size adaptation so amount NEVER overflows donut hole (diameter 180px)
+  const amountFontSize = useMemo(() => {
+    const len = centerAmount.length
+    if (len > 16) return "text-sm sm:text-base font-bold"
+    if (len > 13) return "text-base sm:text-lg font-bold"
+    if (len > 10) return "text-lg sm:text-xl font-bold"
+    if (len > 8) return "text-xl sm:text-2xl font-extrabold"
+    return "text-2xl sm:text-3xl font-extrabold"
+  }, [centerAmount])
+
+  // Recent transactions list (last 5)
+  const recentTransactions = useMemo(() => {
+    return [...transactions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5)
+  }, [transactions])
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Toast Notification */}
-      {syncSuccessMessage && (
-        <div className="p-3 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs flex items-center justify-between animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{syncSuccessMessage}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Main Balance Banner: Focus on Compte Courant */}
-      <Card className="border-white/10 bg-[#18181B] p-6 md:p-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              {t.dashboard.checkingBalance}
-            </span>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-              {formatAmount(checkingBalance)}
-            </h1>
-
-            {accounts.length > 0 && (
-              <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-400 flex-wrap">
-                <span className="p-1.5 px-2.5 rounded-lg bg-zinc-900/80 border border-white/5">
-                  {t.dashboard.netWorth} : <strong className="text-white font-mono">{formatAmount(totalBalance)}</strong>
-                </span>
-                <span className="p-1.5 px-2.5 rounded-lg bg-zinc-900/80 border border-white/5">
-                  {t.dashboard.savingsAndInvestments} : <strong className="text-emerald-400 font-mono">{formatAmount(savingsBalance + investmentBalance)}</strong>
-                </span>
-              </div>
+    <div className="flex flex-col gap-4 sm:gap-5 w-full max-w-[1600px] mx-auto -mt-1 sm:-mt-2">
+      {/* Top Bar: Left = Mode Selector (Patrimoine vs Vie de tous les jours), Right = Period Selector */}
+      <div className="flex items-center justify-between gap-2.5">
+        {/* Left: Mode Selector (Patrimoine / Vie de tous les jours) */}
+        <div className="flex items-center bg-[#18181B] p-1 rounded-xl border border-white/10 w-fit select-none shrink-0">
+          <button
+            type="button"
+            onClick={() => handleSelectViewMode("patrimoine")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer select-none",
+              viewMode === "patrimoine"
+                ? "bg-white text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-400 hover:text-white"
             )}
-          </div>
-
-          <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap sm:flex-nowrap">
-            <Button
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              variant="outline"
-              size="sm"
-              className="gap-2 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-              <span>{isSyncing ? t.common.refreshing : t.common.refresh}</span>
-            </Button>
-
-            <Button
-              className="flex-1 sm:flex-none gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20 cursor-pointer"
-              size="sm"
-              onClick={() => router.push("/depenses")}
-            >
-              <Plus className="w-4 h-4" /> {t.dashboard.currentExpenses}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsExportOpen(true)}
-              className="gap-2 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> {t.common.export}
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* 1. Compte Courant Section */}
-      <div className="flex flex-col gap-3">
-        <div className="flex justify-between items-center px-1">
-          <h2 className="text-sm font-semibold text-zinc-300 flex items-center gap-1.5">
-            <Wallet className="w-4 h-4 text-indigo-400" /> {t.dashboard.checkingAccounts}
-          </h2>
-          {accounts.length > 0 && (
-            <button
-              onClick={() => setIsConnectedAccountsOpen(true)}
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-            >
-              {t.dashboard.manageAccounts} ({accounts.length})
-            </button>
-          )}
+          >
+            {language === "fr" ? "Patrimoine" : "Wealth"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectViewMode("everyday")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer select-none",
+              viewMode === "everyday"
+                ? "bg-white text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-400 hover:text-white"
+            )}
+          >
+            {language === "fr" ? "Vie de tous les jours" : "Everyday life"}
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-          {checkingAccounts.length === 0 ? (
-            <Card
-              onClick={() => setIsWoobOpen(true)}
-              className="p-4 border-dashed border-white/15 bg-transparent hover:border-white/30 transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-1.5 min-h-[105px]"
-            >
-              <PlusCircle className="w-5 h-5 text-zinc-400" />
-              <span className="text-xs font-medium text-zinc-300">
-                {t.dashboard.connectCheckingAccount}
-              </span>
-            </Card>
-          ) : (
-            checkingAccounts.map((acc) => (
-              <Card
-                key={acc.id}
-                onClick={() => setSelectedBankForDetail(acc.bank)}
-                className="p-4 border-white/10 bg-[#18181B] hover:border-indigo-500/40 hover:bg-zinc-900 transition-all cursor-pointer flex flex-col justify-between group"
+        {/* Right on Mobile: Native OS Dropdown (<select>) for pure Apple / Android wheel */}
+        <div className="sm:hidden">
+          <select
+            value={selectedRange}
+            onChange={(e) => setSelectedRange(e.target.value as TimeRange)}
+            className="bg-[#18181B] text-white text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-white/10 focus:outline-none cursor-pointer"
+          >
+            {TIME_RANGES.map((range) => (
+              <option key={range} value={range} className="bg-[#18181B] text-white">
+                {range}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Right on Desktop: Frameless Period Selector (no enclosing box) */}
+        <div className="hidden sm:flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-none py-0.5">
+          {TIME_RANGES.map((range) => {
+            const isActive = selectedRange === range
+            return (
+              <button
+                key={range}
+                type="button"
+                onClick={() => setSelectedRange(range)}
+                className={cn(
+                  "px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap rounded-lg",
+                  isActive
+                    ? "text-white font-bold bg-white/10"
+                    : "text-zinc-400 hover:text-zinc-200"
+                )}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <BankLogo bankId={acc.bank} className="w-9 h-9 shrink-0" />
-                  <Badge variant="outline" className="text-[10px] font-normal py-0">
-                    {acc.type || "Checking"}
-                  </Badge>
-                </div>
-                <div>
-                  <h3 className="text-xs text-zinc-400 group-hover:text-white transition-colors truncate">
-                    {acc.name || acc.bank}
-                  </h3>
-                  <p className="text-2xl font-bold text-white tracking-tight mt-0.5 font-mono">
-                    {formatAmount(acc.balance)}
-                  </p>
-                </div>
-              </Card>
-            ))
-          )}
-
-          {checkingAccounts.length > 0 && (
-            <Card
-              onClick={() => setIsWoobOpen(true)}
-              className="p-4 border-dashed border-white/15 bg-transparent hover:border-white/30 transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-1.5 min-h-[105px]"
-            >
-              <PlusCircle className="w-5 h-5 text-zinc-400" />
-              <span className="text-xs font-medium text-zinc-300">
-                {t.dashboard.addBank}
-              </span>
-            </Card>
-          )}
+                {range}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* 2. Mes Banques & Tous les Sous-Comptes */}
-      {bankGroups.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center px-1">
-            <h2 className="text-sm font-semibold text-zinc-300 flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-emerald-400" /> {t.dashboard.connectedBanks}
-            </h2>
-            <span className="text-xs text-zinc-500">
-              {t.dashboard.clickBankToView}
-            </span>
-          </div>
+      {/* Main Grid: Evolution Chart (Left) & Allocation (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-w-0">
+        {/* Left Card: Evolution Chart */}
+        <Card className="lg:col-span-7 xl:col-span-8 p-6 bg-[#18181B] border-white/10 rounded-2xl flex flex-col justify-between min-w-0">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <span className="text-xs text-zinc-400 font-medium">
+                {currentDateFormatted}
+              </span>
+              <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mt-0.5 font-mono">
+                {formatAmount(selectedTotalBalance)}
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-            {bankGroups.map((group) => (
-              <Card
-                key={group.bankName}
-                onClick={() => setSelectedBankForDetail(group.bankName)}
-                className="p-4 border-white/10 bg-[#18181B] hover:border-emerald-500/40 hover:bg-zinc-900 transition-all cursor-pointer flex flex-col justify-between group"
+            {/* Category Multi-Select Dropdown Filter (Without colored dots) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="outline-none">
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#121215] border border-white/10 hover:border-white/20 transition-all text-xs font-semibold text-zinc-300 cursor-pointer shadow-sm select-none">
+                  <span>
+                    {selectedCategoryKeys.length === 4
+                      ? language === "fr" ? "Toutes les catégories" : "All categories"
+                      : selectedCategoryKeys.length === 1
+                      ? CATEGORIES.find((c) => c.key === selectedCategoryKeys[0])?.[
+                          language === "fr" ? "labelFr" : "labelEn"
+                        ]
+                      : `${selectedCategoryKeys.length} ${
+                          language === "fr" ? "catégories" : "categories"
+                        }`}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-72 bg-[#18181B] border border-white/10 text-white rounded-2xl p-2 text-xs shadow-2xl space-y-1"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <BankLogo bankId={group.bankName} className="w-10 h-10 shrink-0" />
-                  <Badge variant="outline" className="text-[10px] py-0 border-white/10 text-zinc-300">
-                    {group.accounts.length} {t.admin.accountsColumn.toLowerCase()}
-                  </Badge>
+                <div className="flex items-center justify-between px-2.5 py-1.5 text-zinc-400 text-[11px] font-semibold">
+                  <span>{language === "fr" ? "Catégories de comptes" : "Account categories"}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (selectedCategoryKeys.length === 4) {
+                        setSelectedCategoryKeys(["comptes_courants"])
+                      } else {
+                        selectAllCategories()
+                      }
+                    }}
+                    className="text-indigo-400 hover:text-indigo-300 text-[11px] font-semibold cursor-pointer"
+                  >
+                    {selectedCategoryKeys.length === 4
+                      ? language === "fr" ? "Désélectionner" : "Reset"
+                      : language === "fr" ? "Tout cocher" : "Select all"}
+                  </button>
                 </div>
-
-                <div className="flex justify-between items-end">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors">
-                      {group.bankName}
-                    </h3>
-                    <p className="text-lg font-bold text-white tracking-tight mt-0.5 font-mono">
-                      {formatAmount(group.totalBalance)}
-                    </p>
-                  </div>
-                  <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-zinc-400 group-hover:text-white group-hover:bg-white/10 transition-all">
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bento Grid: Chart & Widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Evolution Chart (8 Cols) */}
-        <Card className="md:col-span-8 p-6 border-white/10 bg-[#18181B] flex flex-col justify-between">
-          <EvolutionChart accounts={accounts} transactions={transactions} />
-        </Card>
-
-        {/* Right Bento Widgets (4 Cols) */}
-        <div className="md:col-span-4 flex flex-col gap-6">
-          {/* Top Expenses Widget */}
-          <Card className="p-5 border-white/10 bg-[#18181B] flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-3">
-              <CardTitle className="text-sm font-semibold">{t.dashboard.currentExpenses}</CardTitle>
-              <Link href="/depenses" className="text-xs text-zinc-400 hover:text-white">
-                {t.common.viewAll}
-              </Link>
-            </div>
-
-            <div className="flex flex-col divide-y divide-white/5">
-              {recentTransactions.length === 0 ? (
-                <div className="py-5 text-center text-xs text-zinc-500">
-                  {t.dashboard.noExpensesRecorded}
-                </div>
-              ) : (
-                recentTransactions.slice(0, 3).map((tx) => (
-                  <div key={tx.id} className="flex justify-between items-center py-2 first:pt-0 last:pb-0">
-                    <span className="text-xs text-zinc-300 truncate max-w-[140px]">
-                      {tx.merchant}
-                    </span>
-                    <span className={`text-xs font-bold font-mono ${tx.amount > 0 ? 'text-emerald-400' : 'text-white'}`}>
-                      {tx.amount > 0 ? '+' : ''}{formatAmount(tx.amount)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-
-          {/* Projects Widget */}
-          <Card className="p-5 border-white/10 bg-[#18181B] flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-3">
-              <CardTitle className="text-sm font-semibold">{t.dashboard.goals}</CardTitle>
-              <Link href="/projets" className="text-xs text-zinc-400 hover:text-white">
-                {t.common.viewAll}
-              </Link>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {projects.length === 0 ? (
-                <div className="py-5 text-center text-xs text-zinc-500">
-                  {t.dashboard.noActiveGoals}
-                </div>
-              ) : (
-                projects.slice(0, 2).map((proj) => {
-                  const percent = Math.round((proj.currentAmount / proj.targetAmount) * 100)
+                <DropdownMenuSeparator className="bg-white/5 my-1" />
+                {CATEGORIES.map((cat) => {
+                  const isChecked = selectedCategoryKeys.includes(cat.key)
+                  const bal = categoryBalances[cat.key]
+                  const accsCount = accountsByCategory[cat.key].length
                   return (
-                    <div key={proj.id} className="flex flex-col gap-1 p-2.5 rounded-xl bg-zinc-900/40 border border-white/5">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-white">{proj.name}</span>
-                        <span className="text-zinc-400 font-mono">{percent}%</span>
+                    <div
+                      key={cat.key}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        toggleCategory(cat.key)
+                      }}
+                      className={cn(
+                        "flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all hover:bg-white/5 select-none",
+                        isChecked ? "text-white" : "text-zinc-500 opacity-60"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={cn(
+                            "w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0",
+                            isChecked
+                              ? "bg-indigo-600 border-indigo-500 text-white"
+                              : "border-zinc-700 bg-zinc-900"
+                          )}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-xs leading-tight">
+                            {language === "fr" ? cat.labelFr : cat.labelEn}
+                          </div>
+                          <div className="text-[10px] text-zinc-400">
+                            {accsCount} {language === "fr" ? "compte(s)" : "account(s)"}
+                          </div>
+                        </div>
                       </div>
-                      <Progress value={percent} className="h-1.5 bg-zinc-800" indicatorClassName="bg-indigo-500" />
+                      <span className="font-mono text-xs font-semibold">
+                        {formatAmount(bal)}
+                      </span>
                     </div>
                   )
-                })
-              )}
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Line & Area Chart in warm gold/amber tone like Finary */}
+          <div className="w-full min-w-0 h-64 sm:h-72 mt-2">
+            {isMounted ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 500, height: 280 }}>
+                <AreaChart data={chartPoints} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="finaryGoldGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    stroke="#52525b"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dy={8}
+                  />
+                  <YAxis
+                    stroke="#52525b"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, maxValue]}
+                    tickFormatter={(val) => {
+                      if (val >= 1000) return `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)} k€`
+                      return `${val} €`
+                    }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="bg-[#121215] border border-white/10 p-2.5 rounded-xl shadow-xl text-xs">
+                            <span className="text-zinc-400 text-[11px] block">{data.date}</span>
+                            <span className="font-bold text-white font-mono text-sm mt-0.5 block">
+                              {formatAmount(data.value)}
+                            </span>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#d97706"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#finaryGoldGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : null}
+          </div>
+        </Card>
+
+        {/* Right Card: Allocation with Donut Chart and Treemap (Diagramme de carrés proportionnels) */}
+        <Card className="lg:col-span-5 xl:col-span-4 p-6 bg-[#18181B] border-white/10 rounded-2xl flex flex-col justify-between min-w-0">
+          {/* Card Header with Controls */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5 text-white font-bold text-base">
+              <span>{language === "fr" ? "Allocation" : "Allocation"}</span>
             </div>
-          </Card>
-        </div>
-      </div>
 
-      {/* Recent Transactions Section */}
-      <Card className="p-6 border-white/10 bg-[#18181B]">
-        <div className="flex justify-between items-center mb-4">
-          <CardTitle className="text-base font-semibold">{t.dashboard.historyCurrentAccount}</CardTitle>
-          <Link href="/depenses">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-            >
-              {t.dashboard.fullFeed}
-            </Button>
-          </Link>
-        </div>
+            <div className="flex items-center gap-1.5">
+              {/* Donut Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setAllocationView("chart")}
+                title={language === "fr" ? "Graphique en anneau" : "Donut chart"}
+                className={cn(
+                  "p-1.5 rounded-lg border transition-colors cursor-pointer",
+                  allocationView === "chart"
+                    ? "bg-white/10 text-white border-white/20"
+                    : "text-zinc-400 hover:text-white border-transparent"
+                )}
+              >
+                <PieChartIcon className="w-3.5 h-3.5" />
+              </button>
 
-        <div className="flex flex-col divide-y divide-white/5">
-          {recentTransactions.length === 0 ? (
-            <div className="py-6 text-center text-xs text-zinc-500">
-              {t.dashboard.noTransactionsOnChecking}
+              {/* Treemap (Carrés proportionnels) Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setAllocationView("treemap")}
+                title={language === "fr" ? "Diagramme en carrés (Treemap)" : "Treemap"}
+                className={cn(
+                  "p-1.5 rounded-lg border transition-colors cursor-pointer",
+                  allocationView === "treemap"
+                    ? "bg-white/10 text-white border-white/20"
+                    : "text-zinc-400 hover:text-white border-transparent"
+                )}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/patrimoine")}
+                className="text-xs text-zinc-300 hover:text-white hover:bg-white/5 h-8 px-2 rounded-lg cursor-pointer"
+              >
+                {language === "fr" ? "Voir plus" : "View more"}
+              </Button>
             </div>
-          ) : (
-            recentTransactions.map((tx) => {
-              const isPositive = tx.amount > 0
-              const rawText = tx.rawLabel || (tx as any).raw_label || ""
+          </div>
 
-              return (
-                <div key={tx.id} className="flex justify-between items-center py-3 hover:bg-white/[0.02] px-1 rounded-lg transition-colors">
-                  <div className="flex items-center gap-3">
-                    <MerchantAvatar
-                      merchantName={tx.merchant}
-                      rawLabel={rawText}
-                      logoUrl={tx.logo_url}
-                      category={tx.category}
-                      isPositive={isPositive}
-                      className="w-8 h-8 rounded-xl"
-                      iconClassName="w-3.5 h-3.5"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-white">{tx.merchant}</span>
-                      <span className="text-[11px] text-zinc-400">{t.categories[tx.category] || tx.category} • {tx.date}</span>
-                    </div>
-                  </div>
-                  <span className={`text-sm font-bold font-mono ${isPositive ? 'text-emerald-400' : 'text-white'}`}>
-                    {isPositive ? '+' : ''}{formatAmount(tx.amount)}
+          {/* Content: Donut Chart or Treemap (Carrés proportionnels avec taille minimale garantie) */}
+          {allocationView === "chart" ? (
+            <div className="relative flex items-center justify-center my-auto py-1 min-w-0">
+              <div className="w-64 h-64 sm:w-68 sm:h-68 max-h-[272px] min-w-0 relative">
+                {isMounted ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 270, height: 270 }}>
+                    <PieChart>
+                      <Pie
+                        data={allocationData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={90}
+                        outerRadius={122}
+                        strokeWidth={3}
+                        stroke="#18181B"
+                        startAngle={90}
+                        endAngle={-270}
+                        onMouseEnter={(_, index) => setHoveredSliceIndex(index)}
+                        onMouseLeave={() => setHoveredSliceIndex(null)}
+                        onClick={(_, index) => {
+                          const item = allocationData[index]
+                          if (item) toggleCategory(item.key)
+                        }}
+                      >
+                        {allocationData.map((entry, index) => {
+                          const isDimmed =
+                            hoveredSliceIndex !== null && hoveredSliceIndex !== index
+                          return (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.color}
+                              opacity={isDimmed ? 0.35 : 1}
+                              className="transition-opacity duration-200 cursor-pointer outline-none"
+                            />
+                          )
+                        })}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : null}
+
+                {/* Center Content: Adaptive Amount & Category Label inside Donut Hole */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-4 text-center">
+                  <span
+                    className={cn(
+                      amountFontSize,
+                      "text-white tracking-tight font-mono truncate max-w-[155px] block transition-all"
+                    )}
+                  >
+                    {centerAmount}
+                  </span>
+                  <span className="text-[11px] text-zinc-400 font-medium mt-1 truncate max-w-[155px] block">
+                    {centerLabel}
                   </span>
                 </div>
-              )
-            })
+              </div>
+            </div>
+          ) : (
+            /* Treemap Diagram: Carrés imbriqués lisibles et proportionnels */
+            <div className="relative w-full h-64 sm:h-72 my-auto p-1 bg-[#121215]/50 rounded-2xl border border-white/5 overflow-hidden">
+              {treemapRectangles.map((rect) => {
+                return (
+                  <div
+                    key={rect.key}
+                    style={{
+                      left: `${rect.x}%`,
+                      top: `${rect.y}%`,
+                      width: `${rect.w}%`,
+                      height: `${rect.h}%`,
+                    }}
+                    className="absolute p-1 transition-all duration-300"
+                  >
+                    <div
+                      onClick={() => toggleCategory(rect.key)}
+                      title={`${rect.name} : ${formatAmount(rect.value)} (${rect.percentage}%)`}
+                      className="w-full h-full rounded-xl border border-white/10 hover:border-white/30 transition-all p-2 sm:p-2.5 flex flex-col justify-between cursor-pointer select-none group relative overflow-hidden shadow-sm active:scale-[0.98]"
+                      style={{
+                        backgroundColor: `${rect.color}18`,
+                      }}
+                    >
+                      {/* Subtle Glow Effect */}
+                      <div
+                        className="absolute -right-6 -bottom-6 w-20 h-20 rounded-full blur-xl pointer-events-none opacity-40 group-hover:opacity-75 transition-opacity"
+                        style={{ backgroundColor: rect.color }}
+                      />
+
+                      {/* Header: Name + % */}
+                      <div className="flex items-start justify-between gap-1 z-10">
+                        <span className="font-semibold text-[11px] sm:text-xs text-white truncate max-w-[75%] leading-tight group-hover:text-zinc-100">
+                          {rect.name}
+                        </span>
+                        <span className="font-mono text-[11px] sm:text-xs font-bold text-zinc-300 group-hover:text-white shrink-0">
+                          {rect.percentage}%
+                        </span>
+                      </div>
+
+                      {/* Footer: Amount & accounts count */}
+                      <div className="z-10 mt-auto pt-1">
+                        <span className="font-mono text-xs sm:text-sm font-extrabold text-white block truncate leading-tight">
+                          {formatAmount(rect.value)}
+                        </span>
+                        {rect.h > 35 && (
+                          <span className="text-[10px] text-zinc-400 block truncate mt-0.5">
+                            {rect.accountsCount} {language === "fr" ? "compte(s)" : "account(s)"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
-        </div>
-      </Card>
+        </Card>
+      </div>
 
-      {/* Interactive Expenses Map */}
-      <ExpensesMap transactions={transactions} />
+      {/* Bottom Section: Aperçu des Dépenses Récentes & Carte Interactive des Dépenses */}
+      <div className="pt-2 space-y-6">
+        {/* Recent Expenses Overview Card */}
+        <Card className="p-6 bg-[#18181B] border-white/10 rounded-2xl">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                {language === "fr" ? "Aperçu des dépenses" : "Recent expenses"}
+              </h2>
+            </div>
+            <Link href="/depenses">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-zinc-300 hover:text-white hover:bg-white/5 h-8 px-3 rounded-xl cursor-pointer"
+              >
+                <span>{language === "fr" ? "Voir tout" : "View all"}</span>
+                <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
 
-      {/* Modals & Sheets */}
+          <div className="divide-y divide-white/5">
+            {recentTransactions.length === 0 ? (
+              <div className="py-8 text-center text-xs text-zinc-500">
+                {language === "fr"
+                  ? "Aucune dépense récente enregistrée"
+                  : "No recent expenses recorded"}
+              </div>
+            ) : (
+              recentTransactions.map((tx) => {
+                const isPositive = tx.amount > 0
+                const rawText = tx.rawLabel || (tx as any).raw_label || ""
+                const dateStr = new Date(tx.date).toLocaleDateString(
+                  language === "fr" ? "fr-FR" : "en-US",
+                  { day: "numeric", month: "short" }
+                )
+
+                return (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between py-3 hover:bg-white/[0.02] px-2 rounded-xl transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <MerchantAvatar
+                        merchantName={tx.merchant}
+                        rawLabel={rawText}
+                        logoUrl={tx.logo_url}
+                        category={tx.category}
+                        isPositive={isPositive}
+                        className="w-9 h-9 rounded-xl shrink-0"
+                        iconClassName="w-4 h-4"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                          {tx.merchant || rawText || (language === "fr" ? "Opération" : "Transaction")}
+                        </span>
+                        <span className="text-[11px] text-zinc-400 truncate">
+                          {tx.category || (language === "fr" ? "Autre" : "Other")} • {dateStr}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span
+                      className={cn(
+                        "text-xs sm:text-sm font-bold font-mono shrink-0 ml-3",
+                        isPositive ? "text-emerald-400" : "text-white"
+                      )}
+                    >
+                      {isPositive ? "+" : ""}
+                      {formatAmount(tx.amount)}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </Card>
+
+        {/* Interactive Expenses Map */}
+        <ExpensesMap transactions={transactions} />
+      </div>
+
+      {/* Woob Bank Connection Sheet */}
       <WoobModal
         isOpen={isWoobOpen}
         onClose={() => setIsWoobOpen(false)}
-        onBankConnected={handleBankConnected}
-      />
-
-      <ConnectedAccountsModal
-        isOpen={isConnectedAccountsOpen}
-        onClose={() => setIsConnectedAccountsOpen(false)}
-        accounts={accounts}
-        onAccountsUpdated={loadData}
-        onOpenAddBank={() => setIsWoobOpen(true)}
-      />
-
-      <BankDetailSheet
-        isOpen={!!selectedBankForDetail}
-        onClose={() => setSelectedBankForDetail(null)}
-        bankName={selectedBankForDetail}
-        accounts={accounts}
-      />
-
-      <ExportDialog
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
-        defaultScope="summary"
-        title={t.common.export}
-        accounts={accounts}
-        transactions={transactions}
-        projects={projects}
+        onBankConnected={loadData}
       />
     </div>
   )

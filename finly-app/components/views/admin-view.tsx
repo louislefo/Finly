@@ -256,13 +256,7 @@ export function AdminView() {
       {/* Header & Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight text-white">{t.admin.title}</h1>
-            <span className="text-xs text-zinc-400">Finly v{stats?.system.version || "1.0.0"}</span>
-          </div>
+          <span className="text-xs text-zinc-400 font-mono">Finly Admin v{stats?.system.version || "1.0.0"}</span>
         </div>
 
         {/* Navigation Tabs */}
