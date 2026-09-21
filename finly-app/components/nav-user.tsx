@@ -28,7 +28,6 @@ import {
   ShieldCheck,
   MoreVertical,
   ChevronRight,
-  Plus,
   Globe,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
@@ -174,14 +173,6 @@ export function NavUser() {
               >
                 <Lock className="w-4 h-4 text-zinc-400" />
                 <span>{t.nav.security}</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => handleNavigate("banks")}
-                className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-indigo-300 hover:bg-indigo-500/10 cursor-pointer"
-              >
-                <Plus className="w-4 h-4 text-indigo-400" />
-                <span>{t.nav.connectBank}</span>
               </DropdownMenuItem>
 
               {user.role === "admin" && (
