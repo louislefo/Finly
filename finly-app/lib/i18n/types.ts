@@ -335,6 +335,14 @@ export interface TranslationDictionary {
     deleteAccountTitle: string
     deleteAccountDesc: string
     validateBtn: string
+    changeAvatar: string
+    avatarPickerTitle: string
+    avatarPickerDesc: string
+    randomizeAvatars: string
+    customSeed: string
+    customSeedPlaceholder: string
+    useInitials: string
+    saveAvatar: string
     title: string
     subtitle: string
     syncAll: string

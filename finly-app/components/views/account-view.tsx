@@ -29,6 +29,7 @@ import {
   ChevronRight,
   ArrowLeft,
   HelpCircle,
+  Camera,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -37,7 +38,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Dialog,
   DialogContent,
@@ -48,9 +49,11 @@ import {
 import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
+import { AvatarPickerModal } from "@/components/modals/avatar-picker-modal"
 import { AdminView } from "@/components/views/admin-view"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { Account, BankConnection } from "@/lib/types/finance"
+import { Account, BankConnection, User } from "@/lib/types/finance"
+import { getLineFaceAvatarUri } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
 
 type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup" | "admin"
@@ -58,7 +61,7 @@ type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup" | 
 export function AccountView() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const { formatAmount } = usePrivacy()
   const { t, language, setLanguage } = useI18n()
 
@@ -149,14 +152,25 @@ export function AccountView() {
     }
   }, [user])
 
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false)
+
+  const handleSaveAvatar = (seed: string | null) => {
+    if (!user) return
+    const updatedUser: User = {
+      ...user,
+      avatar_seed: seed || undefined,
+    }
+    updateUser(updatedUser)
+  }
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSavingProfile(true)
     try {
       const updatedFullName = `${firstName} ${lastName}`.trim()
-      if (user && typeof window !== "undefined") {
-        const updatedUser = { ...user, full_name: updatedFullName }
-        localStorage.setItem("finly_user", JSON.stringify(updatedUser))
+      if (user) {
+        const updatedUser: User = { ...user, full_name: updatedFullName }
+        updateUser(updatedUser)
       }
       setProfileSuccessMsg(language === "fr" ? "Profil mis à jour avec succès." : "Profile updated successfully.")
       setTimeout(() => setProfileSuccessMsg(null), 3500)
@@ -561,8 +575,28 @@ export function AccountView() {
 
       {/* Profile Hero Block (Avatar + Name + Member Since) */}
       <div className="flex items-center gap-4 pt-2">
-        <div className="h-16 w-16 rounded-full bg-zinc-800/90 border border-white/10 flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-lg">
-          {initials}
+        <div
+          onClick={() => setIsAvatarModalOpen(true)}
+          className="relative group cursor-pointer shrink-0"
+          title={t.accounts.changeAvatar}
+        >
+          <Avatar className="h-16 w-16 ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-lg transition-transform group-hover:scale-105">
+            {user?.avatar_seed ? (
+              <AvatarImage
+                src={getLineFaceAvatarUri(user.avatar_seed)}
+                alt={user.full_name || "Avatar"}
+              />
+            ) : null}
+            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white text-xl font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Camera className="w-5 h-5 text-white" />
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-600 border border-[#09090B] flex items-center justify-center text-white shadow-sm">
+            <Camera className="w-3 h-3" />
+          </div>
         </div>
         <div className="flex flex-col justify-center min-w-0">
           <span className="text-xl font-bold text-white tracking-tight leading-tight truncate">
@@ -707,6 +741,30 @@ export function AccountView() {
         </h1>
 
         <div className="w-10" />
+      </div>
+
+      {/* Profile Avatar with Camera change badge */}
+      <div className="flex justify-center pb-2 pt-1">
+        <div
+          onClick={() => setIsAvatarModalOpen(true)}
+          className="relative group cursor-pointer"
+          title={t.accounts.changeAvatar}
+        >
+          <Avatar className="h-20 w-20 ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-xl transition-transform active:scale-95">
+            {user?.avatar_seed ? (
+              <AvatarImage
+                src={getLineFaceAvatarUri(user.avatar_seed)}
+                alt={user.full_name || "Avatar"}
+              />
+            ) : null}
+            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white text-2xl font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 border-2 border-[#09090B] flex items-center justify-center text-white shadow-md">
+            <Camera className="w-3.5 h-3.5" />
+          </div>
+        </div>
       </div>
 
       {/* Form Fields corresponding directly to setting_setting.png */}
@@ -1022,11 +1080,29 @@ export function AccountView() {
                   <div className="flex flex-col gap-6">
                     {/* Header with Avatar and User Information */}
                     <div className="flex items-center gap-5 pb-6 border-b border-white/5">
-                      <Avatar className="h-16 w-16 ring-2 ring-indigo-500/30">
-                        <AvatarFallback className="bg-indigo-600 text-white font-bold text-xl">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div
+                        onClick={() => setIsAvatarModalOpen(true)}
+                        className="relative group cursor-pointer shrink-0"
+                        title={t.accounts.changeAvatar}
+                      >
+                        <Avatar className="h-16 w-16 ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-lg transition-transform group-hover:scale-105">
+                          {user?.avatar_seed ? (
+                            <AvatarImage
+                              src={getLineFaceAvatarUri(user.avatar_seed)}
+                              alt={user.full_name || "Avatar"}
+                            />
+                          ) : null}
+                          <AvatarFallback className="bg-indigo-600 text-white font-bold text-xl">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-600 border border-[#09090B] flex items-center justify-center text-white shadow-sm">
+                          <Camera className="w-3 h-3" />
+                        </div>
+                      </div>
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2.5 flex-wrap">
                           <span className="text-lg font-bold text-white">
@@ -1832,6 +1908,15 @@ export function AccountView() {
         onClose={() => setIsCredentialsModalOpen(false)}
         pendingConnections={pendingBankConnections}
         onSuccess={loadData}
+      />
+
+      {/* DiceBear Line Face Avatar Picker Modal */}
+      <AvatarPickerModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+        currentSeed={user?.avatar_seed}
+        initials={initials}
+        onSave={handleSaveAvatar}
       />
     </div>
   )

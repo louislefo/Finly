@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation"
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
 } from "@/components/ui/avatar"
+import { getLineFaceAvatarUri } from "@/lib/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,6 +104,12 @@ export function NavUser() {
               className="flex items-center gap-3 truncate cursor-pointer"
             >
               <Avatar className="h-10 w-10 sm:h-11 sm:w-11 rounded-full ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-md shrink-0 transition-transform group-hover:scale-105">
+                {user.avatar_seed ? (
+                  <AvatarImage
+                    src={getLineFaceAvatarUri(user.avatar_seed)}
+                    alt={user.full_name || firstName}
+                  />
+                ) : null}
                 <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-sm tracking-wide">
                   {initials}
                 </AvatarFallback>
@@ -136,6 +144,12 @@ export function NavUser() {
             >
               <div className="flex items-center gap-3 truncate">
                 <Avatar className="h-9 w-9 rounded-full ring-1 ring-white/10 shrink-0">
+                  {user.avatar_seed ? (
+                    <AvatarImage
+                      src={getLineFaceAvatarUri(user.avatar_seed)}
+                      alt={user.full_name || firstName}
+                    />
+                  ) : null}
                   <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs">
                     {initials}
                   </AvatarFallback>

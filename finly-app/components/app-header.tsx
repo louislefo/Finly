@@ -17,7 +17,8 @@ import {
   Globe,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getLineFaceAvatarUri } from "@/lib/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,6 +145,12 @@ export function AppHeader() {
               aria-label="Mon compte"
             >
               <Avatar className="h-10 w-10 rounded-full ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-md">
+                {user.avatar_seed ? (
+                  <AvatarImage
+                    src={getLineFaceAvatarUri(user.avatar_seed)}
+                    alt={user.full_name || "Avatar"}
+                  />
+                ) : null}
                 <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-xs tracking-wide">
                   {initials}
                 </AvatarFallback>
