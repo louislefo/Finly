@@ -10,6 +10,7 @@ class User(Base):
     full_name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="member")
+    avatar_seed = Column(String, nullable=True)
     language = Column(String, default="en")
     is_active = Column(Boolean, default=True)
     auto_sync_enabled = Column(Boolean, default=False)

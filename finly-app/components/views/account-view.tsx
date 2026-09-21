@@ -154,13 +154,21 @@ export function AccountView() {
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false)
 
-  const handleSaveAvatar = (seed: string | null) => {
+  const handleSaveAvatar = async (seed: string | null) => {
     if (!user) return
-    const updatedUser: User = {
+    const optimisticUser: User = {
       ...user,
       avatar_seed: seed || undefined,
     }
-    updateUser(updatedUser)
+    updateUser(optimisticUser)
+    try {
+      const persisted = await FinlyAPI.updateProfile({
+        avatar_seed: seed || "",
+      })
+      updateUser(persisted)
+    } catch {
+      // Offline fallback: keep optimisticUser in local storage
+    }
   }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -169,13 +177,18 @@ export function AccountView() {
     try {
       const updatedFullName = `${firstName} ${lastName}`.trim()
       if (user) {
-        const updatedUser: User = { ...user, full_name: updatedFullName }
-        updateUser(updatedUser)
+        const optimisticUser: User = { ...user, full_name: updatedFullName }
+        updateUser(optimisticUser)
       }
+      const persisted = await FinlyAPI.updateProfile({
+        full_name: updatedFullName,
+      })
+      updateUser(persisted)
       setProfileSuccessMsg(language === "fr" ? "Profil mis à jour avec succès." : "Profile updated successfully.")
       setTimeout(() => setProfileSuccessMsg(null), 3500)
     } catch {
-      // Offline fallback
+      setProfileSuccessMsg(language === "fr" ? "Profil mis à jour localement." : "Profile updated locally.")
+      setTimeout(() => setProfileSuccessMsg(null), 3500)
     } finally {
       setIsSavingProfile(false)
     }
@@ -575,12 +588,8 @@ export function AccountView() {
 
       {/* Profile Hero Block (Avatar + Name + Member Since) */}
       <div className="flex items-center gap-4 pt-2">
-        <div
-          onClick={() => setIsAvatarModalOpen(true)}
-          className="relative group cursor-pointer shrink-0"
-          title={t.accounts.changeAvatar}
-        >
-          <Avatar className="h-16 w-16 ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-lg transition-transform group-hover:scale-105">
+        <div className="relative shrink-0">
+          <Avatar className="h-16 w-16 ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-lg">
             {user?.avatar_seed ? (
               <AvatarImage
                 src={getLineFaceAvatarUri(user.avatar_seed)}
@@ -591,12 +600,6 @@ export function AccountView() {
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Camera className="w-5 h-5 text-white" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-600 border border-[#09090B] flex items-center justify-center text-white shadow-sm">
-            <Camera className="w-3 h-3" />
-          </div>
         </div>
         <div className="flex flex-col justify-center min-w-0">
           <span className="text-xl font-bold text-white tracking-tight leading-tight truncate">
@@ -765,14 +768,6 @@ export function AccountView() {
             <Camera className="w-3.5 h-3.5" />
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsAvatarModalOpen(true)}
-          className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer mt-2.5 flex items-center gap-1.5"
-        >
-          <Camera className="w-3.5 h-3.5" />
-          <span>{t.accounts.changeAvatar}</span>
-        </button>
       </div>
 
       {/* Form Fields corresponding directly to setting_setting.png */}
@@ -1122,15 +1117,6 @@ export function AccountView() {
                         </div>
                         <div className="flex items-center gap-2.5 flex-wrap mt-0.5">
                           <span className="text-xs text-zinc-400">{user?.email}</span>
-                          <span className="text-zinc-600 text-xs">•</span>
-                          <button
-                            type="button"
-                            onClick={() => setIsAvatarModalOpen(true)}
-                            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Camera className="w-3.5 h-3.5" />
-                            <span>{t.accounts.changeAvatar}</span>
-                          </button>
                         </div>
                       </div>
                     </div>
