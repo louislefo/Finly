@@ -744,7 +744,7 @@ export function AccountView() {
       </div>
 
       {/* Profile Avatar with Camera change badge */}
-      <div className="flex justify-center pb-2 pt-1">
+      <div className="flex flex-col items-center justify-center pb-3 pt-1">
         <div
           onClick={() => setIsAvatarModalOpen(true)}
           className="relative group cursor-pointer"
@@ -765,6 +765,14 @@ export function AccountView() {
             <Camera className="w-3.5 h-3.5" />
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsAvatarModalOpen(true)}
+          className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer mt-2.5 flex items-center gap-1.5"
+        >
+          <Camera className="w-3.5 h-3.5" />
+          <span>{t.accounts.changeAvatar}</span>
+        </button>
       </div>
 
       {/* Form Fields corresponding directly to setting_setting.png */}
@@ -1112,7 +1120,18 @@ export function AccountView() {
                             {t.accounts.verifiedBadge || "VÉRIFIÉ"}
                           </Badge>
                         </div>
-                        <span className="text-xs text-zinc-400">{user?.email}</span>
+                        <div className="flex items-center gap-2.5 flex-wrap mt-0.5">
+                          <span className="text-xs text-zinc-400">{user?.email}</span>
+                          <span className="text-zinc-600 text-xs">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setIsAvatarModalOpen(true)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>{t.accounts.changeAvatar}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
