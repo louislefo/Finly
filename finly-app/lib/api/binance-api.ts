@@ -45,16 +45,22 @@ const TOP_SYMBOLS_CONFIG: { symbol: string; baseAsset: string; name: string }[] 
 ]
 
 export class BinanceAPI {
-  private static BASE_URL = "https://api.binance.com/api/v3"
+  private static getBaseUrl(): string {
+    if (typeof window !== "undefined") {
+      return "/api/crypto"
+    }
+    return "https://data-api.binance.vision/api/v3"
+  }
 
   /**
    * Fetch top cryptos 24h ticker data from Binance public API
    */
   static async getTopCryptos(): Promise<CryptoAsset[]> {
     try {
+      const baseUrl = this.getBaseUrl()
       const symbolsParam = JSON.stringify(TOP_SYMBOLS_CONFIG.map((c) => c.symbol))
       const res = await fetch(
-        `${this.BASE_URL}/ticker/24hr?symbols=${encodeURIComponent(symbolsParam)}`,
+        `${baseUrl}/ticker/24hr?symbols=${encodeURIComponent(symbolsParam)}`,
         { cache: "no-store" }
       )
 
@@ -62,7 +68,11 @@ export class BinanceAPI {
         throw new Error(`Binance API error: ${res.statusText}`)
       }
 
-      const rawData: any[] = await res.json()
+      const rawData = await res.json()
+      if (!Array.isArray(rawData)) {
+        throw new Error("Invalid response format from Binance API")
+      }
+
       const dataMap = new Map<string, any>()
       for (const item of rawData) {
         dataMap.set(item.symbol, item)
@@ -138,8 +148,9 @@ export class BinanceAPI {
     }
 
     try {
+      const baseUrl = this.getBaseUrl()
       const res = await fetch(
-        `${this.BASE_URL}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+        `${baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
         { cache: "no-store" }
       )
 
@@ -147,9 +158,12 @@ export class BinanceAPI {
         throw new Error(`Binance klines error: ${res.statusText}`)
       }
 
-      const rawKlines: any[][] = await res.json()
+      const rawKlines = await res.json()
+      if (!Array.isArray(rawKlines)) {
+        throw new Error("Invalid klines format from Binance")
+      }
 
-      return rawKlines.map((k) => {
+      return rawKlines.map((k: any[]) => {
         const timestamp = k[0]
         const date = new Date(timestamp)
         let dateStr = ""
