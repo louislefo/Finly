@@ -1,83 +1,83 @@
-# Plan d'Action - Projet Finly (Application PWA de Suivi Financier)
+# Action Plan - Finly Project (Personal Finance PWA)
 
-Ce document définit la feuille de route globale et le plan d'exécution technique pour le développement complet de l'application Finly.
-
----
-
-## 1. Architecture Globale et Vision Technique
-
-- **Frontend :** Next.js (App Router, TypeScript), Tailwind CSS, Shadcn UI, Lucide Icons, Framer Motion, Vaul (Drawer iOS).
-- **Backend & API :** Node.js / Next.js API Routes ou FastAPI (Python), Prisma / Drizzle ORM.
-- **Base de Données :** PostgreSQL (ou SQLite en mode embarqué).
-- **Agrégation Bancaire :** GoCardless Bank Account Data API (Norme DSP2, requêtes synchronisées par tâches cron).
-- **Exportation :** Générateur Excel (`exceljs` / `openpyxl`) produisant des fichiers `.xlsx` avec formules dynamiques nativement interprétables.
-- **Déploiement :** Self-hosted via Docker Compose avec reverse proxy sécurisé (Nginx / Tailscale).
+This document outlines the overall roadmap and technical execution plan for the Finly application.
 
 ---
 
-## 2. Feuille de Route d'Exécution
+## 1. Global Architecture and Technical Vision
 
-### Phase 1 : Modernisation du Design System & Layout Front-end
-1. **Configuration du Thème Dark Mode Deep Space :**
-   - Palette Zinc 950 (`#09090B`), surfaces Zinc 900 (`#18181B`), bordures semi-transparentes (`white/10`).
-   - Intégration des composants Shadcn UI (Card, Sheet/Drawer, Dialog, Tabs, Select, Table, Badge, Button, Input, Progress, Skeleton).
-2. **Navigation Adaptative Multi-Plateforme :**
-   - Desktop / Tablette : Sidebar pliable et bento grid 12 colonnes.
-   - Mobile : Navigation par barre inférieure fixe (Bottom Bar glassmorphism) et conteneurs défilants.
-3. **Gestion du Mode Confidentialité (Privacy Masking) :**
-   - Context React / State global pour masquer les soldes et montants (`*** €`) sans casser l'alignement typographique.
-
-### Phase 2 : Implémentation des Modules Front-end
-1. **Module 1 : Dashboard (Page d'accueil) :**
-   - Carte de solde total consolidé avec indicateurs d'évolution.
-   - Carousel / Liste scrollable des comptes reliés (BoursoBank, Revolut, etc.) avec leurs soldes.
-   - Graphique interactif des flux (Recharts / Tremor).
-   - Widgets Bento pour le top des dépenses du mois et la progression des projets.
-2. **Module 2 : Fil des Transactions :**
-   - Filtres temporels : Jour, Mois, Année.
-   - Filtres par compte bancaire et barre de recherche par commerçant/catégorie.
-   - Liste chronologique groupée par date avec logos / icônes par catégorie.
-   - Fiche détaillée de transaction avec Bottom Sheet style iOS (Vaul / Sheet Shadcn).
-3. **Module 3 : Projets & Prévisions Budgétaires :**
-   - Cartes de projets (Vacances, Épargne de précaution, Apport immo).
-   - Jauges de progression visuelles et calcul dynamique du solde restant à attribuer.
-   - Formulaire d'affectation manuelle et automatique des dépenses aux projets.
-4. **Module 4 : Centre d'Exportation Excel :**
-   - Filtre par plage de dates et sélection des comptes concernés.
-   - Prévisualisation dynamique des données exportables.
-   - Déclenchement du téléchargement des fichiers `.xlsx`.
-
-### Phase 3 : Modèle de Données & Backend API
-1. **Modélisation de la Base de Données :**
-   - Table `Requisitions` (identifiants GoCardless, statut, expiration 180j).
-   - Table `Accounts` (id, requisition_id, nom, type, solde, devise).
-   - Table `Transactions` (id, account_id, date, montant, marchand nettoyé, libellé brut, catégorie, projet_id).
-   - Table `Categories` (id, nom, icône, couleur, règles regex).
-   - Table `Projects` (id, nom, budget_cible, date_début, date_fin).
-2. **Développement des API Routes / Endpoints REST :**
-   - Endpoints CRUD pour les comptes, transactions, projets et catégories.
-   - Pipeline de nettoyage Regex pour isoler le nom du marchand à partir du libellé brut.
-   - Système de catégorisation automatique basé sur des mots-clés et règles configurables.
-
-### Phase 4 : Agrégation Bancaire GoCardless DSP2
-1. **Gestion des Identifiants & Consentement :**
-   - Flux d'authentification et de redirection vers les applications bancaires.
-   - Suivi de l'expiration du consentement (180 jours) avec alerte de renouvellement.
-2. **Pipeline d'Aspiration Synchronisée :**
-   - Tâche cron d'aspiration quotidienne des transactions et rafraîchissement des soldes.
-   - Dédoublonnage robuste via identifiants uniques de transaction GoCardless (`transactionId`).
-
-### Phase 5 : Moteur d'Exportation & Conteneurisation Docker
-1. **Génération de Fichiers Excel Avancés :**
-   - Création de classeurs multi-onglets (Synthèse, Transactions, Projets).
-   - Injection de formules Excel dynamiques (`SOMME`, `SOMME.SI`).
-2. **Conteneurisation & Configuration Self-Hosted :**
-   - Rédaction du `Dockerfile` et `docker-compose.yml`.
-   - Documentation du déploiement avec volume persistant pour la BDD et variables d'environnement.
+- **Frontend:** Next.js 16 (App Router, TypeScript), Tailwind CSS, Shadcn UI, Lucide Icons, Framer Motion, Vaul (iOS-style Drawer).
+- **Backend & API:** FastAPI (Python 3.11+), SQLAlchemy ORM, Pydantic v2.
+- **Database:** SQLite (embedded local file with zero-configuration persistence).
+- **Bank Aggregation:** Woob (direct banking connectors with background APScheduler tasks).
+- **Export Engine:** Advanced Excel generator producing multi-tab `.xlsx` workbooks with native formulas, and PDF budget summaries.
+- **Deployment:** Self-hosted via Docker Compose.
 
 ---
 
-## 3. Critères de Validation et Qualité
-- **Fidélité UI/UX :** Respect strict des maquettes HTML (docs/visuals) et des spécifications (docs/infos/Projet.md).
-- **Responsive & PWA :** Fonctionnement optimal sur mobile iOS/Android et sur écran large PC.
-- **Composants Reutilisables :** Exploitation maximale des composants Shadcn UI personnalisés avec Tailwind CSS.
+## 2. Execution Roadmap
+
+### Phase 1: Design System & Front-End Layout
+1. **Dark Theme Configuration:**
+   - Zinc 950 (`#09090B`) background, Zinc 900 (`#18181B`) surfaces, subtle semi-transparent borders (`white/10`).
+   - Integration of Shadcn UI components (Card, Sheet/Drawer, Dialog, Tabs, Select, Table, Badge, Button, Input, Progress, Skeleton).
+2. **Adaptive Multi-Platform Navigation:**
+   - Desktop / Tablet: Collapsible sidebar and 12-column Bento Grid layout.
+   - Mobile: Fixed bottom bar navigation with glassmorphism styling and swipeable containers.
+3. **Privacy Masking Mode:**
+   - Global React state / context to mask balances and transaction amounts without causing typographic layout shifts.
+
+### Phase 2: Front-End Feature Modules
+1. **Module 1: Dashboard (Overview):**
+   - Consolidated total net worth card with historical performance indicators.
+   - Connected accounts carousel / card grid with individual balances.
+   - Interactive financial trajectory charts.
+   - Bento widgets for monthly spending highlights and goal milestones.
+2. **Module 2: Transaction Ledger:**
+   - Granular time filters: Day, Month, Year, Custom Range.
+   - Account-based filtering and instant search by merchant or category.
+   - Chronological list grouped by date with category badges and icons.
+   - Detailed transaction sheet drawer with edit capability.
+3. **Module 3: Envelope Budgeting & Cashflow:**
+   - Category budget cards with real-time visual progress gauges and overflow warnings.
+   - Cashflow analysis comparing income versus expense streams.
+4. **Module 4: Savings Goals & Projects:**
+   - Target savings cards (Emergency Fund, Vacations, Down Payment).
+   - Visual progress gauges and remaining funding calculations.
+5. **Module 5: Export Center:**
+   - Multi-tab Excel file export with native formulas (`SUM`, `SUMIF`).
+   - Formatted PDF monthly budget summary exports.
+
+### Phase 3: Data Model & Backend API
+1. **Database Schema:**
+   - `connections` (bank module, status, encrypted credentials).
+   - `accounts` (id, connection_id, name, type, balance, currency).
+   - `transactions` (id, account_id, date, amount, cleaned_merchant, raw_label, category_id, goal_id).
+   - `categories` (id, name, icon, color, monthly_budget, regex_rules).
+   - `goals` (id, name, target_amount, current_amount, start_date, target_date).
+2. **REST API Endpoints:**
+   - CRUD endpoints for accounts, transactions, budgets, goals, and categories.
+   - Label cleaning pipeline to isolate merchant names.
+   - Keyword-based auto-categorization engine.
+
+### Phase 4: Bank Aggregation with Woob
+1. **Credential & Connection Management:**
+   - Secure credential entry and symmetric encryption (AES-256 Fernet).
+2. **Automated Synchronization Pipeline:**
+   - Background APScheduler job for periodic transaction pulling and balance refreshment.
+   - Robust deduplication via unique transaction identifiers.
+
+### Phase 5: Export Engine & Docker Containerization
+1. **Advanced File Generation:**
+   - Multi-tab Excel workbook generation with embedded spreadsheet formulas.
+   - PDF summary reports.
+2. **Dockerization & Self-Hosted Packaging:**
+   - Production Dockerfiles for backend and frontend.
+   - `docker-compose.yml` for unified single-command deployment.
+
+---
+
+## 3. Quality and Validation Criteria
+- **UI/UX Fidelity:** Strict adherence to design specifications (Zinc dark mode, Bento Grid layout, zero clutter).
+- **Responsive & Mobile-First:** Flawless experience on mobile browsers / PWA and wide desktop displays.
+- **Code Quality:** Type safety across TypeScript and Python, with full test suite coverage.
