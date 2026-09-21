@@ -1,4 +1,3 @@
 @AGENTS.md
 
-
-utiliser le plus possible les composant shadcn l'app en general et faitre en sorte qu'il soit responsive et mobile first.
+Use Shadcn UI components as much as possible across the application, ensuring responsive and mobile-first design.

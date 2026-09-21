@@ -169,6 +169,6 @@ The shape language is sophisticated and friendly, utilizing large corner radii t
 - **Inputs:** Fields are dark (#09090B), inset into the card surface, with a `white/10` border that glows slightly (Indigo) when focused.
 - **Haptic feedback:** All primary actions (transfer, buy, sell) should be documented as triggering a "Medium" haptic impact on mobile devices.
 
-## Utilisation des visuels d'exemples
+## Visual Reference Examples
 
-Pour les exemples de visuel, j'ai creer des pages html qui pourront etre utilisé comme exemple mais sans copier totalement les information qui sont en general fausse. les pages se trouvent ici : docs\visuals
+For UI and mockup references, static HTML prototype pages are available in `docs/visuals/`. These serve as structural layout guides for components and styling patterns.

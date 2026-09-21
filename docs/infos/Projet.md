@@ -1,116 +1,115 @@
-# Spécifications Techniques & Fonctionnelles — Projet Finance (PWA)
+# Technical & Functional Specifications - Finly (PWA)
 
-## 1. Présentation Générale du Projet
-- **Nom du projet :** App de suivi financier personnel  Finly.
-- **Type d'application :** Web Application / Progressive Web App (PWA) hébergée en mode Self-Hosted.
-- **Philosophie UI/UX :** Mobile-First, ressenti iOS natif (Finary, Bankin', Revolut), Dark Mode par défaut, responsive pour écran PC.
-- **Périmètre fonctionnel :** Agrégation bancaire multi-comptes, suivi quotidien des dépenses (Jour/Mois/Année), gestion de projets budgétaires, génération d'exports Excel dynamiques.
-
----
-
-## 2. Pile Technique & Dépendances Principales
-
-### A. Frontend & Interface Utilisateur
-- **Framework Base :** Next.js (App Router, TypeScript)
-- **Styling :** Tailwind CSS
-- **Composants UI :** Shadcn UI / Radix UI (composants accessibles et personnalisables)
-- **Icônes :** Lucide React (bibliothèque d'icônes vectorielles)
-- **Animations & Interaction iOS :** 
-  - `framer-motion` (transitions fluides et animations d'interface)
-  - `vaul` (composant Drawer / Bottom Sheet identique au style iOS)
-- **Visualisation de Données :** Recharts ou Tremor (graphiques d'évolution et jauges)
-- **Tableaux de Données :** `@tanstack/react-table` (gestion des listes et prévisualisations)
-- **PWA :** Manifest.json natif ou `next-pwa` (installation sur écran d'accueil sans barre d'adresse)
-
-### B. Backend, API & Traitement de Données
-- **Environnement Serveur :** Next.js API Routes ou FastAPI
-- **Base de Données :** SQLite
-- **Planification de Tâches :** `node-cron` (Node.js) ou `APScheduler` (Python) pour l'aspiration bancaire
-- **Génération Excel :** `exceljs` (Node.js) ou `openpyxl` (Python) pour la création de fichiers `.xlsx` avec formules natives
-
-### C. Infrastructure & Déploiement Self-Hosted
-- **Conteneurisation :** Docker et Docker Compose
-- **Gestion des Secrets :** Fichier de variables d'environnement (`.env`)
+## 1. Project Overview
+- **Project Name:** Personal Finance & Wealth Tracking App - Finly.
+- **Application Type:** Web Application / Progressive Web App (PWA) hosted in Self-Hosted mode.
+- **UI/UX Philosophy:** Mobile-First, native iOS feel (inspired by Finary, Linear, Apple), default Dark Mode, fully responsive for desktop screens.
+- **Functional Scope:** Multi-account bank aggregation, daily expense tracking (Day/Month/Year), envelope budgeting, savings goals management, dynamic Excel & PDF exports.
 
 ---
 
-## 3. Intégration Bancaire & Réglementation
+## 2. Technical Stack & Core Dependencies
 
-- **Agrégateur Bancaire :** GoCardless Bank Account Data API (ex-Nordigen) ou woob
-- **Norme Légale :** Directive Européenne DSP2 (Authentification Forte / SCA)
-- **Durée de Consentement :** 180 jours maximum avant renouvellement obligatoire via l'application de la banque
-- **Pipeline d'Aspiration :**
-  1. Récupération des soldes de comptes
-  2. Extraction de l'historique des transactions
-  3. Dédoublonnage via identifiants uniques de transaction
-  4. Nettoyage Regex des libellés bancaires pour isoler le marchand
-  5. Catégorisation automatique par mots-clés
+### A. Frontend & User Interface
+- **Base Framework:** Next.js (App Router, TypeScript)
+- **Styling:** Tailwind CSS
+- **UI Components:** Shadcn UI / Radix UI (accessible, composable components)
+- **Icons:** Lucide React (vector icons)
+- **Animations & Mobile Interactions:**
+  - `framer-motion` (smooth transitions and interface animations)
+  - `vaul` (iOS style Drawer / Bottom Sheet component)
+- **Data Visualization:** Recharts (trend charts, area charts, donut breakdowns, and gauges)
+- **Data Tables:** `@tanstack/react-table` (list management and table previews)
+- **PWA:** Native manifest configuration (standalone home screen launch without browser URL bar)
 
----
+### B. Backend, API & Data Processing
+- **Server Environment:** FastAPI (Python 3.11+)
+- **Database:** SQLite with SQLAlchemy ORM
+- **Task Scheduling:** `APScheduler` for periodic background bank synchronization
+- **Report Generation:** `xlsx` / `xlsx-js-style` / `openpyxl` for `.xlsx` workbooks with native formulas, and `jspdf` for PDF budget summaries
 
-## 4. Modèle de Données & Entités
-
-1. **Connexions Bancaires (Requisitions) :**
-   - Identifiant GoCardless, nom de la banque, statut de la liaison, date de création, date d'expiration (180 jours).
-
-2. **Comptes (Accounts) :**
-   - ID unique, compte rattaché à une connexion, nom du compte, type (Courant, Épargne), solde, devise.
-
-3. **Transactions :**
-   - ID unique, compte rattaché, date d'imputation, montant, marchand nettoyé, libellé brut, catégorie rattachée, projet rattaché (optionnel).
-
-4. **Catégories :**
-   - ID, nom (Alimentation, Transports, Logement, etc.), icône, couleur, règles de filtrage.
-
-5. **Projets & Budgets :**
-   - ID, nom du projet (ex: Vacances), budget prévisionnel cible, date de début, date de fin, statut.
+### C. Infrastructure & Self-Hosted Deployment
+- **Containerization:** Docker and Docker Compose
+- **Secrets Management:** Environment variables file (`.env`)
 
 ---
 
-## 5. Modules Fonctionnels de l'Application
+## 3. Bank Integration & Regulations
 
-### Module 1 : Dashboard / Synthèse (Home)
-- Affichage du solde global consolidé (somme de tous les comptes).
-- Bouton de masquage des soldes (remplacement des chiffres par des puces d'occultation).
-- Carousel / Liste des comptes individuels et leurs soldes respectifs.
-- Graphique interactif de la courbe d'évolution des flux financiers.
-- Widgets de résumé (Top dépenses du mois, état des projets).
-
-### Module 2 : Fil des Dépenses (Transactions)
-- Filtrage par granularité temporelle : **Jour**, **Mois**, **Année**.
-- Filtre par compte bancaire spécifique ou vue combinée.
-- Barre de recherche instantanée par nom de commerçant ou catégorie.
-- Liste chronologique groupée par date.
-- Ouverture d'une fiche détaillée en **Bottom Sheet iOS** au clic sur une transaction.
-  
-Integration d'un Centre d'Exportation Excel
-- Sélection de plages de dates personnalisées et sélection des comptes.
-- Prévisualisation du tableau de données avant téléchargement.
-- Génération d'un fichier `.xlsx` contenant des formules dynamiques (SOMME, SOMME.SI) réparties sur plusieurs onglets.
-
-### Module 3 : Projets & Prévisions Budgétaires
-- Création de projets personnalisés avec attribution d'un budget prévisionnel.
-- Association manuelle ou automatique des dépenses à un projet.
-- Calcul en temps réel du restant disponible et barres de progression visuelles.
-
-
+- **Bank Aggregation Engine:** Woob (Web Outside of Browsers)
+- **Legal Context:** European PSD2 Directive compatibility
+- **Synchronization Pipeline:**
+  1. Fetch account balances
+  2. Extract transaction history
+  3. Deduplication via unique transaction identifiers
+  4. Regex cleaning of raw statement labels to isolate merchant names
+  5. Automatic categorization via keyword rules
 
 ---
 
-## 6. Directives UI/UX & Design System
+## 4. Data Models & Entities
 
-- **Palette de Couleurs :**
-  - Background principal : `#09090B` (Zinc 950)
-  - Cartes et conteneurs : `#18181B` (Zinc 900)
-  - Bordures : `border-white/10` (fines et semi-transparentes)
-  - Variantes d'état : Vert pour les revenus/positif, neutre/rouge pour les dépenses.
-- **Ergonomie iOS :**
-  - Absence de pop-ups classiques au centre sur mobile (remplacés par des Bottom Sheets Vaul).
-  - Suppression de la barre d'adresse en mode PWA.
-  - Micro-interactions visuelles sur chaque bouton.
-- **Dispositions :**
-  - Mobile : Colonne unique scrollable, navigation par Bottom Bar fixe.
-  - PC / Tablette : Disposition en grille Bento Grid, navigation par sidebar latérale.
+1. **Bank Connections:**
+   - Bank module name, connection status, creation timestamp, last sync timestamp, encrypted credentials.
 
+2. **Accounts:**
+   - Unique ID, linked connection ID, account name, type (Checking, Savings, Investment, Real Estate, Loan), balance, currency.
 
- 
+3. **Transactions:**
+   - Unique ID, linked account ID, posting date, amount, cleaned merchant, raw label, assigned category, assigned project/goal (optional).
+
+4. **Categories & Envelopes:**
+   - ID, name (Food, Transport, Housing, etc.), icon, color, monthly budget limit, keyword rules.
+
+5. **Projects & Savings Goals:**
+   - ID, project name, target budget, start date, target deadline, status, progress percentage.
+
+---
+
+## 5. Functional Application Modules
+
+### Module 1: Dashboard / Net Worth Overview (Home)
+- Real-time consolidated total net worth (sum across all accounts).
+- Privacy Mode: One-click masking of balances and numbers without altering layout.
+- Account breakdown cards and balances (Checking, Savings, Investments, Real Estate).
+- Interactive historical net worth evolution chart.
+- Bento summary widgets: top monthly expenses, budget status, goal progress.
+
+### Module 2: Transaction Ledger
+- Time granularity filtering: Day, Month, Year, Custom range.
+- Account-specific or combined view.
+- Real-time search by merchant name, raw label, or category.
+- Chronological list grouped by date.
+- Detailed transaction inspection in a mobile-friendly slide-over drawer / bottom sheet.
+
+### Module 3: Envelope Budgeting & Cashflow Analysis
+- Monthly spending caps per category with visual consumption gauges.
+- Real-time overflow alerts.
+- Cashflow breakdown comparing total income vs total expenses.
+- Visual donut breakdowns and merchant analysis.
+
+### Module 4: Savings Goals & Projects
+- Target-based goal creation with target amount, deadline, and visual progress indicators.
+- Milestone tracking and remaining funding computation.
+
+### Module 5: Export Center (Excel & PDF)
+- Date range filtering and account selection.
+- Multi-tab Excel workbook generation with native Excel formulas (`SUM`, `SUMIF`).
+- Structured monthly budget PDF reports.
+
+---
+
+## 6. UI/UX Directives & Design System
+
+- **Color Palette:**
+  - Base Background: `#09090B` (Zinc 950)
+  - Cards and Containers: `#18181B` (Zinc 900)
+  - Borders: `border-white/10` (subtle and semi-transparent)
+  - State variants: Emerald green for income/positive trends, Rose/Red for expense overflows.
+- **Ergonomics:**
+  - Avoid centered pop-up modals on mobile; prefer slide-over sheets and bottom drawers.
+  - Full-screen standalone PWA mode.
+  - Micro-interactions on interactive buttons and controls.
+- **Layouts:**
+  - Mobile: Single scrollable column with a fixed bottom navigation bar.
+  - Desktop: Sidebar navigation with a structured Bento Grid layout.

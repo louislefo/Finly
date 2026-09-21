@@ -60,6 +60,7 @@ export interface TranslationDictionary {
     analysis: string
     tools: string
     crypto: string
+    forex: string
     addTool: string
     myAccount: string
     connectedAccounts: string
@@ -693,6 +694,125 @@ export interface TranslationDictionary {
     noData: string
     poweredBy: string
     liveRates: string
+  }
+  forexMarket: {
+    title: string
+    subtitle: string
+    converterTitle: string
+    amount: string
+    fromCurrency: string
+    toCurrency: string
+    convertedAmount: string
+    exchangeRate: string
+    inverseRate: string
+    swapCurrencies: string
+    popularPairs: string
+    chartTitle: string
+    high: string
+    low: string
+    average: string
+    variation: string
+    searchPlaceholder: string
+    allCurrencies: string
+    currency: string
+    rateAgainstBase: string
+    referenceDate: string
+    poweredBy: string
+    tooltips: {
+      ecbRate: string
+      converter: string
+      chart: string
+      inverse: string
+    }
+  }
+  analysis: {
+    pageTitle: string
+    pageSubtitle: string
+    kpis: {
+      monthlySubscriptions: string
+      annualSubscriptions: string
+      activeSubsCount: string
+      cancelledSavings: string
+      fixedChargesRatio: string
+      financialRunway: string
+      runwayUnit: string
+      healthScore: string
+    }
+    subscriptions: {
+      title: string
+      tabActive: string
+      tabCancelled: string
+      tabBreakdown: string
+      noActiveSubs: string
+      noCancelledSubs: string
+      requiresThreeMonths: string
+      priceHikeBadge: string
+      monthlyCycle: string
+      yearlyCycle: string
+      weeklyCycle: string
+      bimonthlyCycle: string
+      nextPayment: string
+      totalMonthly: string
+      totalAnnual: string
+      savingsGained: string
+      costBreakdownTitle: string
+    }
+    rule503020: {
+      title: string
+      needsTitle: string
+      needsDesc: string
+      wantsTitle: string
+      wantsDesc: string
+      savingsTitle: string
+      savingsDesc: string
+      idealTarget: string
+      currentReality: string
+      healthStatusOptimal: string
+      healthStatusCaution: string
+      healthStatusDeficit: string
+      runwayTitle: string
+      runwayDesc: string
+    }
+    forecast: {
+      title: string
+      currentBalance: string
+      projectedBalance: string
+      burnRatePerDay: string
+      daysRemaining: string
+      pendingSubscriptions: string
+      monthEndStatusOnTrack: string
+      monthEndStatusWarning: string
+      chartTitle: string
+    }
+    simulator: {
+      title: string
+      initialCapital: string
+      monthlySavings: string
+      annualReturn: string
+      horizonYears: string
+      yearsUnit: string
+      projectedWealth: string
+      totalInvested: string
+      interestEarned: string
+      passiveIncome4Pct: string
+      passiveIncomeDesc: string
+      chartInvested: string
+      chartInterests: string
+    }
+    tooltips: {
+      monthlySubscriptions: string
+      financialRunway: string
+      fixedChargesRatio: string
+      healthScore: string
+      subscriptionsHub: string
+      rule503020: string
+      needsHelp: string
+      wantsHelp: string
+      savingsHelp: string
+      forecast: string
+      simulator: string
+      fireRule: string
+    }
   }
   categories: Record<string, string>
 }

@@ -1,40 +1,40 @@
 # Finly Frontend (Next.js 16)
 
-Application web progressive (PWA) de Finly, concue en TypeScript avec Next.js 16 (App Router), React 19, Tailwind CSS et Shadcn UI.
+Progressive Web Application (PWA) for Finly, built with TypeScript, Next.js 16 (App Router), React 19, Tailwind CSS, and Shadcn UI.
 
 ---
 
-## Prerequis
+## Prerequisites
 
 - Node.js 20+
 - npm
 
 ---
 
-## Installation et Developpement
+## Installation and Development
 
-1. Installer les dependances :
+1. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Demarrer le serveur de developpement :
+2. Start the development server:
    ```bash
    npm run dev
    ```
-   L'application est disponible sur `http://localhost:3000`.
+   The application will be accessible at `http://localhost:3000`.
 
-3. Executer les tests unitaires :
+3. Run unit and integration tests:
    ```bash
    npm test
    ```
 
-4. Executer l'analyse ESLint :
+4. Run ESLint code inspection:
    ```bash
    npm run lint
    ```
 
-5. Compiler pour la production :
+5. Build and run production bundle:
    ```bash
    npm run build
    npm start
@@ -42,14 +42,13 @@ Application web progressive (PWA) de Finly, concue en TypeScript avec Next.js 16
 
 ---
 
-## Architecture des Dossiers
+## Folder Architecture
 
 ```text
 finly-app/
-|-- app/             # Routes Next.js App Router (dashboard, budget, depenses, admin, etc.)
-|-- components/      # Composants UI (Shadcn UI, graphiques Recharts, modales, drawers)
-|-- hooks/           # Hooks React personnalises (state de confidentialite, requetes)
-|-- lib/             # Fonctions utilitaires, client API Fetch et generateur PDF
-`-- __tests__/       # Tests unitaires Vitest et Testing Library
+|-- app/             # Next.js App Router routes (dashboard, budget, expenses, admin, etc.)
+|-- components/      # UI components (Shadcn UI, Recharts charts, modals, drawers)
+|-- hooks/           # Custom React hooks (privacy state, query wrappers)
+|-- lib/             # Utility functions, Fetch API client, and PDF exporter
+`-- __tests__/       # Vitest and Testing Library test suite
 ```
-
