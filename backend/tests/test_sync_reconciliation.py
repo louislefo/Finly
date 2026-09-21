@@ -9,6 +9,9 @@ from app.services.cleaner_service import CleanerService
 from app.services.categorizer_service import CategorizerService
 from app.services.reconciliation_service import ReconciliationService
 from app.services.sync_service import sync_service
+from app.main import auto_migrate_sqlite
+
+auto_migrate_sqlite()
 
 def test_cleaner_service():
     assert CleanerService.clean_merchant_name("CB CARREFOUR CONTACT 06/09") == "Carrefour"

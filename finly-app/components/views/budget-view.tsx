@@ -34,6 +34,7 @@ import {
   AlertCircle,
   RotateCcw,
   FileText,
+  FolderTree,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useAuth } from "@/components/auth-context"
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui/dialog"
 import { BudgetPieChart } from "@/components/charts/budget-pie-chart"
 import { CashflowSankeyChart } from "@/components/charts/cashflow-sankey-chart"
+import { CategoryManager } from "@/components/categories/category-manager"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { BudgetSummary, BudgetItem, CategoryItem, Account } from "@/lib/types/finance"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
@@ -75,6 +77,7 @@ export function BudgetView() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isSetBudgetOpen, setIsSetBudgetOpen] = useState<boolean>(false)
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState<boolean>(false)
   const [budgetFormCat, setBudgetFormCat] = useState<string>("")
   const [budgetFormLimit, setBudgetFormLimit] = useState<string>("")
   const [selectedCategoryModal, setSelectedCategoryModal] = useState<string | null>(null)
@@ -297,7 +300,21 @@ export function BudgetView() {
     }
   }
 
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = useCallback((category: string) => {
+    const found = categoriesList.find((c) => c.name === category)
+    if (found?.icon) {
+      const customIconMap: Record<string, React.ElementType> = {
+        Tag,
+        ShoppingBag,
+        Car,
+        Home: HomeIcon,
+        Film,
+        Compass,
+        HeartPulse,
+        PiggyBank,
+      }
+      if (customIconMap[found.icon]) return customIconMap[found.icon]
+    }
     switch (category) {
       case "Alimentation": return ShoppingBag
       case "Transports": return Car
@@ -308,7 +325,7 @@ export function BudgetView() {
       case "Virements & Épargne": return PiggyBank
       default: return Tag
     }
-  }
+  }, [categoriesList])
 
   const items = budgetSummary?.items || []
 
@@ -443,6 +460,17 @@ export function BudgetView() {
             )}
 
             <Button
+              onClick={() => setIsCategoryManagerOpen(true)}
+              variant="outline"
+              size="sm"
+              className="bg-[#18181B] border-white/10 hover:bg-white/5 text-zinc-200 hover:text-white text-xs h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 rounded-xl cursor-pointer"
+              title={t.accounts.categoriesTitle || "Gérer les catégories"}
+            >
+              <FolderTree className="w-3.5 h-3.5 text-zinc-400" />
+              <span className="hidden sm:inline">{t.accounts.categoriesNav || "Catégories"}</span>
+            </Button>
+
+            <Button
               onClick={handleExportPdf}
               disabled={isExportingPdf || !budgetSummary}
               variant="outline"
@@ -570,6 +598,7 @@ export function BudgetView() {
                   const isExceeded = hasLimit && item.spent > item.monthly_limit
                   const isNearLimit = hasLimit && item.percentage >= 80 && !isExceeded
                   const activeTxCount = item.transactions.filter((t) => !t.is_excluded_from_budget).length
+                  const CategoryIcon = getCategoryIcon(item.category)
 
                   return (
                     <div
@@ -586,6 +615,7 @@ export function BudgetView() {
                       {/* Top Row: Category name + Count on left, Amounts & % on right */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5 min-w-0">
+                          <CategoryIcon className="w-4 h-4 text-zinc-400 group-hover:text-indigo-300 transition-colors shrink-0" />
                           <span className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">
                             {t.categories[item.category] || item.category}
                           </span>
@@ -688,9 +718,19 @@ export function BudgetView() {
           <form onSubmit={handleSaveBudget} className="flex flex-col gap-4 mt-2">
             {/* Category selection */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400">
-                {t.budgets.category}
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-zinc-400">
+                  {t.budgets.category}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryManagerOpen(true)}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>{t.accounts.addCategoryBtn || "Nouvelle catégorie"}</span>
+                </button>
+              </div>
               <select
                 value={budgetFormCat}
                 onChange={(e) => {
@@ -1205,6 +1245,21 @@ export function BudgetView() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Manager Modal from Budget View */}
+      <Dialog open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-6 bg-[#18181B] border-white/10 text-white rounded-3xl shadow-2xl">
+          <CategoryManager
+            isModal={true}
+            onClose={() => setIsCategoryManagerOpen(false)}
+            onCategoryChanged={async () => {
+              const updatedCats = await FinlyAPI.getCategories()
+              setCategoriesList(updatedCats)
+              await loadBudgets()
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

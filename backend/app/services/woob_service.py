@@ -255,23 +255,52 @@ class WoobService:
                 }
             raise Exception(f"Erreur de connexion bancaire: {error_str}")
 
-    def ensure_connections_loaded(self, connections: list, force_reload: bool = True):
-        """Re-instantiate backends from SQLite connections with AES-256 decrypted passwords."""
+    def ensure_connections_loaded(self, connections: list, force_reload: bool = True) -> List[Dict[str, Any]]:
+        """Re-instantiate backends from SQLite connections with AES-256 decrypted passwords.
+        Returns a list of errors/warnings for connections that could not be loaded."""
         from app.core.security import decrypt_bank_password
         w = self._get_woob_instance()
+        load_errors: List[Dict[str, Any]] = []
 
         for conn in connections:
             if not conn.login:
                 self.log(f"Connexion {conn.bank_name} ({conn.module_name}) ignoree: identifiant manquant.")
+                load_errors.append({
+                    "connection_id": conn.id,
+                    "bank_name": conn.bank_name,
+                    "module_name": conn.module_name,
+                    "login": conn.login or "",
+                    "backend_name": conn.backend_name,
+                    "status": "error",
+                    "message": "Identifiant bancaire manquant.",
+                })
                 continue
 
             if not conn.password:
                 self.log(f"Connexion {conn.bank_name} ({conn.module_name}) ignoree: mot de passe non renseigne en base (reconnexion requise via l'interface).")
+                load_errors.append({
+                    "connection_id": conn.id,
+                    "bank_name": conn.bank_name,
+                    "module_name": conn.module_name,
+                    "login": conn.login,
+                    "backend_name": conn.backend_name,
+                    "status": "reconnect_required",
+                    "message": "Mot de passe non renseigné en base (reconnexion requise).",
+                })
                 continue
 
             decrypted_pwd = decrypt_bank_password(conn.password)
             if not decrypted_pwd:
                 self.log(f"Mot de passe non dechiffrable pour {conn.bank_name}. Reconnexion requise via l'interface.")
+                load_errors.append({
+                    "connection_id": conn.id,
+                    "bank_name": conn.bank_name,
+                    "module_name": conn.module_name,
+                    "login": conn.login,
+                    "backend_name": conn.backend_name,
+                    "status": "reconnect_required",
+                    "message": "Mot de passe non déchiffrable (reconnexion requise).",
+                })
                 continue
 
             # Ensure official module is installed and loaded
@@ -302,11 +331,25 @@ class WoobService:
                 w.backend_instances[conn.backend_name] = backend
             except Exception as e:
                 self.log(f"Note chargement backend {conn.backend_name}: {e}")
+                load_errors.append({
+                    "connection_id": conn.id,
+                    "bank_name": conn.bank_name,
+                    "module_name": conn.module_name,
+                    "login": conn.login,
+                    "backend_name": conn.backend_name,
+                    "status": "error",
+                    "message": f"Erreur de chargement: {str(e)}",
+                })
 
-    def fetch_accounts_and_transactions(self) -> List[Dict[str, Any]]:
+        return load_errors
+
+    def fetch_accounts_and_transactions(self) -> Any:
+        """Fetch accounts and transactions from active backends.
+        Returns a tuple (results, errors)."""
         import hashlib
         w = self._get_woob_instance()
         results = []
+        fetch_errors: List[Dict[str, Any]] = []
 
         backends = list(w.backend_instances.values())
         self.log(f"Aspiration des comptes sur {len(backends)} backend(s) actif(s)...")
@@ -402,10 +445,49 @@ class WoobService:
                         "type": acc_type,
                         "transactions": transactions_list,
                     })
+            except BrowserIncorrectPassword as pwd_err:
+                self.log(f"Erreur mot de passe sur {backend.name}: {pwd_err}")
+                fetch_errors.append({
+                    "backend_name": backend.name,
+                    "module_name": getattr(backend, "NAME", ""),
+                    "status": "error",
+                    "message": "Identifiant ou mot de passe bancaire incorrect.",
+                })
+            except (AppValidation, DecoupledValidation, NeedInteractive, NeedInteractiveFor2FA, BrowserQuestion, OTPQuestion, SentOTPQuestion, ActionNeeded) as auth_err:
+                self.log(f"2FA requise sur {backend.name}: {auth_err}")
+                fetch_errors.append({
+                    "backend_name": backend.name,
+                    "module_name": getattr(backend, "NAME", ""),
+                    "status": "2fa_required",
+                    "message": "Validation requise sur l'application mobile de votre banque.",
+                })
+            except (BrowserUnavailable, ScrapingBlocked, BrowserForbidden) as sec_err:
+                self.log(f"Acces refuse sur {backend.name}: {sec_err}")
+                fetch_errors.append({
+                    "backend_name": backend.name,
+                    "module_name": getattr(backend, "NAME", ""),
+                    "status": "error",
+                    "message": "Accès refusé ou service bancaire temporairement indisponible.",
+                })
             except Exception as b_err:
-                self.log(f"Erreur d'iteration sur {backend.name}: {b_err}")
+                err_str = str(b_err)
+                self.log(f"Erreur d'iteration sur {backend.name}: {err_str}")
+                if any(k in err_str.lower() for k in ["2fa", "sca", "otp", "interactive", "validation", "app", "mobile"]):
+                    fetch_errors.append({
+                        "backend_name": backend.name,
+                        "module_name": getattr(backend, "NAME", ""),
+                        "status": "2fa_required",
+                        "message": "Validation requise sur l'application mobile de votre banque.",
+                    })
+                else:
+                    fetch_errors.append({
+                        "backend_name": backend.name,
+                        "module_name": getattr(backend, "NAME", ""),
+                        "status": "error",
+                        "message": f"Erreur de communication: {err_str}",
+                    })
 
-        return results
+        return results, fetch_errors
 
     def remove_backend(self, backend_name: str):
         w = self._get_woob_instance()

@@ -37,6 +37,8 @@ next-env.d.ts
 
 
 # Python:
+woob_data/
+backend/woob_data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

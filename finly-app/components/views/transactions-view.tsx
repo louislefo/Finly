@@ -57,8 +57,10 @@ import {
 } from "@/components/ui/dialog"
 import { ExportDialog } from "@/components/modals/export-dialog"
 import { WoobModal } from "@/components/modals/woob-modal"
+import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
+import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { Transaction, Project, Account, CategoryItem } from "@/lib/types/finance"
+import { Transaction, Project, Account, CategoryItem, SyncResult, BankSyncError } from "@/lib/types/finance"
 import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 
 export function TransactionsView() {
@@ -342,14 +344,41 @@ export function TransactionsView() {
     }
   }
 
+  // Sync Result Modal States
+  const [syncResultModalData, setSyncResultModalData] = useState<SyncResult | null>(null)
+  const [isSyncResultModalOpen, setIsSyncResultModalOpen] = useState<boolean>(false)
+  const [pendingBankConnections, setPendingBankConnections] = useState<PendingBankConnection[]>([])
+  const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState<boolean>(false)
+
   const handleManualSync = async () => {
     setIsSyncing(true)
     try {
-      await FinlyAPI.triggerSync()
+      const res = await FinlyAPI.triggerSync()
       await loadData()
+      setSyncResultModalData(res)
+      setIsSyncResultModalOpen(true)
+    } catch (err: any) {
+      setSyncResultModalData({
+        status: "error",
+        message: err.message || (language === "fr" ? "Échec de la synchronisation bancaire." : "Banking synchronization failed."),
+      })
+      setIsSyncResultModalOpen(true)
     } finally {
       setIsSyncing(false)
     }
+  }
+
+  const handleFixSyncError = (err: BankSyncError) => {
+    setPendingBankConnections([
+      {
+        id: err.connection_id,
+        backend_name: err.backend_name,
+        module_name: err.module_name,
+        bank_name: err.bank_name,
+        login: err.login || "",
+      },
+    ])
+    setIsCredentialsModalOpen(true)
   }
 
   const resetFilters = () => {
@@ -1143,6 +1172,22 @@ export function TransactionsView() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Synchronization Feedback & Error Correction Modal */}
+      <SyncFeedbackModal
+        isOpen={isSyncResultModalOpen}
+        onClose={() => setIsSyncResultModalOpen(false)}
+        syncResult={syncResultModalData}
+        onFixConnection={handleFixSyncError}
+      />
+
+      {/* Reconnect Credentials Modal */}
+      <ImportCredentialsModal
+        isOpen={isCredentialsModalOpen}
+        onClose={() => setIsCredentialsModalOpen(false)}
+        pendingConnections={pendingBankConnections}
+        onSuccess={loadData}
+      />
     </div>
   )
 }

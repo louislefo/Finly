@@ -30,6 +30,7 @@ import {
   ArrowLeft,
   HelpCircle,
   Camera,
+  FolderTree,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -49,14 +50,16 @@ import {
 import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
+import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
 import { AvatarPickerModal } from "@/components/modals/avatar-picker-modal"
 import { AdminView } from "@/components/views/admin-view"
+import { CategoryManager } from "@/components/categories/category-manager"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { Account, BankConnection, User } from "@/lib/types/finance"
+import { Account, BankConnection, User, SyncResult, BankSyncError } from "@/lib/types/finance"
 import { getLineFaceAvatarUri } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
 
-type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup" | "admin"
+type AccountTab = "profile" | "categories" | "security" | "preferences" | "banks" | "backup" | "admin"
 
 export function AccountView() {
   const router = useRouter()
@@ -69,13 +72,13 @@ export function AccountView() {
 
   // Navigation Tab State
   const [activeTab, setActiveTab] = useState<AccountTab>(() => {
-    if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+    if (tabParam && ["profile", "categories", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
       return tabParam
     }
     return "profile"
   })
   const [mobileSubView, setMobileSubView] = useState<"menu" | AccountTab>(() => {
-    if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+    if (tabParam && ["profile", "categories", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
       return tabParam
     }
     return "menu"
@@ -83,7 +86,7 @@ export function AccountView() {
 
   // Synchronize when URL search params change
   useEffect(() => {
-    if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+    if (tabParam && ["profile", "categories", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
       setActiveTab(tabParam)
       setMobileSubView(tabParam)
     }
@@ -316,6 +319,10 @@ export function AccountView() {
     return Array.from(map.values()).sort((a, b) => b.totalBalance - a.totalBalance)
   }, [accounts, bankConnections])
 
+  // Sync Result Modal States
+  const [syncResultModalData, setSyncResultModalData] = useState<SyncResult | null>(null)
+  const [isSyncResultModalOpen, setIsSyncResultModalOpen] = useState<boolean>(false)
+
   // Global Sync Action
   const handleSyncAll = async () => {
     setIsSyncingAll(true)
@@ -323,19 +330,39 @@ export function AccountView() {
     try {
       const res = await FinlyAPI.triggerSync()
       await loadData()
-      setSyncFeedback({
-        type: "success",
-        message: res.message || (language === "fr" ? "Synchronisation bancaire effectuée avec succès." : "Banking synchronization completed successfully."),
-      })
+
+      const hasErrors = (res.errors && res.errors.length > 0) || res.status === "error"
+      if (hasErrors) {
+        setSyncResultModalData(res)
+        setIsSyncResultModalOpen(true)
+      } else {
+        setSyncFeedback({
+          type: "success",
+          message: res.message || t.syncFeedback.syncSuccessTitle,
+        })
+      }
     } catch (err: any) {
       setSyncFeedback({
         type: "error",
-        message: err.message || (language === "fr" ? "Échec de la synchronisation bancaire globale." : "Failed to synchronize connected banks."),
+        message: err.message || (language === "fr" ? "Échec de la synchronisation bancaire." : "Failed to synchronize connected banks."),
       })
     } finally {
       setIsSyncingAll(false)
       setTimeout(() => setSyncFeedback(null), 6000)
     }
+  }
+
+  const handleFixSyncError = (err: BankSyncError) => {
+    setPendingBankConnections([
+      {
+        id: err.connection_id,
+        backend_name: err.backend_name,
+        module_name: err.module_name,
+        bank_name: err.bank_name,
+        login: err.login || "",
+      },
+    ])
+    setIsCredentialsModalOpen(true)
   }
 
   // Edit Account
@@ -662,6 +689,18 @@ export function AccountView() {
 
         <button
           type="button"
+          onClick={() => selectTab("categories")}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <FolderTree className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.accounts.categoriesNav}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
           onClick={() => selectTab("security")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
@@ -901,6 +940,7 @@ export function AccountView() {
                 <ArrowLeft className="w-6 h-6" />
               </button>
               <h1 className="text-base font-bold text-white text-center">
+                {mobileSubView === "categories" && t.accounts.categoriesNav}
                 {mobileSubView === "banks" && t.accounts.banksNav}
                 {mobileSubView === "security" && t.accounts.securityNav}
                 {mobileSubView === "preferences" && t.accounts.preferencesNav}
@@ -1016,6 +1056,20 @@ export function AccountView() {
               >
                 <Building2 className="w-4 h-4 text-zinc-400" />
                 <span>{t.accounts.banksNav || "Comptes synchronisés"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectTab("categories")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "categories"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
+              >
+                <FolderTree className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.categoriesNav || "Catégories"}</span>
               </button>
             </div>
 
@@ -1186,6 +1240,13 @@ export function AccountView() {
                     </form>
                   </div>
                 </Card>
+              </div>
+            )}
+
+            {/* TAB: CATÉGORIES */}
+            {activeTab === "categories" && (
+              <div className="flex flex-col gap-6 w-full">
+                <CategoryManager onCategoryChanged={loadData} />
               </div>
             )}
 
@@ -1440,9 +1501,18 @@ export function AccountView() {
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-base font-bold text-white">{group.bankName}</span>
-                                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2">
-                                  {t.accounts.connectedBadge}
-                                </Badge>
+                                {group.connection?.status &&
+                                group.connection.status !== "connected" &&
+                                group.connection.status !== "ok" &&
+                                group.connection.status !== "active" ? (
+                                  <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px] py-0 px-2 font-semibold">
+                                    {t.syncFeedback.actionRequired}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] py-0 px-2 font-semibold">
+                                    {t.accounts.connectedBadge}
+                                  </Badge>
+                                )}
                                 {group.connection?.last_synced_at && (
                                   <span className="text-[10px] text-zinc-500">
                                     {t.accounts.lastSynced} : {new Date(group.connection.last_synced_at).toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" })}
@@ -1462,6 +1532,31 @@ export function AccountView() {
                                 {formatAmount(group.totalBalance)}
                               </span>
                             </div>
+
+                            {group.connection &&
+                              ((group.connection.status &&
+                                group.connection.status !== "connected" &&
+                                group.connection.status !== "ok" &&
+                                group.connection.status !== "active") ||
+                                group.connection.has_password === false) && (
+                                <Button
+                                  onClick={() =>
+                                    handleFixSyncError({
+                                      connection_id: group.connection!.id,
+                                      bank_name: group.connection!.bank_name,
+                                      module_name: group.connection!.module_name,
+                                      login: group.connection!.login || "",
+                                      backend_name: group.connection!.backend_name,
+                                      status: group.connection!.status,
+                                      message: t.syncFeedback.missingPasswordDesc,
+                                    })
+                                  }
+                                  size="sm"
+                                  className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs h-8 px-3 rounded-xl cursor-pointer shadow-sm"
+                                >
+                                  {t.syncFeedback.updateCredentialsBtn}
+                                </Button>
+                              )}
 
                             <Button
                               onClick={() => setBankToDelete(group.bankName)}
@@ -1913,6 +2008,14 @@ export function AccountView() {
         onClose={() => setIsCredentialsModalOpen(false)}
         pendingConnections={pendingBankConnections}
         onSuccess={loadData}
+      />
+
+      {/* Synchronization Feedback & Error Correction Modal */}
+      <SyncFeedbackModal
+        isOpen={isSyncResultModalOpen}
+        onClose={() => setIsSyncResultModalOpen(false)}
+        syncResult={syncResultModalData}
+        onFixConnection={handleFixSyncError}
       />
 
       {/* DiceBear Line Face Avatar Picker Modal */}

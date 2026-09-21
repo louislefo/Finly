@@ -12,12 +12,22 @@ export interface User {
   created_at?: string
 }
 
+export interface SubcategoryDetail {
+  id?: string | null
+  name: string
+  parent_name: string
+  icon?: string
+  color?: string
+  is_custom?: boolean
+}
+
 export interface CategoryItem {
   id: string
   name: string
   icon?: string
   color?: string
   subcategories: string[]
+  subcategories_details?: SubcategoryDetail[]
   is_custom?: boolean
 }
 
@@ -97,8 +107,29 @@ export interface BankConnection {
   login?: string
   backend_name?: string
   status: string
+  has_password?: boolean
+  error_message?: string
   created_at?: string
   last_synced_at?: string
+}
+
+export interface BankSyncError {
+  connection_id?: string
+  bank_name: string
+  module_name: string
+  login?: string
+  backend_name?: string
+  status: string
+  message: string
+}
+
+export interface SyncResult {
+  status: "success" | "warning" | "error"
+  message?: string
+  synced_accounts?: number
+  new_transactions?: number
+  errors?: BankSyncError[]
+  result?: any
 }
 
 export interface Transaction {

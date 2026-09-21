@@ -35,5 +35,6 @@ describe("i18n Dictionaries", () => {
     expect(Object.keys(en.changePasswordModal).sort()).toEqual(Object.keys(fr.changePasswordModal).sort())
     expect(Object.keys(en.csvImportModal).sort()).toEqual(Object.keys(fr.csvImportModal).sort())
     expect(Object.keys(en.importCredentialsModal).sort()).toEqual(Object.keys(fr.importCredentialsModal).sort())
+    expect(Object.keys(en.syncFeedback).sort()).toEqual(Object.keys(fr.syncFeedback).sort())
   })
 })
