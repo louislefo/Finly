@@ -48,11 +48,12 @@ import {
 import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
+import { AdminView } from "@/components/views/admin-view"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Account, BankConnection } from "@/lib/types/finance"
 import { cn } from "@/lib/utils"
 
-type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup"
+type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup" | "admin"
 
 export function AccountView() {
   const router = useRouter()
@@ -69,7 +70,7 @@ export function AccountView() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search)
       const tabParam = params.get("tab") as AccountTab | null
-      if (tabParam && ["profile", "security", "preferences", "banks", "backup"].includes(tabParam)) {
+      if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
         setActiveTab(tabParam)
         setMobileSubView(tabParam)
       }
@@ -645,6 +646,23 @@ export function AccountView() {
           <ChevronRight className="w-5 h-5 text-zinc-500" />
         </button>
 
+        {user?.role === "admin" && (
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSubView("admin")
+              setActiveTab("admin")
+            }}
+            className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+          >
+            <div className="flex items-center gap-3.5">
+              <ShieldCheck className="w-5 h-5 text-amber-400" />
+              <span className="text-base font-medium text-amber-400">{t.nav.admin || "Administration"}</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-amber-400/40" />
+          </button>
+        )}
+
         <button
           type="button"
           onClick={logout}
@@ -816,6 +834,7 @@ export function AccountView() {
                 {mobileSubView === "security" && t.accounts.securityNav}
                 {mobileSubView === "preferences" && t.accounts.preferencesNav}
                 {mobileSubView === "backup" && t.accounts.backupNav}
+                {mobileSubView === "admin" && (t.nav.admin || "Administration")}
               </h1>
               <div className="w-10" />
             </div>
@@ -963,6 +982,31 @@ export function AccountView() {
                 <span>{t.accounts.backupNav || "Sauvegarde & Données"}</span>
               </button>
             </div>
+
+            {/* Group 4: Administration */}
+            {user?.role === "admin" && (
+              <div className="flex flex-col gap-1">
+                <div className="text-[11px] font-semibold text-amber-500/80 uppercase tracking-wider px-3 mb-1.5">
+                  {t.nav.admin || "Administration"}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("admin")
+                    setMobileSubView("admin")
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                    activeTab === "admin"
+                      ? "bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold shadow-sm"
+                      : "text-amber-400/70 hover:text-amber-300 hover:bg-amber-500/10"
+                  )}
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>{t.nav.admin || "Administration"}</span>
+                </button>
+              </div>
+            )}
 
             {/* Logout Button */}
             <div className="pt-4 border-t border-white/5">
@@ -1612,6 +1656,13 @@ export function AccountView() {
                     </form>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* TAB 6: ADMINISTRATION */}
+            {activeTab === "admin" && user?.role === "admin" && (
+              <div className="w-full">
+                <AdminView />
               </div>
             )}
           </main>

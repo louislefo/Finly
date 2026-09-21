@@ -137,110 +137,22 @@ export function AppHeader() {
         {/* Left Section on Mobile: Personal Profile Avatar */}
         <div className="flex sm:hidden items-center">
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="outline-none flex items-center">
-                <Avatar className="h-10 w-10 rounded-full ring-2 ring-indigo-500/30 border border-indigo-400/20 cursor-pointer shadow-md active:scale-95 transition-transform">
-                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-xs tracking-wide">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                sideOffset={8}
-                className="w-60 p-2 bg-[#18181B] border border-white/10 text-white rounded-2xl shadow-2xl backdrop-blur-xl"
-              >
-                <div
-                  onClick={() => router.push("/compte")}
-                  className="p-2.5 flex items-center justify-between rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-colors cursor-pointer group mb-2 border border-white/5"
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <Avatar className="h-8 w-8 rounded-full ring-1 ring-white/10 shrink-0">
-                      <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col text-left truncate">
-                      <span className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors truncate">
-                        {firstName}
-                      </span>
-                      <span className="text-[10px] text-zinc-400 truncate">{user.email}</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-zinc-200 transition-colors shrink-0 ml-1" />
-                </div>
-
-                <DropdownMenuGroup className="space-y-0.5">
-                  <DropdownMenuItem
-                    onClick={() => router.push("/compte")}
-                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  >
-                    <UserIcon className="w-4 h-4 text-zinc-400" />
-                    <span>{t.nav.myAccount}</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={handleOpenConnectedAccounts}
-                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  >
-                    <Building2 className="w-4 h-4 text-zinc-400" />
-                    <span>{t.nav.connectedAccounts}</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setIsChangePasswordOpen(true)}
-                    className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  >
-                    <Lock className="w-4 h-4 text-zinc-400" />
-                    <span>{t.nav.security}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-
-                <DropdownMenuSeparator className="bg-white/5 my-1.5" />
-
-                {/* Language Switcher inside Mobile Menu */}
-                <div className="px-2 py-1.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-zinc-400">
-                    <Globe className="w-3.5 h-3.5" />
-                    <span>{language === "fr" ? "Langue" : "Language"}</span>
-                  </div>
-                  <div className="flex items-center bg-zinc-900 border border-white/10 rounded-full p-0.5 text-[11px] font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setLanguage("en")}
-                      className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
-                        language === "en" ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-zinc-200"
-                      }`}
-                    >
-                      EN
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLanguage("fr")}
-                      className={`px-2 py-0.5 rounded-full transition-all cursor-pointer ${
-                        language === "fr" ? "bg-indigo-600 text-white" : "text-zinc-400 hover:text-zinc-200"
-                      }`}
-                    >
-                      FR
-                    </button>
-                  </div>
-                </div>
-
-                <DropdownMenuSeparator className="bg-white/5 my-1.5" />
-
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/15 cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4 text-rose-400" />
-                  <span>{t.nav.logout}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              type="button"
+              onClick={() => router.push("/compte")}
+              className="outline-none flex items-center cursor-pointer active:scale-95 transition-transform"
+              aria-label="Mon compte"
+            >
+              <Avatar className="h-10 w-10 rounded-full ring-2 ring-indigo-500/30 border border-indigo-400/20 shadow-md">
+                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-xs tracking-wide">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
           ) : (
             <button
               onClick={() => router.push("/login")}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-medium"
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-medium cursor-pointer"
             >
               {t.nav.login}
             </button>
