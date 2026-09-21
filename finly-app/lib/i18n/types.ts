@@ -317,6 +317,26 @@ export interface TranslationDictionary {
   accounts: {
     manageAccount: string
     profileNav: string
+    categoriesNav: string
+    categoriesTitle: string
+    categoriesDesc: string
+    addCategoryBtn: string
+    addSubcategoryBtn: string
+    categoryName: string
+    subcategoryName: string
+    parentCategory: string
+    systemBadge: string
+    customBadge: string
+    noSubcategories: string
+    deleteCategoryTitle: string
+    deleteCategoryDesc: string
+    deleteSubcategoryTitle: string
+    deleteSubcategoryDesc: string
+    categoryColor: string
+    categoryIcon: string
+    selectParentPrompt: string
+    createMainCategory: string
+    createSubCategory: string
     securityNav: string
     preferencesNav: string
     banksNav: string
@@ -324,6 +344,7 @@ export interface TranslationDictionary {
     groupAccount: string
     groupBanks: string
     groupData: string
+    groupFinancial: string
     firstName: string
     lastName: string
     email: string
@@ -633,6 +654,26 @@ export interface TranslationDictionary {
     activateSyncBtn: string
     connecting: string
     laterBtn: string
+    connectionSuccessTitle: string
+    connectionSuccessDesc: string
+    finishBtn: string
+    nextBankBtn: string
+  }
+  syncFeedback: {
+    syncSuccessTitle: string
+    syncSuccessDesc: string
+    actionRequired: string
+    reconnectPrompt: string
+    reconnectMultiplePrompt: string
+    updateCredentialsBtn: string
+    correctBtn: string
+    syncErrorTitle: string
+    syncErrorDesc: string
+    missingPasswordDesc: string
+    sessionExpiredDesc: string
+    validation2faDesc: string
+    unknownErrorDesc: string
+    closeBtn: string
   }
   cryptoMarket: {
     title: string

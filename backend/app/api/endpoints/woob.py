@@ -36,20 +36,33 @@ def list_bank_connections(
     current_user: User = Depends(get_current_user),
 ):
     connections = db.query(BankConnection).filter(BankConnection.user_id == current_user.id).all()
+    has_changes = False
 
-    return [
-        {
+    result = []
+    for c in connections:
+        has_pwd = bool(c.password)
+        status = c.status
+        if not has_pwd and status in ["connected", "ok", "active"]:
+            status = "reconnect_required"
+            c.status = "reconnect_required"
+            has_changes = True
+
+        result.append({
             "id": c.id,
             "module_name": c.module_name,
             "bank_name": c.bank_name,
             "login": c.login,
             "backend_name": c.backend_name,
-            "status": c.status,
+            "status": status,
+            "has_password": has_pwd,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "last_synced_at": c.last_synced_at.isoformat() if c.last_synced_at else None,
-        }
-        for c in connections
-    ]
+        })
+
+    if has_changes:
+        db.commit()
+
+    return result
 
 @router.post("/connect")
 async def connect_bank(
@@ -139,7 +152,7 @@ async def trigger_woob_sync(
         res = await sync_service.sync_all_active_accounts(
             db, user_id=current_user.id
         )
-        return {"status": "success", "result": res}
+        return {**res, "result": res}
     except Exception as e:
         woob_service.log(f"Erreur endpoint /sync: {e}")
         raise HTTPException(status_code=500, detail=str(e))

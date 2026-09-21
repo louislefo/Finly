@@ -11,6 +11,7 @@ import {
   RealEstateEstimate,
   AdminStats,
   AdminUserItem,
+  SyncResult,
 } from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -190,12 +191,15 @@ export const FinlyAPI = {
     return await res.json()
   },
 
-  async deleteCategory(categoryId: string): Promise<{ status: string }> {
+  async deleteCategory(categoryId: string): Promise<{ status: string; message?: string }> {
     const res = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     })
-    if (!res.ok) throw new Error("Erreur lors de la suppression de la catégorie.")
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la suppression de la catégorie.")
+    }
     return await res.json()
   },
 
@@ -520,7 +524,7 @@ export const FinlyAPI = {
   },
 
   // 7. Trigger Immediate Sync
-  async triggerSync(): Promise<{ status: string; data?: any; message?: string }> {
+  async triggerSync(): Promise<SyncResult> {
     try {
       const res = await fetch(`${API_BASE_URL}/woob/sync`, {
         method: "POST",

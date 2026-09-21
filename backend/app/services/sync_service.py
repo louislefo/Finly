@@ -50,6 +50,7 @@ class SyncService:
         """Synchronize accounts and transactions from Woob sessions into database with smart reconciliation."""
         total_synced_accounts = 0
         total_new_transactions = 0
+        all_errors: List[Dict[str, Any]] = []
 
         # 1. Determine active connections if not provided
         if active_connections is None:
@@ -71,19 +72,51 @@ class SyncService:
                     "message": "Aucun compte bancaire configuré",
                     "synced_accounts": 0,
                     "new_transactions": 0,
+                    "errors": [],
                 }
 
-            # Re-instantiate backends in Woob
-            woob_service.ensure_connections_loaded(active_connections, force_reload=True)
-            extracted_data = woob_service.fetch_accounts_and_transactions()
+            # Re-instantiate backends in Woob and collect connection load errors
+            load_errors = woob_service.ensure_connections_loaded(active_connections, force_reload=True)
+            all_errors.extend(load_errors)
+
+            fetch_res = woob_service.fetch_accounts_and_transactions()
+            if isinstance(fetch_res, tuple):
+                extracted_data, fetch_errors = fetch_res
+            else:
+                extracted_data, fetch_errors = fetch_res, []
+
+            # Map fetch_errors to bank connections
+            for ferr in fetch_errors:
+                b_name = ferr.get("backend_name")
+                conn = next((c for c in active_connections if c.backend_name == b_name), None)
+                all_errors.append({
+                    "connection_id": conn.id if conn else None,
+                    "bank_name": conn.bank_name if conn else ferr.get("module_name", "Banque"),
+                    "module_name": conn.module_name if conn else ferr.get("module_name", ""),
+                    "login": conn.login if conn else "",
+                    "backend_name": b_name,
+                    "status": ferr.get("status", "error"),
+                    "message": ferr.get("message", "Erreur lors de la communication bancaire."),
+                })
+
+            # Update status in DB for connections with errors
+            for err in all_errors:
+                conn_id = err.get("connection_id")
+                matching_conn = next((c for c in active_connections if c.id == conn_id), None)
+                if matching_conn:
+                    matching_conn.status = err.get("status", "error")
 
         if not extracted_data:
-            woob_service.log("[Sync] Aucune donnée extraite des banques.")
+            db.commit()
+            status = "error" if all_errors else "warning"
+            msg = "Erreur de synchronisation pour les banques connectées." if all_errors else "Aucune donnée extraite"
+            woob_service.log(f"[Sync] {msg}")
             return {
-                "status": "warning",
-                "message": "Aucune donnée extraite",
+                "status": status,
+                "message": msg,
                 "synced_accounts": 0,
                 "new_transactions": 0,
+                "errors": all_errors,
             }
 
         woob_service.log(f"[Sync] {len(extracted_data)} compte(s) aspire(s) depuis Woob.")
@@ -358,17 +391,32 @@ class SyncService:
                 db.rollback()
                 woob_service.log(f"[Sync] Erreur nettoyage transactions pending: {e}")
 
-        # Update last synced timestamp on connections
+        # Update successful connections
+        successful_backends = {acc.get("backend_name") for acc in extracted_data if acc.get("backend_name")}
         for conn in active_connections:
-            conn.last_synced_at = datetime.utcnow()
+            if conn.backend_name in successful_backends:
+                conn.status = "connected"
+                conn.last_synced_at = datetime.utcnow()
         db.commit()
 
-        woob_service.log(f"[Sync] Termine. Comptes: {total_synced_accounts} | Nouvelles transactions: {total_new_transactions}")
+        overall_status = "success" if not all_errors else ("warning" if total_synced_accounts > 0 else "error")
+        overall_message = (
+            "Synchronisation réussie"
+            if not all_errors
+            else (
+                f"Synchronisation partielle : {len(all_errors)} connexion(s) nécessitent une action"
+                if total_synced_accounts > 0
+                else f"Échec de synchronisation : {len(all_errors)} connexion(s) nécessitent une action"
+            )
+        )
+        woob_service.log(f"[Sync] Termine. Comptes: {total_synced_accounts} | Nouvelles transactions: {total_new_transactions} | Erreurs: {len(all_errors)}")
 
         return {
-            "status": "success",
+            "status": overall_status,
+            "message": overall_message,
             "synced_accounts": total_synced_accounts,
             "new_transactions": total_new_transactions,
+            "errors": all_errors,
         }
 
 sync_service = SyncService()

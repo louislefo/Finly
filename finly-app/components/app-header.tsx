@@ -8,6 +8,7 @@ import {
   Plus,
   RefreshCw,
   AlertCircle,
+  CheckCircle2,
   ShieldCheck,
   User as UserIcon,
   Building2,
@@ -30,11 +31,13 @@ import {
 import { WoobModal } from "@/components/modals/woob-modal"
 import { ConnectedAccountsModal } from "@/components/modals/connected-accounts-modal"
 import { ChangePasswordModal } from "@/components/modals/change-password-modal"
+import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
+import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
-import { Account, BankConnection } from "@/lib/types/finance"
+import { Account, BankConnection, SyncResult, BankSyncError } from "@/lib/types/finance"
 import { cn } from "@/lib/utils"
 
 export function AppHeader() {
@@ -51,6 +54,11 @@ export function AppHeader() {
   const [hasSyncError, setHasSyncError] = useState<boolean>(false)
   const [syncErrorCount, setSyncErrorCount] = useState<number>(0)
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
+  const [syncResultModalData, setSyncResultModalData] = useState<SyncResult | null>(null)
+  const [isSyncResultModalOpen, setIsSyncResultModalOpen] = useState<boolean>(false)
+  const [pendingBankConnections, setPendingBankConnections] = useState<PendingBankConnection[]>([])
+  const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState<boolean>(false)
+  const [syncSuccessToast, setSyncSuccessToast] = useState<boolean>(false)
 
   const checkSyncStatus = useCallback(async () => {
     try {
@@ -63,10 +71,11 @@ export function AppHeader() {
       if (Array.isArray(connsRes)) {
         const errors = connsRes.filter(
           (c: BankConnection) =>
-            c.status &&
-            c.status !== "ok" &&
-            c.status !== "active" &&
-            c.status !== "connected"
+            (c.status &&
+              c.status !== "ok" &&
+              c.status !== "active" &&
+              c.status !== "connected") ||
+            c.has_password === false
         )
         setHasSyncError(errors.length > 0)
         setSyncErrorCount(errors.length)
@@ -84,13 +93,35 @@ export function AppHeader() {
     if (isSyncing) return
     setIsSyncing(true)
     try {
-      await FinlyAPI.triggerSync()
+      const res = await FinlyAPI.triggerSync()
       await checkSyncStatus()
+
+      const hasErrors = (res.errors && res.errors.length > 0) || res.status === "error"
+      if (hasErrors) {
+        setSyncResultModalData(res)
+        setIsSyncResultModalOpen(true)
+      } else {
+        setSyncSuccessToast(true)
+        setTimeout(() => setSyncSuccessToast(false), 3500)
+      }
     } catch {
       await checkSyncStatus()
     } finally {
       setIsSyncing(false)
     }
+  }
+
+  const handleFixSyncError = (err: BankSyncError) => {
+    setPendingBankConnections([
+      {
+        id: err.connection_id,
+        backend_name: err.backend_name,
+        module_name: err.module_name,
+        bank_name: err.bank_name,
+        login: err.login || "",
+      },
+    ])
+    setIsCredentialsModalOpen(true)
   }
 
   const handleOpenConnectedAccounts = async () => {
@@ -238,6 +269,14 @@ export function AppHeader() {
         </div>
       </header>
 
+      {/* Floating Sync Success Toast */}
+      {syncSuccessToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#18181B] border border-emerald-500/30 text-emerald-300 text-xs font-semibold shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{t.syncFeedback.syncSuccessTitle}</span>
+        </div>
+      )}
+
       {/* Woob Bank Connection Sheet */}
       <WoobModal
         isOpen={isWoobOpen}
@@ -258,6 +297,22 @@ export function AppHeader() {
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}
         onClose={() => setIsChangePasswordOpen(false)}
+      />
+
+      {/* Synchronization Feedback & Error Correction Modal */}
+      <SyncFeedbackModal
+        isOpen={isSyncResultModalOpen}
+        onClose={() => setIsSyncResultModalOpen(false)}
+        syncResult={syncResultModalData}
+        onFixConnection={handleFixSyncError}
+      />
+
+      {/* Reconnect Credentials Modal */}
+      <ImportCredentialsModal
+        isOpen={isCredentialsModalOpen}
+        onClose={() => setIsCredentialsModalOpen(false)}
+        pendingConnections={pendingBankConnections}
+        onSuccess={checkSyncStatus}
       />
     </>
   )

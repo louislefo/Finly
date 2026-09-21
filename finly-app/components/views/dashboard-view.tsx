@@ -24,6 +24,7 @@ import {
   PiggyBank,
   TrendingUp,
   Shield,
+  AlertCircle,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -36,10 +37,11 @@ import {
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
 import { WoobModal } from "@/components/modals/woob-modal"
+import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { MerchantAvatar } from "@/components/ui/merchant-avatar"
 import { ExpensesMap } from "@/components/charts/expenses-map"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { Account, Transaction } from "@/lib/types/finance"
+import { Account, Transaction, BankConnection } from "@/lib/types/finance"
 import { cn } from "@/lib/utils"
 
 type TimeRange = "1J" | "7J" | "1M" | "3M" | "6M" | "YTD" | "1A" | "TOUT"
@@ -283,10 +285,13 @@ function computeTreemapLayout(
 export function DashboardView() {
   const router = useRouter()
   const { formatAmount } = usePrivacy()
-  const { language } = useI18n()
+  const { t, language } = useI18n()
 
   const [accounts, setAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [bankConnections, setBankConnections] = useState<BankConnection[]>([])
+  const [fixingConnection, setFixingConnection] = useState<PendingBankConnection | null>(null)
+  const [isFixModalOpen, setIsFixModalOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   // Filters & Controls
@@ -310,12 +315,14 @@ export function DashboardView() {
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [accRes, txRes] = await Promise.all([
+      const [accRes, txRes, connsRes] = await Promise.all([
         FinlyAPI.getAccounts(),
         FinlyAPI.getTransactions(),
+        FinlyAPI.getBankConnections(),
       ])
       setAccounts(accRes.accounts || [])
       setTransactions(txRes.transactions || [])
+      setBankConnections(connsRes || [])
     } catch {
       // Offline fallback
     } finally {
@@ -326,6 +333,25 @@ export function DashboardView() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const actionRequiredConnections = useMemo(() => {
+    return bankConnections.filter(
+      (c) =>
+        (c.status && c.status !== "connected" && c.status !== "ok" && c.status !== "active") ||
+        c.has_password === false
+    )
+  }, [bankConnections])
+
+  const handleOpenFix = (conn: BankConnection) => {
+    setFixingConnection({
+      id: conn.id,
+      backend_name: conn.backend_name,
+      module_name: conn.module_name,
+      bank_name: conn.bank_name,
+      login: conn.login || "",
+    })
+    setIsFixModalOpen(true)
+  }
 
   // Current formatted date
   const currentDateFormatted = useMemo(() => {
@@ -565,6 +591,31 @@ export function DashboardView() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5 w-full max-w-[1600px] mx-auto -mt-1 sm:-mt-2">
+      {/* Top Center: Action Required Alert Banner */}
+      {actionRequiredConnections.length > 0 && (
+        <div className="w-full flex justify-center -mb-1">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 w-full max-w-3xl text-xs backdrop-blur-sm shadow-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="truncate">
+                <strong className="font-bold">{t.syncFeedback.actionRequired} : </strong>
+                {actionRequiredConnections.length === 1
+                  ? t.syncFeedback.reconnectPrompt.replace("{bank}", actionRequiredConnections[0].bank_name)
+                  : t.syncFeedback.reconnectMultiplePrompt.replace("{count}", String(actionRequiredConnections.length))}
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => handleOpenFix(actionRequiredConnections[0])}
+              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs h-7 px-3.5 rounded-xl shrink-0 cursor-pointer shadow-sm transition-colors"
+            >
+              {t.syncFeedback.updateCredentialsBtn}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Top Bar: Left = Mode Selector (Patrimoine vs Vie de tous les jours), Right = Period Selector */}
       <div className="flex items-center justify-between gap-2.5">
         {/* Left: Mode Selector (Patrimoine / Vie de tous les jours) */}
@@ -1052,6 +1103,19 @@ export function DashboardView() {
         onClose={() => setIsWoobOpen(false)}
         onBankConnected={loadData}
       />
+
+      {/* Reconnect Credentials Modal */}
+      {fixingConnection && (
+        <ImportCredentialsModal
+          isOpen={isFixModalOpen}
+          onClose={() => {
+            setIsFixModalOpen(false)
+            setFixingConnection(null)
+          }}
+          pendingConnections={[fixingConnection]}
+          onSuccess={loadData}
+        />
+      )}
     </div>
   )
 }
