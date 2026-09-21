@@ -561,7 +561,7 @@ export function AccountView() {
       }
     }
     return t.accounts.memberSince.replace("{date}", "2024")
-  }, [user?.created_at, language, t.accounts.memberSince])
+  }, [user, language, t.accounts.memberSince])
 
   // Mobile Finary Menu (docs/finary/mobile/setting.png)
   const renderMobileMenu = () => (

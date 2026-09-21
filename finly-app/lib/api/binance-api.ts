@@ -212,7 +212,7 @@ export class BinanceAPI {
     const points = timeframe === "24H" ? 24 : timeframe === "7J" ? 28 : 30
     const now = Date.now()
     const step = (24 * 3600 * 1000) / points
-    let basePrice = 80000
+    const basePrice = 80000
 
     return Array.from({ length: points }, (_, i) => {
       const time = now - (points - i) * step
