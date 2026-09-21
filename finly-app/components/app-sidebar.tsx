@@ -14,6 +14,7 @@ import {
   Wrench,
   ChevronRight,
   Coins,
+  ArrowLeftRight,
   PanelLeft,
 } from "lucide-react"
 
@@ -51,7 +52,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { t } = useI18n()
   const { toggleSidebar } = useSidebar()
 
-  const isToolsActive = pathname?.startsWith("/crypto") || false
+  const isToolsActive =
+    pathname?.startsWith("/crypto") || pathname?.startsWith("/devises") || false
   const [isToolsOpen, setIsToolsOpen] = useState(isToolsActive)
 
   if (pathname === "/login") {
@@ -219,6 +221,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <Coins className="w-4 h-4 text-zinc-400" />
                         <span>{t.nav.crypto}</span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => router.push("/devises")}
+                        className={cn(
+                          "flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium",
+                          pathname?.startsWith("/devises")
+                            ? "text-indigo-400 font-bold bg-white/5"
+                            : "text-zinc-300"
+                        )}
+                      >
+                        <ArrowLeftRight className="w-4 h-4 text-zinc-400" />
+                        <span>{t.nav.forex}</span>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -262,6 +276,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         >
                           <Coins className="w-4 h-4" />
                           <span>{t.nav.crypto}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          render={<Link href="/devises" />}
+                          isActive={pathname?.startsWith("/devises")}
+                          className={cn(
+                            "px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors cursor-pointer",
+                            pathname?.startsWith("/devises")
+                              ? "bg-indigo-600 text-white font-bold shadow-sm"
+                              : "text-zinc-400 hover:text-white hover:bg-white/5"
+                          )}
+                        >
+                          <ArrowLeftRight className="w-4 h-4" />
+                          <span>{t.nav.forex}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>

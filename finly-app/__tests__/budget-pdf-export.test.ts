@@ -129,4 +129,17 @@ describe('Budget PDF Export', () => {
     expect(doc).toBeDefined()
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1)
   })
+
+  it('embeds the real brand logo asset in the generated document', async () => {
+    const { FINLY_LOGO_FULL_DATA_URL } = await import('@/lib/assets/brand-logo')
+    expect(FINLY_LOGO_FULL_DATA_URL).toMatch(/^data:image\/png;base64,/)
+
+    const doc = exportBudgetToPdf({
+      summary: mockSummary,
+      periodName: 'Septembre 2026',
+    })
+
+    expect(doc).toBeDefined()
+  })
 })
+
