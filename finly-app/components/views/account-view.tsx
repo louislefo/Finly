@@ -27,6 +27,8 @@ import {
   X,
   LogOut,
   ChevronRight,
+  ArrowLeft,
+  HelpCircle,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -60,6 +62,7 @@ export function AccountView() {
 
   // Navigation Tab State
   const [activeTab, setActiveTab] = useState<AccountTab>("profile")
+  const [mobileSubView, setMobileSubView] = useState<"menu" | AccountTab>("menu")
 
   // Check URL param on mount
   useEffect(() => {
@@ -68,6 +71,7 @@ export function AccountView() {
       const tabParam = params.get("tab") as AccountTab | null
       if (tabParam && ["profile", "security", "preferences", "banks", "backup"].includes(tabParam)) {
         setActiveTab(tabParam)
+        setMobileSubView(tabParam)
       }
     }
   }, [])
@@ -148,6 +152,14 @@ export function AccountView() {
 
   // Copy Feedback
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopyEmail = (emailText: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(emailText)
+      setCopiedId("email")
+      setTimeout(() => setCopiedId(null), 2000)
+    }
+  }
 
   // Password Update States
   const [currentPassword, setCurrentPassword] = useState<string>("")
@@ -477,12 +489,342 @@ export function AccountView() {
         .slice(0, 2)
     : "U"
 
+  const memberSinceText = useMemo(() => {
+    if (user?.created_at) {
+      try {
+        const date = new Date(user.created_at)
+        if (!isNaN(date.getTime())) {
+          const monthYear = date.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US", {
+            month: "long",
+            year: "numeric",
+          })
+          return t.accounts.memberSince.replace("{date}", monthYear)
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return t.accounts.memberSince.replace("{date}", "2024")
+  }, [user?.created_at, language, t.accounts.memberSince])
+
+  // Mobile Finary Menu (docs/finary/mobile/setting.png)
+  const renderMobileMenu = () => (
+    <div className="flex flex-col w-full pb-16">
+      {/* Top Bar with Back Arrow and Help Button */}
+      <div className="flex items-center justify-between pb-6">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
+          aria-label="Retour"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+
+        <button
+          type="button"
+          className="px-3.5 py-1.5 rounded-full bg-[#fde68a]/15 border border-[#fde68a]/30 text-[#fde68a] text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:bg-[#fde68a]/25 transition-colors"
+        >
+          <span>{t.accounts.needHelp}</span>
+          <HelpCircle className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Profile Hero Block (Avatar + Name + Member Since) */}
+      <div className="flex items-center gap-4 pt-2">
+        <div className="h-16 w-16 rounded-full bg-zinc-800/90 border border-white/10 flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-lg">
+          {initials}
+        </div>
+        <div className="flex flex-col justify-center min-w-0">
+          <span className="text-xl font-bold text-white tracking-tight leading-tight truncate">
+            {user?.full_name || (language === "fr" ? "Utilisateur" : "User")}
+          </span>
+          <span className="text-xs text-zinc-400 mt-1">
+            {memberSinceText}
+          </span>
+        </div>
+      </div>
+
+      {/* Finary-style Referral Card */}
+      <div className="relative overflow-hidden p-5 rounded-2xl bg-gradient-to-r from-zinc-900 to-zinc-850 border border-white/10 mt-6 mb-7 flex flex-col gap-3 shadow-xl">
+        <div className="max-w-[75%]">
+          <span className="text-sm font-semibold text-white block leading-snug">
+            {language === "fr"
+              ? "Invitez vos proches, gérez vos finances en toute sérénité"
+              : "Invite your peers, manage your finances with serenity"}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleCopyEmail(typeof window !== "undefined" ? window.location.origin : "")}
+          className="px-4 py-2 rounded-full bg-[#fde68a] hover:bg-[#fcd34d] text-zinc-950 font-bold text-xs w-fit cursor-pointer transition-colors shadow-sm"
+        >
+          {language === "fr" ? "En savoir plus" : "Learn more"}
+        </button>
+      </div>
+
+      {/* Section Title: Mon Finly */}
+      <h2 className="text-2xl font-extrabold text-white tracking-tight mb-2">
+        {t.accounts.myFinly}
+      </h2>
+
+      {/* Settings Navigation List (iOS / Finary style) */}
+      <div className="flex flex-col divide-y divide-white/5">
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSubView("profile")
+            setActiveTab("profile")
+          }}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <UserIcon className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.accounts.profileNav}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSubView("banks")
+            setActiveTab("banks")
+          }}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <RefreshCw className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.accounts.banksNav}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSubView("security")
+            setActiveTab("security")
+          }}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <Lock className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.accounts.securityNav}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSubView("preferences")
+            setActiveTab("preferences")
+          }}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <Globe className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.accounts.preferencesNav}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSubView("backup")
+            setActiveTab("backup")
+          }}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <Database className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.accounts.backupNav}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
+          onClick={logout}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <LogOut className="w-5 h-5 text-rose-400" />
+            <span className="text-base font-medium text-rose-400">{t.auth.logout}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-rose-400/40" />
+        </button>
+      </div>
+    </div>
+  )
+
+  // Mobile Finary Profile Details (docs/finary/mobile/setting_setting.png)
+  const renderMobileProfile = () => (
+    <div className="flex flex-col w-full pb-16">
+      {/* Top Bar with Back Arrow and Centered Title */}
+      <div className="flex items-center justify-between pb-6">
+        <button
+          type="button"
+          onClick={() => setMobileSubView("menu")}
+          className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
+          aria-label="Retour"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+
+        <h1 className="text-base font-bold text-white text-center">
+          {t.accounts.profileNav}
+        </h1>
+
+        <div className="w-10" />
+      </div>
+
+      {/* Form Fields corresponding directly to setting_setting.png */}
+      <form onSubmit={handleSaveProfile} className="flex flex-col gap-6 pt-2">
+        {profileSuccessMsg && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{profileSuccessMsg}</span>
+          </div>
+        )}
+
+        {/* Prénom */}
+        <div className="flex flex-col gap-1 border-b border-white/10 pb-3">
+          <label className="text-xs text-zinc-500 font-medium">
+            {t.accounts.firstName}
+          </label>
+          <input
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder={t.accounts.firstName}
+            className="bg-transparent text-white font-semibold text-base outline-none w-full placeholder:text-zinc-600"
+          />
+        </div>
+
+        {/* Nom */}
+        <div className="flex flex-col gap-1 border-b border-white/10 pb-3">
+          <label className="text-xs text-zinc-500 font-medium">
+            {t.accounts.lastName}
+          </label>
+          <input
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder={t.accounts.lastName}
+            className="bg-transparent text-white font-semibold text-base outline-none w-full placeholder:text-zinc-600"
+          />
+        </div>
+
+        {/* Email */}
+        <div className="flex flex-col gap-1.5 border-b border-white/10 pb-3">
+          <label className="text-xs text-zinc-500 font-medium">
+            {t.accounts.email}
+          </label>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-base text-zinc-300 font-medium truncate">{user?.email}</span>
+            <button
+              type="button"
+              onClick={() => handleCopyEmail(user?.email || "")}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0"
+              title="Copier l'email"
+            >
+              {copiedId === "email" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-zinc-400" />}
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md w-fit mt-1">
+            <Check className="w-3.5 h-3.5" />
+            <span>{t.accounts.verifiedBadge}</span>
+          </div>
+        </div>
+
+        {/* Langue */}
+        <button
+          type="button"
+          onClick={() => setLanguage(language === "fr" ? "en" : "fr")}
+          className="flex items-center justify-between py-3.5 border-b border-white/10 w-full text-left cursor-pointer group"
+        >
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-zinc-500 font-medium">
+              {language === "fr" ? "Langue" : "Language"}
+            </span>
+            <span className="text-base text-white font-semibold">
+              {language === "fr" ? "Français" : "English"}
+            </span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+        </button>
+
+        {/* Devise */}
+        <div className="flex items-center justify-between py-3.5 border-b border-white/10 w-full">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-zinc-500 font-medium">
+              {t.accounts.currency}
+            </span>
+            <span className="text-base text-white font-semibold">€ - EUR</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </div>
+
+        {/* Supprimer mon compte */}
+        <div className="flex flex-col gap-1 pt-4">
+          <span className="text-base font-bold text-white">
+            {t.accounts.deleteAccountTitle}
+          </span>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            {t.accounts.deleteAccountDesc}
+          </p>
+        </div>
+
+        {/* Valider Button */}
+        <div className="pt-6">
+          <Button
+            type="submit"
+            disabled={isSavingProfile}
+            className="w-full py-3.5 h-12 rounded-2xl bg-[#27272A] hover:bg-[#3F3F46] text-white font-semibold text-sm transition-all cursor-pointer shadow-lg active:scale-[0.99]"
+          >
+            {isSavingProfile
+              ? (language === "fr" ? "Enregistrement..." : "Saving...")
+              : t.accounts.validateBtn}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#09090B] overflow-y-auto min-h-screen text-white">
       <div className="max-w-6xl mx-auto px-5 py-6 sm:px-10 sm:py-8 flex flex-col min-h-full">
-        {/* Top Header Bar */}
-        <header className="w-full flex items-center justify-between pb-8">
-          <div className="hidden sm:flex items-center gap-2">
+        {/* MOBILE LAYOUT (Directly matching Finary setting.png & setting_setting.png) */}
+        <div className="block md:hidden w-full">
+          {mobileSubView === "menu" && renderMobileMenu()}
+          {mobileSubView === "profile" && renderMobileProfile()}
+          {mobileSubView !== "menu" && mobileSubView !== "profile" && (
+            <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-6">
+              <button
+                type="button"
+                onClick={() => setMobileSubView("menu")}
+                className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                aria-label="Retour"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <h1 className="text-base font-bold text-white text-center">
+                {mobileSubView === "banks" && t.accounts.banksNav}
+                {mobileSubView === "security" && t.accounts.securityNav}
+                {mobileSubView === "preferences" && t.accounts.preferencesNav}
+                {mobileSubView === "backup" && t.accounts.backupNav}
+              </h1>
+              <div className="w-10" />
+            </div>
+          )}
+        </div>
+
+        {/* DESKTOP Top Header Bar */}
+        <header className="hidden md:flex w-full items-center justify-between pb-8">
+          <div className="flex items-center gap-2">
             <Image
               src="/logo-full.png"
               alt="Finly"
@@ -503,17 +845,22 @@ export function AccountView() {
           </button>
         </header>
 
-        {/* Page Title */}
-        <div className="mb-8">
+        {/* DESKTOP Page Title */}
+        <div className="hidden md:block mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
             {t.accounts.manageAccount || "Gérer mon compte"}
           </h1>
         </div>
 
-        {/* Two-Column Layout */}
-        <div className="flex flex-col md:flex-row items-start gap-8 lg:gap-12 w-full flex-1 pb-16">
-          {/* Left Navigation Sidebar */}
-          <aside className="w-full md:w-64 lg:w-72 shrink-0 flex flex-col gap-6">
+        {/* Content Layout: Responsive between mobile subviews and desktop two-column */}
+        <div className={cn(
+          "w-full flex-1 pb-16",
+          mobileSubView === "menu" || mobileSubView === "profile"
+            ? "hidden md:flex md:flex-row items-start gap-8 lg:gap-12"
+            : "flex flex-col md:flex-row items-start gap-8 lg:gap-12"
+        )}>
+          {/* Left Navigation Sidebar (Desktop only) */}
+          <aside className="hidden md:flex w-full md:w-64 lg:w-72 shrink-0 flex-col gap-6">
             {/* Group 1: Gérer mon compte */}
             <div className="flex flex-col gap-1">
               <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider px-3 mb-1.5">
@@ -521,7 +868,10 @@ export function AccountView() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab("profile")}
+                onClick={() => {
+                  setActiveTab("profile")
+                  setMobileSubView("profile")
+                }}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "profile"
@@ -535,7 +885,10 @@ export function AccountView() {
 
               <button
                 type="button"
-                onClick={() => setActiveTab("security")}
+                onClick={() => {
+                  setActiveTab("security")
+                  setMobileSubView("security")
+                }}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "security"
@@ -549,7 +902,10 @@ export function AccountView() {
 
               <button
                 type="button"
-                onClick={() => setActiveTab("preferences")}
+                onClick={() => {
+                  setActiveTab("preferences")
+                  setMobileSubView("preferences")
+                }}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "preferences"
@@ -569,7 +925,10 @@ export function AccountView() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab("banks")}
+                onClick={() => {
+                  setActiveTab("banks")
+                  setMobileSubView("banks")
+                }}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "banks"
@@ -589,7 +948,10 @@ export function AccountView() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab("backup")}
+                onClick={() => {
+                  setActiveTab("backup")
+                  setMobileSubView("backup")
+                }}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "backup"

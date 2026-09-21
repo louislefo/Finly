@@ -328,6 +328,13 @@ export interface TranslationDictionary {
     lastName: string
     email: string
     verifiedBadge: string
+    needHelp: string
+    myFinly: string
+    memberSince: string
+    currency: string
+    deleteAccountTitle: string
+    deleteAccountDesc: string
+    validateBtn: string
     title: string
     subtitle: string
     syncAll: string

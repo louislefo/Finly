@@ -357,129 +357,133 @@ export function BudgetView() {
   return (
     <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto -mt-1 sm:-mt-2 pb-24 md:pb-8">
       {/* Top Controls Bar without page title text */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Left: Mode Toggle (Par mois / 30 derniers) + Month Selector */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Mode Segmented Toggle */}
-          <div className="flex items-center p-1 rounded-xl bg-[#18181B] border border-white/10 text-xs select-none">
-            <button
-              type="button"
-              onClick={() => setPeriodMode("month")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                periodMode === "month"
-                  ? "bg-white text-zinc-950 font-bold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              {t.budgets.byMonth}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriodMode("last_30_days")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                periodMode === "last_30_days"
-                  ? "bg-white text-zinc-950 font-bold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              {t.budgets.last30Days}
-            </button>
+      <div className="flex flex-col gap-2.5 sm:gap-3 w-full">
+        {/* Main controls row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 w-full">
+          {/* Left: Mode Toggle (Par mois / 30 derniers) + Month Selector */}
+          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+            {/* Mode Segmented Toggle */}
+            <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-[#18181B] border border-white/10 text-xs select-none shrink-0">
+              <button
+                type="button"
+                onClick={() => setPeriodMode("month")}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                  periodMode === "month"
+                    ? "bg-white text-zinc-950 font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {t.budgets.byMonth}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodMode("last_30_days")}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                  periodMode === "last_30_days"
+                    ? "bg-white text-zinc-950 font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span className="sm:hidden">30 j</span>
+                <span className="hidden sm:inline">{t.budgets.last30Days}</span>
+              </button>
+            </div>
+
+            {/* Month Selector Navigation (when in Month mode) */}
+            {periodMode === "month" && (
+              <div className="flex items-center justify-between gap-0.5 sm:gap-1 bg-[#18181B] border border-white/10 rounded-xl p-0.5 sm:p-1 flex-1 sm:flex-initial min-w-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevMonth}
+                  title={language === "fr" ? "Mois précédent" : "Previous month"}
+                  className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer shrink-0"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+
+                <span className="text-[11px] sm:text-xs font-semibold text-white px-1 sm:px-2 min-w-0 truncate text-center capitalize">
+                  {formatMonthName(selectedMonth)}
+                </span>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNextMonth}
+                  title={language === "fr" ? "Mois suivant" : "Next month"}
+                  className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer shrink-0"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+
+                {!isCurrentMonthActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetCurrentMonth}
+                    className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-[11px] border-white/10 bg-white/5 text-zinc-300 hover:text-white rounded-lg cursor-pointer ml-0.5 shrink-0"
+                  >
+                    {t.budgets.currentMonth}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Month Selector Navigation (when in Month mode) */}
-          {periodMode === "month" && (
-            <div className="flex items-center gap-1 bg-[#18181B] border border-white/10 rounded-xl p-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePrevMonth}
-                title={language === "fr" ? "Mois précédent" : "Previous month"}
-                className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
+          {/* Right: Actions Bar (Kept identical: Export PDF & Define Budget) */}
+          <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0">
+            {excludedTxCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsExcludedListModalOpen(true)}
+                className="text-amber-400 hover:text-amber-300 text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 cursor-pointer font-medium transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
+                {excludedTxCount} {language === "fr" ? "exclue(s)" : "excluded"}
+              </button>
+            )}
 
-              <span className="text-xs font-semibold text-white px-2 min-w-[110px] text-center capitalize">
-                {formatMonthName(selectedMonth)}
-              </span>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNextMonth}
-                title={language === "fr" ? "Mois suivant" : "Next month"}
-                className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-
-              {!isCurrentMonthActive && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetCurrentMonth}
-                  className="h-7 px-2 text-[11px] border-white/10 bg-white/5 text-zinc-300 hover:text-white rounded-lg cursor-pointer ml-0.5"
-                >
-                  {t.budgets.currentMonth}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Account Filter (Discreet) */}
-          {depositAccounts.length > 1 && (
-            <div className="flex items-center bg-[#18181B] border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <select
-                value={selectedAccountId}
-                onChange={(e) => setSelectedAccountId(e.target.value)}
-                className="bg-transparent text-zinc-300 outline-none cursor-pointer text-xs"
-              >
-                <option value="all" className="bg-[#18181B] text-white">
-                  {language === "fr" ? `Tous les comptes (${depositAccounts.length})` : `All accounts (${depositAccounts.length})`}
-                </option>
-                {depositAccounts.map((acc) => (
-                  <option key={acc.id} value={acc.id} className="bg-[#18181B] text-white">
-                    {acc.bank ? `${acc.bank} - ` : ""}{acc.name || t.accounts.depositAccount}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Actions Bar (Kept identical: Export PDF & Define Budget) */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {excludedTxCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsExcludedListModalOpen(true)}
-              className="text-amber-400 hover:text-amber-300 text-xs px-2.5 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 cursor-pointer font-medium transition-colors"
+            <Button
+              onClick={handleExportPdf}
+              disabled={isExportingPdf || !budgetSummary}
+              variant="outline"
+              size="sm"
+              className="bg-[#18181B] border-white/10 hover:bg-white/5 text-zinc-200 hover:text-white text-xs h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 rounded-xl cursor-pointer"
+              title={t.budgets.exportPdf}
             >
-              {excludedTxCount} {language === "fr" ? "exclue(s)" : "excluded"}
-            </button>
-          )}
+              <FileText className="w-3.5 h-3.5 text-zinc-400" />
+              <span className="hidden sm:inline">{isExportingPdf ? t.budgets.exportingPdf : t.budgets.exportPdf}</span>
+            </Button>
 
-          <Button
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || !budgetSummary}
-            variant="outline"
-            size="sm"
-            className="bg-[#18181B] border-white/10 hover:bg-white/5 text-zinc-200 hover:text-white text-xs h-9 px-3 gap-1.5 rounded-xl cursor-pointer"
-            title={t.budgets.exportPdf}
-          >
-            <FileText className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="hidden sm:inline">{isExportingPdf ? t.budgets.exportingPdf : t.budgets.exportPdf}</span>
-          </Button>
-
-          <Button
-            onClick={() => handleOpenSetBudget()}
-            size="sm"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-3.5 gap-1.5 rounded-xl cursor-pointer shadow-md shadow-indigo-600/20 font-semibold"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t.budgets.defineBudget}</span>
-          </Button>
+            <Button
+              onClick={() => handleOpenSetBudget()}
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 sm:h-9 px-3 sm:px-3.5 gap-1.5 rounded-xl cursor-pointer shadow-md shadow-indigo-600/20 font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>{t.budgets.defineBudget}</span>
+            </Button>
+          </div>
         </div>
+
+        {/* Account Filter (Discreet, full-width on mobile if accounts exist) */}
+        {depositAccounts.length > 1 && (
+          <div className="flex items-center bg-[#18181B] border border-white/10 rounded-xl px-2.5 py-1 text-xs w-full sm:w-fit self-start">
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="bg-transparent text-zinc-300 outline-none cursor-pointer text-xs w-full sm:w-auto"
+            >
+              <option value="all" className="bg-[#18181B] text-white">
+                {language === "fr" ? `Tous les comptes (${depositAccounts.length})` : `All accounts (${depositAccounts.length})`}
+              </option>
+              {depositAccounts.map((acc) => (
+                <option key={acc.id} value={acc.id} className="bg-[#18181B] text-white">
+                  {acc.bank ? `${acc.bank} - ` : ""}{acc.name || t.accounts.depositAccount}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Main Content: Big Stylish Pie (Left) & Minimalist Category List (Right) */}
@@ -503,29 +507,29 @@ export function BudgetView() {
           />
 
           {/* Minimal 3-part KPI metrics strip */}
-          <div className="grid grid-cols-3 gap-2 pt-4 mt-2 border-t border-white/5 text-center">
-            <div>
-              <span className="text-[11px] text-zinc-400 block font-medium">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-4 mt-2 border-t border-white/5 text-center">
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block font-medium truncate">
                 {t.budgets.configuredMonthlyBudget}
               </span>
-              <span className="text-base sm:text-lg font-bold font-mono text-white mt-0.5 block">
+              <span className="text-sm sm:text-lg font-bold font-mono text-white mt-0.5 block truncate">
                 {formatAmount(totalBudget)}
               </span>
             </div>
-            <div>
-              <span className="text-[11px] text-zinc-400 block font-medium">
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block font-medium truncate">
                 {t.budgets.spentInPeriod}
               </span>
-              <span className="text-base sm:text-lg font-bold font-mono text-white mt-0.5 block">
+              <span className="text-sm sm:text-lg font-bold font-mono text-white mt-0.5 block truncate">
                 {formatAmount(totalSpent)}
               </span>
             </div>
-            <div>
-              <span className="text-[11px] text-zinc-400 block font-medium">
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block font-medium truncate">
                 {t.budgets.remainingAvailable}
               </span>
               <span
-                className={`text-base sm:text-lg font-bold font-mono mt-0.5 block ${
+                className={`text-sm sm:text-lg font-bold font-mono mt-0.5 block truncate ${
                   remainingBudget < 0 ? "text-rose-400" : "text-emerald-400"
                 }`}
               >
