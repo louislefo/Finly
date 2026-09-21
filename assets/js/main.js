@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     overview: {
       title: "Global Wealth & Net Worth Dashboard",
       description: "Track your real-time net worth aggregated across all asset types including checking accounts, savings books, investments, and real estate assets with remaining debt calculation.",
-      desktopImg: "assets/images/vueglobale.png",
-      mobileImg: "assets/images/vueglobale_mobile.png",
+      desktopImg: "assets/images/Overview.png?v=2",
+      mobileImg: "assets/images/mobile/Overview.png?v=2",
       highlights: [
         "Live net worth calculation with asset distribution breakdown",
         "One-click privacy toggle to obscure sensitive figures instantly",
@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
     expenses: {
       title: "Automated Expense Tracking & Rules",
       description: "Clean bank transaction feed with automated keyword-based categorisation, advanced date filtering, and granular detail editing.",
-      desktopImg: "assets/images/depenses.png",
-      mobileImg: "assets/images/depenses_mobile.png",
+      desktopImg: "assets/images/Expenses.png?v=2",
+      mobileImg: null,
       highlights: [
         "Smart regex and keyword auto-categorisation rules",
         "Clean normalized merchant names without bank technical noise",
@@ -32,11 +32,23 @@ document.addEventListener('DOMContentLoaded', () => {
         "Instant search and period-based filtering (day, month, custom)"
       ]
     },
+    analysis: {
+      title: "Financial Analytics & Spending Breakdown",
+      description: "Deep-dive category distributions, recurrent subscription detection, and merchant trend analysis with zero telemetry.",
+      desktopImg: "assets/images/Analysis.png?v=2",
+      mobileImg: "assets/images/mobile/Analysis.png?v=2",
+      highlights: [
+        "Interactive category and merchant spending distributions",
+        "Automated recurrent subscription identification",
+        "Comparative monthly trend analytics",
+        "Clean visualization without cognitive overload"
+      ]
+    },
     budget: {
       title: "Zero-Based Envelope Budgeting",
       description: "Allocate precise monthly spending caps per expense category. Monitor progress with real-time visual gauges and overspending alerts.",
-      desktopImg: "assets/images/budget.png",
-      mobileImg: null,
+      desktopImg: "assets/images/Budget.png?v=2",
+      mobileImg: "assets/images/mobile/Budget.png?v=2",
       highlights: [
         "Configurable envelope thresholds across custom categories",
         "Visual percentage consumption indicators",
@@ -47,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cashflow: {
       title: "Cashflow & Liquidity Forecast",
       description: "Analyze your financial trajectory through clear comparisons of monthly income versus expenditures and cumulative cash balance.",
-      desktopImg: "assets/images/cashflow.png",
+      desktopImg: "assets/images/Cashflow.png?v=2",
       mobileImg: null,
       highlights: [
         "Monthly inflows vs outflows breakdown",
@@ -59,8 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
     projects: {
       title: "Savings Goals & Milestone Tracking",
       description: "Create dedicated savings targets for real estate down payments, travel, or emergency funds with custom timelines and remaining balance indicators.",
-      desktopImg: "assets/images/projet.png",
-      mobileImg: null,
+      desktopImg: "assets/images/Goals.png?v=2",
+      mobileImg: "assets/images/mobile/Goals.png?v=2",
       highlights: [
         "Target funding goals with target completion dates",
         "Visual progress bars with remaining amount calculation",
@@ -69,9 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ]
     },
     cards: {
-      title: "Multi-Bank & Card Management",
-      description: "Centralize all your financial institutions, checking cards, and credit accounts in one unified control center.",
-      desktopImg: "assets/images/carte.png",
+      title: "Bank Connections & Settings",
+      description: "Centralize all your financial institutions, direct Woob bank connectors, and security configuration in one unified control center.",
+      desktopImg: "assets/images/Setting.png?v=2",
       mobileImg: null,
       highlights: [
         "Direct Woob connectors to French & European banking portals",
