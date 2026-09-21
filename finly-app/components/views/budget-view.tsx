@@ -55,6 +55,7 @@ import { FinlyAPI } from "@/lib/api/finly-api"
 import { BudgetSummary, BudgetItem, CategoryItem, Account } from "@/lib/types/finance"
 import { getBrandLogoUrl } from "@/lib/utils/brand-logos"
 import { downloadBudgetPdf } from "@/lib/export/budget-pdf-export"
+import { cn } from "@/lib/utils"
 
 type BudgetTxItem = BudgetItem["transactions"][number]
 
@@ -354,337 +355,311 @@ export function BudgetView() {
   const availableSubcategories = activeCategoryObj?.subcategories || []
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Top Header with Title and Period Navigation Controls */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex flex-col">
-          <h1 className="text-xl font-bold text-white tracking-tight">{t.budgets.title}</h1>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-xs text-zinc-400">
+    <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto -mt-1 sm:-mt-2 pb-24 md:pb-8">
+      {/* Top Controls Bar without page title text */}
+      <div className="flex flex-col gap-2.5 sm:gap-3 w-full">
+        {/* Main controls row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 w-full">
+          {/* Left: Mode Toggle (Par mois / 30 derniers) + Month Selector */}
+          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+            {/* Mode Segmented Toggle */}
+            <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-[#18181B] border border-white/10 text-xs select-none shrink-0">
+              <button
+                type="button"
+                onClick={() => setPeriodMode("month")}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                  periodMode === "month"
+                    ? "bg-white text-zinc-950 font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {t.budgets.byMonth}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodMode("last_30_days")}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                  periodMode === "last_30_days"
+                    ? "bg-white text-zinc-950 font-bold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span className="sm:hidden">30 j</span>
+                <span className="hidden sm:inline">{t.budgets.last30Days}</span>
+              </button>
+            </div>
+
+            {/* Month Selector Navigation (when in Month mode) */}
+            {periodMode === "month" && (
+              <div className="flex items-center justify-between gap-0.5 sm:gap-1 bg-[#18181B] border border-white/10 rounded-xl p-0.5 sm:p-1 flex-1 sm:flex-initial min-w-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevMonth}
+                  title={language === "fr" ? "Mois précédent" : "Previous month"}
+                  className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer shrink-0"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+
+                <span className="text-[11px] sm:text-xs font-semibold text-white px-1 sm:px-2 min-w-0 truncate text-center capitalize">
+                  {formatMonthName(selectedMonth)}
+                </span>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNextMonth}
+                  title={language === "fr" ? "Mois suivant" : "Next month"}
+                  className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer shrink-0"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+
+                {!isCurrentMonthActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetCurrentMonth}
+                    className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-[11px] border-white/10 bg-white/5 text-zinc-300 hover:text-white rounded-lg cursor-pointer ml-0.5 shrink-0"
+                  >
+                    {t.budgets.currentMonth}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Actions Bar (Kept identical: Export PDF & Define Budget) */}
+          <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0">
+            {excludedTxCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsExcludedListModalOpen(true)}
+                className="text-amber-400 hover:text-amber-300 text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 cursor-pointer font-medium transition-colors"
+              >
+                {excludedTxCount} {language === "fr" ? "exclue(s)" : "excluded"}
+              </button>
+            )}
+
+            <Button
+              onClick={handleExportPdf}
+              disabled={isExportingPdf || !budgetSummary}
+              variant="outline"
+              size="sm"
+              className="bg-[#18181B] border-white/10 hover:bg-white/5 text-zinc-200 hover:text-white text-xs h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 rounded-xl cursor-pointer"
+              title={t.budgets.exportPdf}
+            >
+              <FileText className="w-3.5 h-3.5 text-zinc-400" />
+              <span className="hidden sm:inline">{isExportingPdf ? t.budgets.exportingPdf : t.budgets.exportPdf}</span>
+            </Button>
+
+            <Button
+              onClick={() => handleOpenSetBudget()}
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 sm:h-9 px-3 sm:px-3.5 gap-1.5 rounded-xl cursor-pointer shadow-md shadow-indigo-600/20 font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>{t.budgets.defineBudget}</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Account Filter (Discreet, full-width on mobile if accounts exist) */}
+        {depositAccounts.length > 1 && (
+          <div className="flex items-center bg-[#18181B] border border-white/10 rounded-xl px-2.5 py-1 text-xs w-full sm:w-fit self-start">
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="bg-transparent text-zinc-300 outline-none cursor-pointer text-xs w-full sm:w-auto"
+            >
+              <option value="all" className="bg-[#18181B] text-white">
+                {language === "fr" ? `Tous les comptes (${depositAccounts.length})` : `All accounts (${depositAccounts.length})`}
+              </option>
+              {depositAccounts.map((acc) => (
+                <option key={acc.id} value={acc.id} className="bg-[#18181B] text-white">
+                  {acc.bank ? `${acc.bank} - ` : ""}{acc.name || t.accounts.depositAccount}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content: Big Stylish Pie (Left) & Minimalist Category List (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-w-0">
+        {/* Left Column: Big Stylish Pie + Key figures */}
+        <Card className="lg:col-span-5 p-6 bg-[#18181B] border-white/10 rounded-2xl flex flex-col justify-between min-w-0 h-full">
+          <div className="flex items-center justify-between pb-2">
+            <span className="text-sm font-semibold text-white">
+              {t.budgets.spendingBreakdown}
+            </span>
+            <span className="text-[11px] text-zinc-400 font-mono">
               {periodMode === "last_30_days" ? t.budgets.last30Days : formatMonthName(selectedMonth)}
             </span>
-            {depositAccounts.length > 1 && (
-              <>
-                <span className="text-zinc-600">•</span>
-                <div className="flex items-center gap-1.5">
-                  <Wallet className="w-3.5 h-3.5 text-indigo-400" />
-                  <select
-                    value={selectedAccountId}
-                    onChange={(e) => setSelectedAccountId(e.target.value)}
-                    className="bg-zinc-900 text-zinc-200 border border-white/10 rounded-lg text-xs px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="all">
-                      {language === "fr" ? `Tous les comptes de dépôt (${depositAccounts.length})` : `All deposit accounts (${depositAccounts.length})`}
-                    </option>
-                    {depositAccounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.bank ? `${acc.bank} - ` : ""}{acc.name || t.accounts.depositAccount}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-            {excludedTxCount > 0 && (
-              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-300 text-[10px] py-0 px-2">
-                {excludedTxCount} {language === "fr" ? `opération${excludedTxCount > 1 ? "s" : ""} exclue${excludedTxCount > 1 ? "s" : ""}` : `excluded transaction${excludedTxCount > 1 ? "s" : ""}`}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Period Switcher & Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Mode Segmented Toggle: Par Mois vs 30 jours */}
-          <div className="flex items-center p-1 rounded-2xl bg-zinc-900 border border-white/10 text-xs">
-            <button
-              type="button"
-              onClick={() => setPeriodMode("month")}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
-                periodMode === "month"
-                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              {t.budgets.byMonth}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriodMode("last_30_days")}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
-                periodMode === "last_30_days"
-                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              {t.budgets.last30Days}
-            </button>
           </div>
 
-          {/* Month Selector Navigation (when in Month mode) */}
-          {periodMode === "month" && (
-            <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/10 rounded-2xl p-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePrevMonth}
-                title={language === "fr" ? "Mois précédent" : "Previous month"}
-                className="h-7 w-7 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-
-              <span className="text-xs font-semibold text-white px-2 min-w-[110px] text-center">
-                {formatMonthName(selectedMonth)}
-              </span>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNextMonth}
-                title={language === "fr" ? "Mois suivant" : "Next month"}
-                className="h-7 w-7 p-0 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-
-              {!isCurrentMonthActive && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetCurrentMonth}
-                  className="h-7 px-2 text-[11px] border-white/10 bg-zinc-800 text-indigo-300 hover:text-white rounded-xl cursor-pointer ml-1"
-                >
-                  {t.budgets.currentMonth}
-                </Button>
-              )}
-            </div>
-          )}
-
-          <Button
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || !budgetSummary}
-            variant="outline"
-            size="sm"
-            className="bg-zinc-900 border-white/10 hover:bg-white/5 text-zinc-200 hover:text-white text-xs h-9 px-3.5 gap-1.5 rounded-2xl cursor-pointer"
-            title={t.budgets.exportPdf}
-          >
-            <FileText className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{isExportingPdf ? t.budgets.exportingPdf : t.budgets.exportPdf}</span>
-          </Button>
-
-          <Button
-            onClick={() => handleOpenSetBudget()}
-            size="sm"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 px-3.5 gap-1.5 rounded-2xl cursor-pointer shadow-md shadow-indigo-600/20 font-semibold"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t.budgets.defineBudget}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Excluded Transactions Banner (Month by Month) */}
-      {excludedTxCount > 0 && (
-        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
-              <EyeOff className="w-4 h-4" />
-            </div>
-            <span className="leading-relaxed">
-              {format(t.budgets.excludedTransactionsBanner, {
-                count: excludedTxCount,
-                period: periodMode === "last_30_days" ? t.budgets.last30Days : formatMonthName(selectedMonth),
-                amount: formatAmount(totalExcludedAmount),
-              })}
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsExcludedListModalOpen(true)}
-            className="h-8 px-3 text-xs border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 rounded-xl cursor-pointer shrink-0 font-medium"
-          >
-            {t.budgets.manageExclusions}
-          </Button>
-        </div>
-      )}
-
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 border-white/10 bg-[#18181B] flex flex-col justify-between rounded-3xl">
-          <span className="text-xs text-zinc-400 font-medium">{t.budgets.configuredMonthlyBudget}</span>
-          <p className="text-xl font-bold font-mono text-white mt-1">
-            {formatAmount(totalBudget)}
-          </p>
-          <div className="mt-2 text-[11px] text-zinc-500">
-            {items.filter((i) => i.monthly_limit > 0).length} {t.budgets.budgetedCategories}
-          </div>
-        </Card>
-
-        <Card className="p-4 border-white/10 bg-[#18181B] flex flex-col justify-between rounded-3xl">
-          <span className="text-xs text-zinc-400 font-medium">
-            {periodMode === "last_30_days"
-              ? `${t.budgets.spentInPeriod} (${t.budgets.last30Days})`
-              : `${t.budgets.spentInPeriod} (${formatMonthName(selectedMonth)})`}
-          </span>
-          <p className="text-xl font-bold font-mono text-white mt-1">
-            {formatAmount(totalSpent)}
-          </p>
-          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
-            <span>{globalPercentage}% {t.budgets.budgetUsed}</span>
-            {totalExcludedAmount > 0 && (
-              <span className="text-amber-400 font-mono text-[10px]">
-                (-{formatAmount(totalExcludedAmount)} {t.budgets.excludedFromBudget})
-              </span>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-4 border-white/10 bg-[#18181B] flex flex-col justify-between rounded-3xl">
-          <span className="text-xs text-zinc-400 font-medium">{t.budgets.remainingAvailable}</span>
-          <p className={`text-xl font-bold font-mono mt-1 ${remainingBudget < 0 ? "text-rose-400" : "text-emerald-400"}`}>
-            {formatAmount(remainingBudget)}
-          </p>
-          <div className="mt-2 text-[11px] text-zinc-500">
-            {remainingBudget < 0 ? t.budgets.budgetExceeded : t.budgets.availableInPeriod}
-          </div>
-        </Card>
-      </div>
-
-      {/* Visual Chart & Categories Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Pie Chart Card */}
-        <Card className="p-5 md:p-6 border-white/10 bg-[#18181B] flex flex-col gap-4 rounded-3xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <PieIcon className="w-4 h-4 text-indigo-400" />
-              <CardTitle className="text-sm font-semibold text-white">
-                {t.budgets.spendingBreakdown}
-              </CardTitle>
-            </div>
-            <Badge variant="outline" className="border-white/10 bg-zinc-900 text-zinc-400 text-[10px]">
-              {periodMode === "last_30_days" ? "30d" : selectedMonth}
-            </Badge>
-          </div>
-
+          {/* Large Stylish Pie Chart */}
           <BudgetPieChart
             data={items}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
           />
-        </Card>
 
-        {/* Category Budget Cards */}
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredItems.map((item) => {
-            const CatIcon = getCategoryIcon(item.category)
-            const hasLimit = item.monthly_limit > 0
-            const isExceeded = hasLimit && item.spent > item.monthly_limit
-            const isNearLimit = hasLimit && item.percentage >= 80 && !isExceeded
-            const activeTxCount = item.transactions.filter((t) => !t.is_excluded_from_budget).length
-            const excludedCount = item.transactions.filter((t) => t.is_excluded_from_budget).length
-
-            return (
-              <Card
-                key={item.category}
-                className={`p-4 border-white/10 bg-[#18181B] flex flex-col justify-between gap-3 transition-all rounded-3xl ${
-                  selectedCategory === item.category ? "ring-2 ring-indigo-500" : ""
+          {/* Minimal 3-part KPI metrics strip */}
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-4 mt-2 border-t border-white/5 text-center">
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block font-medium truncate">
+                {t.budgets.configuredMonthlyBudget}
+              </span>
+              <span className="text-sm sm:text-lg font-bold font-mono text-white mt-0.5 block truncate">
+                {formatAmount(totalBudget)}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block font-medium truncate">
+                {t.budgets.spentInPeriod}
+              </span>
+              <span className="text-sm sm:text-lg font-bold font-mono text-white mt-0.5 block truncate">
+                {formatAmount(totalSpent)}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block font-medium truncate">
+                {t.budgets.remainingAvailable}
+              </span>
+              <span
+                className={`text-sm sm:text-lg font-bold font-mono mt-0.5 block truncate ${
+                  remainingBudget < 0 ? "text-rose-400" : "text-emerald-400"
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-zinc-900 border border-white/10 text-indigo-400">
-                      <CatIcon className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-white">{t.categories[item.category] || item.category}</span>
-                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                        <span>{activeTxCount} {language === "fr" ? `opération${activeTxCount > 1 ? "s" : ""}` : `operation${activeTxCount > 1 ? "s" : ""}`}</span>
-                        {excludedCount > 0 && (
-                          <span className="text-amber-400 text-[10px]">({excludedCount} {language === "fr" ? "exclue(s)" : "excluded"})</span>
-                        )}
+                {formatAmount(remainingBudget)}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Right Column: Minimalist Category Budget List (Spacious & Aligned) */}
+        <Card className="lg:col-span-7 p-6 bg-[#18181B] border-white/10 rounded-2xl flex flex-col justify-between min-w-0 h-full">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <span className="text-sm font-semibold text-white">
+                {language === "fr" ? "Budgets par catégorie" : "Category budgets"}
+              </span>
+
+              {selectedCategory && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory(null)}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+                >
+                  {language === "fr" ? "Afficher tout" : "Show all"}
+                </button>
+              )}
+            </div>
+
+            {/* Minimalist Categories List with generous vertical breathing room */}
+            <div className="flex flex-col divide-y divide-white/5">
+              {filteredItems.length === 0 ? (
+                <div className="py-12 text-center text-xs text-zinc-500">
+                  {language === "fr" ? "Aucune dépense enregistrée" : "No expenses recorded"}
+                </div>
+              ) : (
+                filteredItems.map((item) => {
+                  const hasLimit = item.monthly_limit > 0
+                  const isExceeded = hasLimit && item.spent > item.monthly_limit
+                  const isNearLimit = hasLimit && item.percentage >= 80 && !isExceeded
+                  const activeTxCount = item.transactions.filter((t) => !t.is_excluded_from_budget).length
+
+                  return (
+                    <div
+                      key={item.category}
+                      onClick={() => {
+                        if (hasLimit) {
+                          setSelectedCategoryModal(item.category)
+                        } else {
+                          handleOpenSetBudget(item.category, item.monthly_limit)
+                        }
+                      }}
+                      className="py-4 sm:py-5 px-3 hover:bg-white/[0.03] rounded-xl transition-colors cursor-pointer group flex flex-col gap-2.5 select-none"
+                    >
+                      {/* Top Row: Category name + Count on left, Amounts & % on right */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">
+                            {t.categories[item.category] || item.category}
+                          </span>
+                          <span className="text-[11px] text-zinc-500 font-medium shrink-0">
+                            {activeTxCount} {language === "fr" ? "op." : "tx"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-sm font-bold font-mono text-white">
+                              {formatAmount(item.spent)}
+                            </span>
+                            {hasLimit && (
+                              <span className="text-[11px] text-zinc-500 font-mono ml-1.5">
+                                / {formatAmount(item.monthly_limit)}
+                              </span>
+                            )}
+                          </div>
+
+                          {hasLimit ? (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenSetBudget(item.category, item.monthly_limit)
+                              }}
+                              title={language === "fr" ? "Ajuster le plafond" : "Adjust limit"}
+                              className={`text-xs font-bold font-mono min-w-[42px] text-right hover:underline cursor-pointer ${
+                                isExceeded
+                                  ? "text-rose-400"
+                                  : isNearLimit
+                                  ? "text-amber-400"
+                                  : "text-emerald-400"
+                              }`}
+                            >
+                              {item.percentage}%
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenSetBudget(item.category, item.monthly_limit)
+                              }}
+                              className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold px-3 py-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all cursor-pointer shadow-sm"
+                            >
+                              + {t.budgets.define}
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Bottom Row: Minimal progress line */}
+                      {hasLimit && (
+                        <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isExceeded
+                                ? "bg-rose-500"
+                                : isNearLimit
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                            }`}
+                            style={{ width: `${Math.min(100, item.percentage)}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs font-bold font-mono text-white">
-                      {formatAmount(item.spent)}
-                    </span>
-                    {hasLimit && (
-                      <span className="text-[10px] text-zinc-500 font-mono">
-                        / {formatAmount(item.monthly_limit)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Progress Bar & Status */}
-                {hasLimit ? (
-                  <div className="flex flex-col gap-1.5 pt-1">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span
-                        className={`font-semibold ${
-                          isExceeded
-                            ? "text-rose-400"
-                            : isNearLimit
-                            ? "text-amber-400"
-                            : "text-emerald-400"
-                        }`}
-                      >
-                        {item.percentage}%
-                      </span>
-                      <span className="text-zinc-500 font-mono text-[10px]">
-                        {isExceeded
-                          ? `${language === "fr" ? "Dépassé de" : "Exceeded by"} ${formatAmount(Math.abs(item.remaining))}`
-                          : `${language === "fr" ? "Reste" : "Remaining"} ${formatAmount(item.remaining)}`}
-                      </span>
-                    </div>
-                    <Progress
-                      value={Math.min(100, item.percentage)}
-                      className={`h-2 bg-zinc-900 ${
-                        isExceeded
-                          ? "[&>div]:bg-rose-500"
-                          : isNearLimit
-                          ? "[&>div]:bg-amber-500"
-                          : "[&>div]:bg-emerald-500"
-                      }`}
-                    />
-                  </div>
-                ) : (
-                  <div className="pt-1">
-                    <span className="text-[11px] text-zinc-500 italic">
-                      {t.budgets.defineMonthlyBudgetPrompt}
-                    </span>
-                  </div>
-                )}
-
-                {/* Bottom Actions: View Transactions & Edit Limit */}
-                <div className="flex justify-between items-center pt-2 border-t border-white/5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategoryModal(item.category)}
-                    className="text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <span>{t.budgets.viewTransactions}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleOpenSetBudget(item.category, item.monthly_limit)}
-                    className="h-7 px-2 text-zinc-400 hover:text-white gap-1 text-xs cursor-pointer rounded-xl"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    <span>{hasLimit ? t.budgets.adjust : t.budgets.define}</span>
-                  </Button>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Cashflow Sankey Diagram (Incomes -> Hub -> Categories -> Subcategories & Savings) */}
@@ -695,73 +670,121 @@ export function BudgetView() {
         formatMonthName={formatMonthName}
       />
 
-      {/* Set / Edit Budget Dialog */}
+      {/* Set / Edit Budget Dialog (Ultra-Minimalist & Modern) */}
       <Dialog open={isSetBudgetOpen} onOpenChange={setIsSetBudgetOpen}>
-        <DialogContent className="max-w-md p-6 bg-[#18181B] border-white/10 text-white rounded-3xl">
+        <DialogContent className="max-w-md p-6 bg-[#18181B] border border-white/10 text-white rounded-3xl shadow-2xl">
           <DialogHeader className="p-0 text-left">
-            <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-              {t.budgets.configureMonthlyBudget}
+            <DialogTitle className="text-base font-bold text-white tracking-tight">
+              {t.categories[budgetFormCat] || budgetFormCat || t.budgets.configureMonthlyBudget}
             </DialogTitle>
+            <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
+              <span>{language === "fr" ? "Dépenses actuelles du mois :" : "Actual month spending:"}</span>
+              <span className="font-mono font-bold text-white">
+                {formatAmount(items.find((i) => i.category === budgetFormCat)?.spent || 0)}
+              </span>
+            </div>
           </DialogHeader>
 
           <form onSubmit={handleSaveBudget} className="flex flex-col gap-4 mt-2">
+            {/* Category selection */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-300">{t.budgets.category}</label>
+              <label className="text-xs font-semibold text-zinc-400">
+                {t.budgets.category}
+              </label>
               <select
                 value={budgetFormCat}
                 onChange={(e) => {
                   setBudgetFormCat(e.target.value)
                   const existingItem = items.find((i) => i.category === e.target.value)
-                  if (existingItem) {
-                    setBudgetFormLimit(existingItem.monthly_limit > 0 ? existingItem.monthly_limit.toString() : "")
-                  }
+                  setBudgetFormLimit(
+                    existingItem && existingItem.monthly_limit > 0
+                      ? existingItem.monthly_limit.toString()
+                      : ""
+                  )
                 }}
-                className="bg-zinc-950 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none cursor-pointer"
+                className="bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none cursor-pointer focus:border-white/20 transition-colors"
               >
                 {categoriesList.map((cat, idx) => (
-                  <option key={cat.id || cat.name || `budget-cat-${idx}`} value={cat.name} className="bg-zinc-950 text-white">
+                  <option key={cat.id || cat.name || `budget-cat-${idx}`} value={cat.name} className="bg-[#18181B] text-white">
                     {t.categories[cat.name] || cat.name}
                   </option>
                 ))}
               </select>
             </div>
 
+            {/* Big Sleek Numeric Input */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-300">
+              <label className="text-xs font-semibold text-zinc-400">
                 {t.budgets.monthlyLimit}
               </label>
-              <Input
-                type="number"
-                step="10"
-                min="0"
-                required
-                placeholder="Ex: 500"
-                value={budgetFormLimit}
-                onChange={(e) => setBudgetFormLimit(e.target.value)}
-                className="bg-zinc-950 border-white/10 text-white text-xs h-10 rounded-xl"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  step="10"
+                  min="0"
+                  autoFocus
+                  required
+                  placeholder="0"
+                  value={budgetFormLimit}
+                  onChange={(e) => setBudgetFormLimit(e.target.value)}
+                  className="w-full bg-zinc-900/90 border border-white/10 focus:border-indigo-500/50 rounded-2xl py-3.5 px-4 pr-10 text-2xl font-extrabold font-mono text-white placeholder-zinc-700 outline-none transition-all shadow-inner"
+                />
+                <span className="absolute right-4 text-base font-bold font-mono text-zinc-500 pointer-events-none">
+                  €
+                </span>
+              </div>
             </div>
 
-            <div className="flex gap-2.5 pt-2">
+            {/* Quick Preset Shortcut Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="text-[11px] text-zinc-500 font-medium mr-1">Suggestions :</span>
+              {[100, 250, 500, 800, 1200].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setBudgetFormLimit(preset.toString())}
+                  className={cn(
+                    "text-[11px] font-mono px-2.5 py-1 rounded-lg border transition-all cursor-pointer",
+                    budgetFormLimit === preset.toString()
+                      ? "bg-white text-zinc-950 border-white font-bold"
+                      : "bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  {preset} €
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-10 rounded-xl font-medium cursor-pointer shadow-lg shadow-indigo-600/20"
+                className="flex-1 bg-white hover:bg-zinc-200 text-zinc-950 text-xs h-10 rounded-xl font-bold cursor-pointer shadow-md transition-all"
               >
                 {t.budgets.saveBudget}
               </Button>
+
               {items.some((i) => i.category === budgetFormCat && i.monthly_limit > 0) && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   onClick={handleDeleteBudget}
                   disabled={isSubmitting}
-                  className="border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-xs h-10 rounded-xl cursor-pointer"
+                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs h-10 px-3 rounded-xl cursor-pointer"
                 >
                   {t.budgets.eraseBudget}
                 </Button>
               )}
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsSetBudgetOpen(false)}
+                className="text-zinc-400 hover:text-white hover:bg-white/5 text-xs h-10 px-3 rounded-xl cursor-pointer"
+              >
+                {t.common.cancel}
+              </Button>
             </div>
           </form>
         </DialogContent>

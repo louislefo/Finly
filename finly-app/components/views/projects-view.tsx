@@ -3,13 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react"
 import {
   Plus,
-  PiggyBank,
   FileSpreadsheet,
-  Building2,
-  Calculator,
-  Layers,
-  Sparkles,
-  TrendingUp,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
@@ -136,22 +130,42 @@ export function ProjectsView() {
   const overallProgress = totalTarget > 0 ? Math.round((totalCurrent / totalTarget) * 100) : 0
 
   return (
-    <div className="flex flex-col gap-5 w-full max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Header */}
+    <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto pb-24 md:pb-8">
+      {/* Header with Inline Metrics and Discrete Filter Selector */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">{t.projects.title}</h1>
+        <div className="flex items-center gap-3 text-xs font-mono">
+          <span className="text-zinc-400">
+            {t.projects.totalSaved} : <strong className="text-white font-bold">{formatAmount(totalCurrent)}</strong> / {formatAmount(totalTarget)} ({overallProgress}%)
+          </span>
+          <span className="text-zinc-700 hidden sm:inline">•</span>
+          <span className="text-emerald-400 font-semibold hidden sm:inline">
+            +{formatAmount(totalMonthlySavings)} {language === "fr" ? "/ mois" : "/ mo"}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          {/* Minimalist Native View Selector (No filter pills) */}
+          <select
+            value={selectedFilter}
+            onChange={(e) => setSelectedFilter(e.target.value as FilterTab)}
+            className="h-9 px-3 bg-zinc-900 border border-white/10 text-xs text-zinc-300 hover:text-white rounded-xl outline-none cursor-pointer appearance-none transition-colors font-medium"
+          >
+            <option value="all" className="bg-zinc-900 text-white">{t.projects.allFilter} ({projectsList.length})</option>
+            <option value="in_progress" className="bg-zinc-900 text-white">{t.projects.inProgressFilter} ({inProgressCount})</option>
+            <option value="future" className="bg-zinc-900 text-white">{t.projects.futureFilter} ({futureCount})</option>
+            <option value="real_estate" className="bg-zinc-900 text-white">{t.projects.realEstateFilter} ({projectsList.filter((p) => p.projectType === "real_estate").length})</option>
+            <option value="completed" className="bg-zinc-900 text-white">{t.projects.completedFilter} ({projectsList.filter((p) => p.status === "completed" || p.currentAmount >= p.targetAmount).length})</option>
+            <option value="simulator" className="bg-zinc-900 text-white">{t.projects.simulatorFilter}</option>
+          </select>
+
           <Button
             onClick={() => setIsExportOpen(true)}
             variant="outline"
             size="sm"
-            className="gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl h-9 text-xs cursor-pointer flex-1 sm:flex-none"
+            className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl text-xs cursor-pointer"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>{t.common.export}</span>
+            <span className="hidden sm:inline">{t.common.export}</span>
           </Button>
 
           <Button
@@ -160,120 +174,12 @@ export function ProjectsView() {
               setIsNewProjectOpen(true)
             }}
             size="sm"
-            className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20 rounded-xl h-9 text-xs cursor-pointer flex-1 sm:flex-none"
+            className="h-9 px-3.5 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold cursor-pointer shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>{t.projects.newProject}</span>
           </Button>
         </div>
-      </div>
-
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card className="p-4 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs text-zinc-400 font-medium">{t.projects.totalSaved}</span>
-            <span className="text-xs font-mono font-semibold text-zinc-400">
-              {t.projects.target}: {formatAmount(totalTarget)}
-            </span>
-          </div>
-          <div>
-            <span className="text-2xl font-bold text-white font-mono">
-              {formatAmount(totalCurrent)}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-[11px] font-mono text-zinc-400">
-              <span>{t.projects.overallProgress}</span>
-              <span className="text-white font-semibold">{overallProgress}%</span>
-            </div>
-            <Progress value={overallProgress} className="h-1.5 bg-zinc-900 [&>div]:bg-indigo-500" />
-          </div>
-        </Card>
-
-        <Card className="p-4 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs text-zinc-400 font-medium">{t.projects.monthlySavingsEffort}</span>
-            <Badge variant="outline" className="text-[10px] py-0 border-indigo-500/30 text-indigo-300">
-              {t.projects.activeEffort}
-            </Badge>
-          </div>
-          <div>
-            <span className="text-2xl font-bold text-white font-mono">
-              {formatAmount(totalMonthlySavings)}
-            </span>
-            <span className="text-xs text-zinc-400 font-mono ml-1">{language === "fr" ? "/ mois" : "/ mo"}</span>
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-zinc-400">
-            <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{t.projects.distributedOnProjects}</span>
-          </div>
-        </Card>
-
-        <Card className="p-4 border-white/10 bg-[#18181B] rounded-3xl flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs text-zinc-400 font-medium">{t.projects.projectsStatus}</span>
-            <span className="text-xs text-zinc-400 font-mono">
-              {projectsList.length} {language === "fr" ? "au total" : "total"}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 pt-1 font-mono">
-            <div className="flex flex-col p-2 rounded-xl bg-zinc-900/60 border border-white/5">
-              <span className="text-[10px] text-indigo-300 font-medium">{t.projects.inProgress}</span>
-              <span className="text-base font-bold text-white">{inProgressCount}</span>
-            </div>
-            <div className="flex flex-col p-2 rounded-xl bg-zinc-900/60 border border-white/5">
-              <span className="text-[10px] text-amber-300 font-medium">{t.projects.future}</span>
-              <span className="text-base font-bold text-white">{futureCount}</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Navigation Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-        {[
-          { id: "all" as FilterTab, label: t.projects.allFilter, count: projectsList.length },
-          { id: "in_progress" as FilterTab, label: t.projects.inProgressFilter, count: inProgressCount },
-          { id: "future" as FilterTab, label: t.projects.futureFilter, count: futureCount },
-          {
-            id: "real_estate" as FilterTab,
-            label: t.projects.realEstateFilter,
-            count: projectsList.filter((p) => p.projectType === "real_estate").length,
-          },
-          { id: "simulator" as FilterTab, label: t.projects.simulatorFilter },
-          {
-            id: "completed" as FilterTab,
-            label: t.projects.completedFilter,
-            count: projectsList.filter((p) => p.status === "completed" || p.currentAmount >= p.targetAmount).length,
-          },
-        ].map((tab) => {
-          const isActive = selectedFilter === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                isActive
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                  : "bg-zinc-900/80 border border-white/5 text-zinc-400 hover:text-white hover:bg-zinc-800"
-              }`}
-            >
-              {tab.id === "simulator" && <Calculator className="w-3.5 h-3.5 text-indigo-300" />}
-              {tab.id === "real_estate" && <Building2 className="w-3.5 h-3.5 text-indigo-300" />}
-              <span>{tab.label}</span>
-              {typeof tab.count === "number" && (
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    isActive ? "bg-white/20 text-white" : "bg-zinc-800 text-zinc-400"
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          )
-        })}
       </div>
 
       {/* Main Content Area: Simulator vs Grid */}
@@ -288,9 +194,6 @@ export function ProjectsView() {
         <>
           {filteredProjects.length === 0 ? (
             <Card className="p-8 sm:p-12 text-center border-white/10 bg-[#18181B] rounded-3xl flex flex-col items-center justify-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center text-zinc-400">
-                <PiggyBank className="w-6 h-6" />
-              </div>
               <div className="flex flex-col gap-1">
                 <p className="text-sm font-semibold text-white">{t.projects.noProjectsInCategory}</p>
                 <p className="text-xs text-zinc-400">
@@ -315,7 +218,6 @@ export function ProjectsView() {
                   size="sm"
                   className="gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 text-xs rounded-xl cursor-pointer hover:bg-zinc-800"
                 >
-                  <Calculator className="w-3.5 h-3.5" />
                   <span>{t.projects.loanSimulatorBtn}</span>
                 </Button>
               </div>

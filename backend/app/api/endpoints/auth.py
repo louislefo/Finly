@@ -71,6 +71,7 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
             "id": new_user.id,
             "email": new_user.email,
             "full_name": new_user.full_name,
+            "avatar_seed": getattr(new_user, "avatar_seed", None),
             "role": new_user.role,
             "language": new_user.language,
         },
@@ -98,6 +99,7 @@ def login_user(req: LoginRequest, db: Session = Depends(get_db)):
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
+            "avatar_seed": getattr(user, "avatar_seed", None),
             "role": user.role,
             "language": getattr(user, "language", "en") or "en",
         },
@@ -132,6 +134,10 @@ class UpdateSyncSettingsRequest(BaseModel):
     sync_time: Optional[str] = "08:00"
     language: Optional[str] = None
 
+class UpdateProfileRequest(BaseModel):
+    full_name: Optional[str] = None
+    avatar_seed: Optional[str] = None
+
 class UpdatePreferencesRequest(BaseModel):
     language: Optional[str] = None
     auto_sync_enabled: Optional[bool] = None
@@ -144,11 +150,42 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "email": current_user.email,
         "full_name": current_user.full_name,
+        "avatar_seed": getattr(current_user, "avatar_seed", None),
         "role": current_user.role,
         "language": str(getattr(current_user, "language", "en") or "en"),
         "auto_sync_enabled": bool(getattr(current_user, "auto_sync_enabled", False)),
         "sync_interval_hours": int(getattr(current_user, "sync_interval_hours", 12) or 12),
         "sync_time": str(getattr(current_user, "sync_time", "08:00") or "08:00"),
+    }
+
+@router.patch("/profile")
+def update_profile(
+    req: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if req.full_name is not None and req.full_name.strip():
+        current_user.full_name = req.full_name.strip()
+    if req.avatar_seed is not None:
+        clean_seed = req.avatar_seed.strip()
+        current_user.avatar_seed = clean_seed if clean_seed else None
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "status": "success",
+        "message": "Profil mis à jour.",
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "avatar_seed": getattr(current_user, "avatar_seed", None),
+            "role": current_user.role,
+            "language": getattr(current_user, "language", "en") or "en",
+            "auto_sync_enabled": bool(getattr(current_user, "auto_sync_enabled", False)),
+            "sync_interval_hours": int(getattr(current_user, "sync_interval_hours", 12) or 12),
+            "sync_time": str(getattr(current_user, "sync_time", "08:00") or "08:00"),
+        },
     }
 
 @router.patch("/sync-settings")
@@ -200,6 +237,7 @@ def update_user_preferences(
             "id": current_user.id,
             "email": current_user.email,
             "full_name": current_user.full_name,
+            "avatar_seed": getattr(current_user, "avatar_seed", None),
             "role": current_user.role,
             "language": current_user.language,
             "auto_sync_enabled": current_user.auto_sync_enabled,

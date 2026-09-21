@@ -78,6 +78,8 @@ def auto_migrate_sqlite():
             cols = [r[1] for r in res]
             if "language" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'"))
+            if "avatar_seed" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN avatar_seed TEXT"))
             if "is_active" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
             if "auto_sync_enabled" not in cols:

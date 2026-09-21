@@ -376,7 +376,7 @@ export function TransactionsView() {
   }, [selectedAccountId, accountFilterType, accountsList, t])
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24 md:pb-8">
+    <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto pb-24 md:pb-8">
       {/* Toast Feedback Notification */}
       {feedbackMessage && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-indigo-600 text-white text-xs font-semibold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
@@ -385,22 +385,44 @@ export function TransactionsView() {
         </div>
       )}
 
-      {/* Minimalist Top Header */}
-      <div className="flex justify-between items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">{t.transactions.title}</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            {activeFilterLabel} • {filteredTransactions.length} {language === "fr" ? `opération${filteredTransactions.length > 1 ? "s" : ""}` : `transaction${filteredTransactions.length > 1 ? "s" : ""}`}
-          </p>
+      {/* Top Header & Integrated Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <span className="font-medium text-zinc-300">{activeFilterLabel}</span>
+          <span>•</span>
+          <span className="font-mono">{filteredTransactions.length} {language === "fr" ? `opération${filteredTransactions.length > 1 ? "s" : ""}` : `transaction${filteredTransactions.length > 1 ? "s" : ""}`}</span>
+          {hasActiveFilters && (
+            <>
+              <span>•</span>
+              <button
+                onClick={resetFilters}
+                className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer"
+              >
+                {t.common.reset}
+              </button>
+            </>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          {/* Integrated Search Input */}
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+            <Input
+              type="text"
+              placeholder={t.transactions.searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8.5 bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl focus:border-white/20"
+            />
+          </div>
+
           <Button
             onClick={handleManualSync}
             disabled={isSyncing}
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
+            className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline text-xs">{isSyncing ? t.common.syncing : t.common.refresh}</span>
@@ -410,7 +432,7 @@ export function TransactionsView() {
             onClick={() => setIsExportOpen(true)}
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 cursor-pointer"
+            className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer shrink-0"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span className="hidden sm:inline text-xs">{t.common.export}</span>
@@ -419,7 +441,7 @@ export function TransactionsView() {
           {/* Clean Filter Dropdown Menu Button */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className={`h-8 px-2.5 gap-1.5 rounded-xl border flex items-center justify-center transition-all cursor-pointer text-xs font-semibold ${
+              className={`h-9 px-3 gap-1.5 rounded-xl border flex items-center justify-center transition-all cursor-pointer text-xs font-semibold shrink-0 ${
                 hasActiveFilters
                   ? "bg-indigo-600 border-indigo-500 text-white shadow-sm shadow-indigo-600/30"
                   : "bg-zinc-900 border-white/10 text-zinc-300 hover:bg-zinc-800"
@@ -494,38 +516,31 @@ export function TransactionsView() {
                       : "text-zinc-300 hover:bg-white/5"
                   }`}
                 >
-                  <span>{t.transactions.allAccounts} ({transactionsList.length})</span>
+                  <span>{t.transactions.allAccounts}</span>
                   {selectedAccountId === "all" && accountFilterType === "all" && <Check className="w-3.5 h-3.5" />}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 
-              {/* Sub-Accounts Section */}
-              {accountsList.length > 1 && (
+              {/* Specific Accounts Section */}
+              {accountsList.length > 0 && (
                 <>
                   <DropdownMenuSeparator className="bg-white/5 my-1" />
                   <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-zinc-400 px-2 py-1">
-                    {t.transactions.specificAccount}
+                    {t.accounts.title}
                   </DropdownMenuLabel>
                   <DropdownMenuGroup>
-                    {accountsList.map((acc) => {
-                      const count = transactionsList.filter(
-                        (t: any) => t.account_id === acc.id || t.account === acc.name
-                      ).length
-                      const isSelected = selectedAccountId === acc.id
-
-                      return (
-                        <DropdownMenuItem
-                          key={acc.id}
-                          onClick={() => setSelectedAccountId(isSelected ? "all" : acc.id)}
-                          className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer ${
-                            isSelected ? "bg-indigo-600 text-white" : "text-zinc-300 hover:bg-white/5"
-                          }`}
-                        >
-                          <span className="truncate">{acc.name || acc.bank}</span>
-                          <span className="text-[10px] font-mono text-zinc-400">({count})</span>
-                        </DropdownMenuItem>
-                      )
-                    })}
+                    {accountsList.map((acc) => (
+                      <DropdownMenuItem
+                        key={acc.id}
+                        onClick={() => setSelectedAccountId(acc.id)}
+                        className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer ${
+                          selectedAccountId === acc.id ? "bg-indigo-600 text-white" : "text-zinc-300 hover:bg-white/5"
+                        }`}
+                      >
+                        <span className="truncate pr-2">{acc.name}</span>
+                        {selectedAccountId === acc.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      </DropdownMenuItem>
+                    ))}
                   </DropdownMenuGroup>
                 </>
               )}
@@ -563,44 +578,10 @@ export function TransactionsView() {
         </div>
       </div>
 
-      {/* Search Bar & Active Filter Pill */}
-      <Card className="p-2.5 border-white/10 bg-[#18181B] flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <div className="relative w-full flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <Input
-            type="text"
-            placeholder={t.transactions.searchPlaceholder}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-zinc-900/80 border-white/10 text-white text-xs h-9"
-          />
-        </div>
-
-        {hasActiveFilters && (
-          <div className="flex items-center gap-1.5 self-end sm:self-auto">
-            <Badge
-              variant="outline"
-              className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs py-1 px-2.5 gap-1.5 flex items-center"
-            >
-              <span>{activeFilterLabel}</span>
-              {selectedCategory !== "all" && selectedCategory !== "Toutes" && (
-                <span>• {t.categories[selectedCategory] || selectedCategory}</span>
-              )}
-              <button
-                onClick={resetFilters}
-                className="hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
-          </div>
-        )}
-      </Card>
-
-      {/* Grouped Transactions List */}
-      <div className="flex flex-col gap-5">
+      {/* Unified Transactions Container */}
+      <Card className="p-0 border-white/10 bg-[#18181B] rounded-2xl overflow-hidden divide-y divide-white/5">
         {Object.keys(groupedByDate).length === 0 ? (
-          <Card className="p-10 text-center border-white/10 bg-[#18181B] flex flex-col items-center justify-center gap-2.5">
+          <div className="p-12 text-center flex flex-col items-center justify-center gap-2.5">
             <p className="text-sm font-medium text-white">{t.transactions.noTransactionsFound}</p>
             <p className="text-xs text-zinc-400">
               {transactionsList.length === 0
@@ -616,20 +597,20 @@ export function TransactionsView() {
                 <PlusCircle className="w-4 h-4" /> {t.transactions.connectAccount}
               </Button>
             )}
-          </Card>
+          </div>
         ) : (
           Object.entries(groupedByDate).map(([dateStr, items]) => (
-            <div key={dateStr} className="flex flex-col gap-2">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-xs font-semibold text-zinc-400">
+            <div key={dateStr}>
+              <div className="px-4 sm:px-6 py-2.5 bg-zinc-950/40 flex justify-between items-center border-b border-white/5">
+                <span className="text-[11px] font-semibold text-zinc-400 tracking-wider uppercase">
                   {dateStr}
                 </span>
-                <span className="text-xs text-zinc-500 font-mono">
-                  {items.length}
+                <span className="text-[11px] text-zinc-500 font-mono">
+                  {items.length} {language === "fr" ? `opération${items.length > 1 ? "s" : ""}` : `transaction${items.length > 1 ? "s" : ""}`}
                 </span>
               </div>
 
-              <Card className="border-white/10 bg-[#18181B] divide-y divide-white/5 overflow-hidden">
+              <div className="divide-y divide-white/5">
                 {items.map((tx: any) => {
                   const isPositive = tx.amount > 0
                   const rawBankLabel = tx.rawLabel || tx.raw_label || ""
@@ -643,16 +624,16 @@ export function TransactionsView() {
                         setIsEditingCategory(false)
                         setIsCreatingCategory(false)
                       }}
-                      className="flex justify-between items-center p-3.5 hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                      className="flex justify-between items-center px-4 sm:px-6 py-3.5 hover:bg-white/[0.03] transition-colors cursor-pointer group"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3.5">
                         <MerchantAvatar
                           merchantName={tx.merchant}
                           rawLabel={rawBankLabel}
                           logoUrl={tx.logo_url}
                           category={tx.category}
                           isPositive={isPositive}
-                          className="w-9 h-9 rounded-xl"
+                          className="w-9 h-9 rounded-xl shrink-0"
                         />
                         <div className="flex flex-col min-w-0 pr-2">
                           <span className="text-sm font-medium text-white group-hover:text-indigo-300 transition-colors truncate">
@@ -676,12 +657,8 @@ export function TransactionsView() {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-sm font-bold font-mono ${
-                          isPositive
-                            ? "text-emerald-400"
-                            : !tx.is_user_classified
-                            ? "text-amber-400"
-                            : "text-white"
+                        <span className={`text-sm sm:text-base font-bold font-mono tracking-tight ${
+                          isPositive ? "text-emerald-400" : "text-white"
                         }`}>
                           {isPositive ? "+" : ""}{formatAmount(tx.amount)}
                         </span>
@@ -690,11 +667,11 @@ export function TransactionsView() {
                     </div>
                   )
                 })}
-              </Card>
+              </div>
             </div>
           ))
         )}
-      </div>
+      </Card>
 
       {/* Modals */}
       <WoobModal

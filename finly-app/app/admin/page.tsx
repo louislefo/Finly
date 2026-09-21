@@ -1,4 +1,4 @@
-import { AdminView } from "@/components/views/admin-view"
+import { redirect } from "next/navigation"
 
 export const metadata = {
   title: "Administration — Finly",
@@ -6,9 +6,5 @@ export const metadata = {
 }
 
 export default function AdminPage() {
-  return (
-    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-[#09090B] text-white">
-      <AdminView />
-    </main>
-  )
+  redirect("/compte?tab=admin")
 }

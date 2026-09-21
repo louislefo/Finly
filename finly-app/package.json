@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@dicebear/core": "^10.7.0",
+    "@dicebear/styles": "^10.6.0",
     "@nivo/core": "^0.99.0",
     "@nivo/sankey": "^0.99.0",
     "@shadcn/react": "^0.2.1",

@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { AccountView } from "@/components/views/account-view"
 
 export const metadata = {
@@ -7,8 +8,8 @@ export const metadata = {
 
 export default function AccountPage() {
   return (
-    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-[#09090B] text-white">
+    <Suspense fallback={<div className="min-h-screen bg-[#09090B]" />}>
       <AccountView />
-    </main>
+    </Suspense>
   )
 }

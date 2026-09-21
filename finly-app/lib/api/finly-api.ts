@@ -79,6 +79,24 @@ export const FinlyAPI = {
     }
   },
 
+  async updateProfile(data: { full_name?: string; avatar_seed?: string | null }): Promise<User> {
+    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour du profil.")
+    }
+    const result = await res.json()
+    const updatedUser: User = result.user || result
+    if (typeof window !== "undefined") {
+      localStorage.setItem("finly_user", JSON.stringify(updatedUser))
+    }
+    return updatedUser
+  },
+
   async changePassword(params: { current_password: string; new_password: string }): Promise<{ status: string; message: string }> {
     const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
       method: "POST",

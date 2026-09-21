@@ -72,7 +72,9 @@ function ChartContainer({
       >
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer
-          initialDimension={initialDimension}
+          initialDimension={initialDimension ?? { width: 320, height: 200 }}
+          minWidth={0}
+          minHeight={0}
         >
           {children}
         </RechartsPrimitive.ResponsiveContainer>

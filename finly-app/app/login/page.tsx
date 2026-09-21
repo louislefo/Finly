@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-context"
 import { useI18n } from "@/components/i18n-context"
@@ -72,10 +73,15 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md flex flex-col gap-6 relative z-10">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center gap-1">
-          <span className="font-[family-name:var(--font-logo)] text-5xl md:text-6xl text-zinc-100 tracking-wide select-none drop-shadow-md">
-            Finly
-          </span>
+        <div className="flex flex-col items-center text-center gap-2">
+          <Image
+            src="/logo-full.png"
+            alt="Finly"
+            width={240}
+            height={66}
+            className="h-12 md:h-14 w-auto object-contain drop-shadow-xl"
+            priority
+          />
           <p className="text-xs text-zinc-400 mt-1">
             {isRegisterMode ? t.auth.registerSubtitle : t.auth.loginSubtitle}
           </p>

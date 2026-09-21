@@ -15,6 +15,7 @@ interface AuthContextType {
   logout: () => void
   impersonateUser: (targetUserId: string) => Promise<void>
   stopImpersonating: () => Promise<void>
+  updateUser: (updatedUser: User) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -164,6 +165,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("finly_user", JSON.stringify(updatedUser))
+    }
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
@@ -176,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         impersonateUser,
         stopImpersonating,
+        updateUser,
       }}
     >
       {children}
