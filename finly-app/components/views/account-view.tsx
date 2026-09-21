@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   Building2,
   CreditCard,
@@ -57,23 +57,51 @@ type AccountTab = "profile" | "security" | "preferences" | "banks" | "backup" | 
 
 export function AccountView() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, logout } = useAuth()
   const { formatAmount } = usePrivacy()
   const { t, language, setLanguage } = useI18n()
 
-  // Navigation Tab State
-  const [activeTab, setActiveTab] = useState<AccountTab>("profile")
-  const [mobileSubView, setMobileSubView] = useState<"menu" | AccountTab>("menu")
+  const tabParam = searchParams.get("tab") as AccountTab | null
 
-  // Check URL param on mount
+  // Navigation Tab State
+  const [activeTab, setActiveTab] = useState<AccountTab>(() => {
+    if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+      return tabParam
+    }
+    return "profile"
+  })
+  const [mobileSubView, setMobileSubView] = useState<"menu" | AccountTab>(() => {
+    if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+      return tabParam
+    }
+    return "menu"
+  })
+
+  // Synchronize when URL search params change
   useEffect(() => {
+    if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+      setActiveTab(tabParam)
+      setMobileSubView(tabParam)
+    }
+  }, [tabParam])
+
+  const selectTab = useCallback((tab: AccountTab) => {
+    setActiveTab(tab)
+    setMobileSubView(tab)
     if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search)
-      const tabParam = params.get("tab") as AccountTab | null
-      if (tabParam && ["profile", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
-        setActiveTab(tabParam)
-        setMobileSubView(tabParam)
-      }
+      const url = new URL(window.location.href)
+      url.searchParams.set("tab", tab)
+      window.history.replaceState(null, "", url.toString())
+    }
+  }, [])
+
+  const handleMobileBack = useCallback(() => {
+    setMobileSubView("menu")
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("tab")
+      window.history.replaceState(null, "", url.toString())
     }
   }, [])
 
@@ -573,10 +601,7 @@ export function AccountView() {
       <div className="flex flex-col divide-y divide-white/5">
         <button
           type="button"
-          onClick={() => {
-            setMobileSubView("profile")
-            setActiveTab("profile")
-          }}
+          onClick={() => selectTab("profile")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
           <div className="flex items-center gap-3.5">
@@ -588,10 +613,7 @@ export function AccountView() {
 
         <button
           type="button"
-          onClick={() => {
-            setMobileSubView("banks")
-            setActiveTab("banks")
-          }}
+          onClick={() => selectTab("banks")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
           <div className="flex items-center gap-3.5">
@@ -603,10 +625,7 @@ export function AccountView() {
 
         <button
           type="button"
-          onClick={() => {
-            setMobileSubView("security")
-            setActiveTab("security")
-          }}
+          onClick={() => selectTab("security")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
           <div className="flex items-center gap-3.5">
@@ -618,10 +637,7 @@ export function AccountView() {
 
         <button
           type="button"
-          onClick={() => {
-            setMobileSubView("preferences")
-            setActiveTab("preferences")
-          }}
+          onClick={() => selectTab("preferences")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
           <div className="flex items-center gap-3.5">
@@ -633,10 +649,7 @@ export function AccountView() {
 
         <button
           type="button"
-          onClick={() => {
-            setMobileSubView("backup")
-            setActiveTab("backup")
-          }}
+          onClick={() => selectTab("backup")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
           <div className="flex items-center gap-3.5">
@@ -649,10 +662,7 @@ export function AccountView() {
         {user?.role === "admin" && (
           <button
             type="button"
-            onClick={() => {
-              setMobileSubView("admin")
-              setActiveTab("admin")
-            }}
+            onClick={() => selectTab("admin")}
             className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
           >
             <div className="flex items-center gap-3.5">
@@ -685,7 +695,7 @@ export function AccountView() {
       <div className="flex items-center justify-between pb-6">
         <button
           type="button"
-          onClick={() => setMobileSubView("menu")}
+          onClick={handleMobileBack}
           className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
           aria-label="Retour"
         >
@@ -823,7 +833,7 @@ export function AccountView() {
             <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-6">
               <button
                 type="button"
-                onClick={() => setMobileSubView("menu")}
+                onClick={handleMobileBack}
                 className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
                 aria-label="Retour"
               >
@@ -887,10 +897,7 @@ export function AccountView() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("profile")
-                  setMobileSubView("profile")
-                }}
+                onClick={() => selectTab("profile")}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "profile"
@@ -904,10 +911,7 @@ export function AccountView() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("security")
-                  setMobileSubView("security")
-                }}
+                onClick={() => selectTab("security")}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "security"
@@ -921,10 +925,7 @@ export function AccountView() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("preferences")
-                  setMobileSubView("preferences")
-                }}
+                onClick={() => selectTab("preferences")}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "preferences"
@@ -944,10 +945,7 @@ export function AccountView() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("banks")
-                  setMobileSubView("banks")
-                }}
+                onClick={() => selectTab("banks")}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "banks"
@@ -967,10 +965,7 @@ export function AccountView() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab("backup")
-                  setMobileSubView("backup")
-                }}
+                onClick={() => selectTab("backup")}
                 className={cn(
                   "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                   activeTab === "backup"
@@ -991,10 +986,7 @@ export function AccountView() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveTab("admin")
-                    setMobileSubView("admin")
-                  }}
+                  onClick={() => selectTab("admin")}
                   className={cn(
                     "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
                     activeTab === "admin"
