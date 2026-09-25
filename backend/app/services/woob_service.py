@@ -21,6 +21,8 @@ from woob.exceptions import (
     NoAccountsException,
 )
 
+from app.core.config import settings
+
 class WoobService:
     SUPPORTED_MODULES = [
         {"id": "bourso", "name": "BoursoBank", "color": "from-pink-600 to-rose-600", "logo": "B"},
@@ -43,8 +45,11 @@ class WoobService:
     ]
 
     def __init__(self):
-        self.woob_dir = os.path.join(os.getcwd(), "woob_data")
-        os.makedirs(self.woob_dir, exist_ok=True)
+        self.woob_dir = os.environ.get("WOOB_WORKDIR") or os.path.join(settings.DATA_DIR, "woob_data")
+        try:
+            os.makedirs(self.woob_dir, exist_ok=True)
+        except Exception:
+            pass
         self._woob: Optional[Woob] = None
         self.latest_logs: List[str] = []
 

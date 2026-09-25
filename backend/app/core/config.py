@@ -1,7 +1,40 @@
+import os
+import sys
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List, Union
 import json
+
+
+def get_default_data_dir() -> str:
+    """Get system standard persistent application data directory."""
+    if os.environ.get("FINLY_DATA_DIR"):
+        return os.environ["FINLY_DATA_DIR"]
+
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "Finly")
+    elif sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Application Support/Finly")
+    else:
+        return os.path.expanduser("~/.local/share/finly")
+
+
+def get_default_database_url() -> str:
+    """Get database URL with fallback to standard OS user data directory."""
+    if os.environ.get("DATABASE_URL"):
+        return os.environ["DATABASE_URL"]
+
+    data_dir = get_default_data_dir()
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+    except Exception:
+        pass
+    db_file = os.path.join(data_dir, "finly.db")
+    posix_path = Path(db_file).as_posix()
+    return f"sqlite:///{posix_path}"
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Finly API"
@@ -11,8 +44,11 @@ class Settings(BaseSettings):
     # Secret Key for JWT Tokens and AES-256 Fernet Encryption
     SECRET_KEY: str = "finly-local-secure-encryption-key-2026-very-secret"
     
+    # Persistent Data Directory
+    DATA_DIR: str = get_default_data_dir()
+
     # Database
-    DATABASE_URL: str = "sqlite:///./data/finly.db"
+    DATABASE_URL: str = get_default_database_url()
     
     # CORS (Allow all local network and tunnel origins for mobile access)
     CORS_ORIGINS: Union[List[str], str] = ["*"]
@@ -45,3 +81,4 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
+
