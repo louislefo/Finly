@@ -1,5 +1,7 @@
 #define MyAppName "Finly"
+#ifndef MyAppVersion
 #define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "Finly"
 #define MyAppURL "https://github.com/louislefo/Finly"
 #define MyAppExeName "Finly.exe"

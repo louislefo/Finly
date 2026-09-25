@@ -38,7 +38,7 @@ def get_default_database_url() -> str:
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Finly API"
-    VERSION: str = "1.0.0"
+    VERSION: str = os.environ.get("FINLY_VERSION", "1.0.0")
     API_V1_STR: str = "/api/v1"
     
     # Secret Key for JWT Tokens and AES-256 Fernet Encryption

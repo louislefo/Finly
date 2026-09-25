@@ -760,6 +760,13 @@ export function AccountView() {
           </div>
           <ChevronRight className="w-5 h-5 text-rose-400/40" />
         </button>
+
+        {/* Version Information */}
+        <div className="pt-4 text-center">
+          <span className="text-[11px] font-mono text-zinc-500">
+            Finly v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
+          </span>
+        </div>
       </div>
     </div>
   )
@@ -1116,7 +1123,7 @@ export function AccountView() {
             )}
 
             {/* Logout Button */}
-            <div className="pt-4 border-t border-white/5">
+            <div className="pt-4 border-t border-white/5 space-y-3">
               <button
                 type="button"
                 onClick={logout}
@@ -1125,6 +1132,10 @@ export function AccountView() {
                 <LogOut className="w-4 h-4" />
                 <span>{t.auth.logout || "Se déconnecter"}</span>
               </button>
+
+              <div className="px-3 text-[11px] font-mono text-zinc-500">
+                Finly v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
+              </div>
             </div>
           </aside>
 
