@@ -86,6 +86,7 @@ jobs:
             --collect-all "sqlalchemy" `
             --collect-all "uvicorn" `
             --collect-all "webview" `
+            --collect-all "apscheduler" `
             --hidden-import "uvicorn.logging" `
             --hidden-import "uvicorn.loops" `
             --hidden-import "uvicorn.loops.auto" `
@@ -118,6 +119,7 @@ jobs:
             --collect-all "sqlalchemy" \
             --collect-all "uvicorn" \
             --collect-all "webview" \
+            --collect-all "apscheduler" \
             --hidden-import "uvicorn.logging" \
             --hidden-import "uvicorn.loops" \
             --hidden-import "uvicorn.loops.auto" \
