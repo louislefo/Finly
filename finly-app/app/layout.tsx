@@ -4,10 +4,6 @@ import "./globals.css"
 import { PrivacyProvider } from "@/components/privacy-context"
 import { AuthProvider } from "@/components/auth-context"
 import { LanguageProvider } from "@/components/i18n-context"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { AppHeader } from "@/components/app-header"
-import { MobileNav } from "@/components/mobile-nav"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,24 +40,7 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             <PrivacyProvider>
-              <SidebarProvider defaultOpen={true}>
-                {/* Official Shadcn Desktop Left Sidebar with User Account at Bottom Left */}
-                <AppSidebar />
-
-                {/* Main Content Area */}
-                <SidebarInset className="bg-[#09090B] flex flex-col min-h-screen">
-                  {/* Top Contextual Header with SidebarTrigger, Privacy toggle & Action buttons */}
-                  <AppHeader />
-
-                  {/* Dynamic Page Content */}
-                  <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto pb-24 md:pb-8">
-                    {children}
-                  </main>
-
-                  {/* Mobile Bottom Navigation Bar (Synthèse, Budget, Analyse, Projet) */}
-                  <MobileNav />
-                </SidebarInset>
-              </SidebarProvider>
+              {children}
             </PrivacyProvider>
           </LanguageProvider>
         </AuthProvider>
