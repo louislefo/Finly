@@ -9,7 +9,10 @@ if settings.DATABASE_URL.startswith("sqlite:"):
     raw_path = settings.DATABASE_URL.split("sqlite:///")[-1]
     db_dir = os.path.dirname(raw_path)
     if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+        except Exception as e:
+            print(f"[Database] Notice creating db directory: {e}")
 
 engine = create_engine(
     settings.DATABASE_URL,
