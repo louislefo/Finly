@@ -75,6 +75,26 @@ export interface TranslationDictionary {
     openSidebar: string
     closeSidebar: string
   }
+  update: {
+    newVersionAvailable: string
+    updateAvailable: string
+    currentVersion: string
+    latestVersion: string
+    whatsNew: string
+    downloadAndInstall: string
+    downloadingUpdate: string
+    readyToInstall: string
+    installAndRestart: string
+    restartPrompt: string
+    containerUpdateTitle: string
+    containerUpdateDesc: string
+    copyCommand: string
+    copiedCommand: string
+    viewOnGithub: string
+    close: string
+    dismiss: string
+    upToDate: string
+  }
   auth: {
     loginTitle: string
     loginSubtitle: string

@@ -1,4 +1,4 @@
-name: Build Desktop App (Windows & macOS)
+name: Build Desktop App (Windows, macOS & Linux)
 
 on:
   push:
@@ -17,14 +17,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-latest, ubuntu-22.04]
         include:
           - os: windows-latest
-            artifact_name: Finly-Windows-x64
-            output_file: dist/Finly.exe
+            artifact_name: Finly-Windows
           - os: macos-latest
-            artifact_name: Finly-macOS-Universal
-            output_file: dist/Finly.app
+            artifact_name: Finly-macOS
+          - os: ubuntu-22.04
+            artifact_name: Finly-Linux
 
     steps:
       - name: Check out repository
@@ -44,11 +44,26 @@ jobs:
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
+      - name: Install System Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            gir1.2-webkit2-4.0 \
+            libgirepository1.0-dev \
+            gobject-introspection \
+            libglib2.0-dev \
+            libcairo2-dev \
+            pkg-config \
+            python3-dev
+
       - name: Build Next.js Static Export
         working-directory: finly-app
         env:
           NEXT_OUTPUT_MODE: export
           NEXT_PUBLIC_API_URL: /api/v1
+          NEXT_PUBLIC_APP_VERSION: 1.0.${{ github.run_number }}
           NEXT_TELEMETRY_DISABLED: 1
         run: |
           npm ci --legacy-peer-deps
@@ -68,12 +83,22 @@ jobs:
           pip install -r backend/requirements.txt
           pip install pyinstaller pywebview pyobjc-framework-WebKit pyobjc-framework-Cocoa
 
-      - name: Build Windows Executable
-        if: runner.os == 'Windows'
+      - name: Install Python Dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
+          python3 -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller pywebview "PyGObject<3.48" pycairo
+
+      - name: Build Windows Executables (Directory & Standalone)
+        if: runner.os == 'Windows'
+        env:
+          FINLY_VERSION: 1.0.${{ github.run_number }}
+        run: |
+          # 1. Build directory bundle for modern Inno Setup installer packaging
           pyinstaller `
             --noconfirm `
-            --onefile `
+            --onedir `
             --windowed `
             --name "Finly" `
             --icon "finly-app/public/favicon.ico" `
@@ -92,6 +117,9 @@ jobs:
             --collect-all "html2text" `
             --collect-all "lxml" `
             --copy-metadata "woob" `
+            --exclude-module "tkinter" `
+            --exclude-module "unittest" `
+            --exclude-module "pydoc" `
             --hidden-import "uvicorn.logging" `
             --hidden-import "uvicorn.loops" `
             --hidden-import "uvicorn.loops.auto" `
@@ -106,8 +134,58 @@ jobs:
             --hidden-import "webview.platforms.edgechromium" `
             desktop.py
 
-      - name: Build macOS App Bundle
+          # 2. Build standalone portable onefile executable
+          pyinstaller `
+            --noconfirm `
+            --onefile `
+            --windowed `
+            --name "Finly-Portable" `
+            --icon "finly-app/public/favicon.ico" `
+            --paths "backend" `
+            --add-data "finly-app/out;finly-app/out" `
+            --add-data "backend/app;app" `
+            --collect-all "fastapi" `
+            --collect-all "starlette" `
+            --collect-all "pydantic" `
+            --collect-all "pydantic_settings" `
+            --collect-all "sqlalchemy" `
+            --collect-all "uvicorn" `
+            --collect-all "webview" `
+            --collect-all "apscheduler" `
+            --collect-all "woob" `
+            --collect-all "html2text" `
+            --collect-all "lxml" `
+            --copy-metadata "woob" `
+            --exclude-module "tkinter" `
+            --exclude-module "unittest" `
+            --exclude-module "pydoc" `
+            --hidden-import "uvicorn.logging" `
+            --hidden-import "uvicorn.loops" `
+            --hidden-import "uvicorn.loops.auto" `
+            --hidden-import "uvicorn.protocols" `
+            --hidden-import "uvicorn.protocols.http" `
+            --hidden-import "uvicorn.protocols.http.auto" `
+            --hidden-import "uvicorn.protocols.websockets" `
+            --hidden-import "uvicorn.protocols.websockets.auto" `
+            --hidden-import "uvicorn.lifespans" `
+            --hidden-import "uvicorn.lifespans.on" `
+            --hidden-import "webview.platforms.winforms" `
+            --hidden-import "webview.platforms.edgechromium" `
+            desktop.py
+
+      - name: Build Windows Modern Setup Installer (Inno Setup)
+        if: runner.os == 'Windows'
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup --no-progress
+            $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+          }
+          iscc /DMyAppVersion="1.0.${{ github.run_number }}" installer.iss
+
+      - name: Build macOS App Bundle and DMG
         if: runner.os == 'macOS'
+        env:
+          FINLY_VERSION: 1.0.${{ github.run_number }}
         run: |
           pyinstaller \
             --noconfirm \
@@ -130,6 +208,9 @@ jobs:
             --collect-all "html2text" \
             --collect-all "lxml" \
             --copy-metadata "woob" \
+            --exclude-module "tkinter" \
+            --exclude-module "unittest" \
+            --exclude-module "pydoc" \
             --hidden-import "uvicorn.logging" \
             --hidden-import "uvicorn.loops" \
             --hidden-import "uvicorn.loops.auto" \
@@ -143,27 +224,144 @@ jobs:
             --hidden-import "webview.platforms.cocoa" \
             desktop.py
 
-      - name: Create ZIP archive for macOS App
-        if: runner.os == 'macOS'
-        run: |
+          # 1. Create native macOS DMG disk image installer
+          mkdir -p dist-dmg
+          cp -R dist/Finly.app dist-dmg/
+          ln -s /Applications dist-dmg/Applications
+          hdiutil create -volname "Finly" -srcfolder dist-dmg -ov -format UDZO dist/Finly-macOS.dmg
+
+          # 2. Create ZIP archive
           cd dist
           ditto -c -k --sequesterRsrc --keepParent Finly.app Finly-macOS.zip
 
-      - name: Upload Artifact (Windows)
+      - name: Build Linux Binary and Packages
+        if: runner.os == 'Linux'
+        env:
+          FINLY_VERSION: 1.0.${{ github.run_number }}
+        run: |
+          pyinstaller \
+            --noconfirm \
+            --onefile \
+            --windowed \
+            --name "Finly-Linux-x86_64" \
+            --paths "backend" \
+            --add-data "finly-app/out:finly-app/out" \
+            --add-data "backend/app:app" \
+            --collect-all "fastapi" \
+            --collect-all "starlette" \
+            --collect-all "pydantic" \
+            --collect-all "pydantic_settings" \
+            --collect-all "sqlalchemy" \
+            --collect-all "uvicorn" \
+            --collect-all "webview" \
+            --collect-all "apscheduler" \
+            --collect-all "woob" \
+            --collect-all "html2text" \
+            --collect-all "lxml" \
+            --copy-metadata "woob" \
+            --exclude-module "tkinter" \
+            --exclude-module "unittest" \
+            --exclude-module "pydoc" \
+            --hidden-import "uvicorn.logging" \
+            --hidden-import "uvicorn.loops" \
+            --hidden-import "uvicorn.loops.auto" \
+            --hidden-import "uvicorn.protocols" \
+            --hidden-import "uvicorn.protocols.http" \
+            --hidden-import "uvicorn.protocols.http.auto" \
+            --hidden-import "uvicorn.protocols.websockets" \
+            --hidden-import "uvicorn.protocols.websockets.auto" \
+            --hidden-import "uvicorn.lifespans" \
+            --hidden-import "uvicorn.lifespans.on" \
+            --hidden-import "webview.platforms.gtk" \
+            desktop.py
+
+          # 1. Create portable tar.gz archive
+          tar -czvf dist/Finly-Linux-x86_64.tar.gz -C dist Finly-Linux-x86_64
+
+          # 2. Build .deb installer package
+          mkdir -p deb-pkg/DEBIAN
+          mkdir -p deb-pkg/usr/bin
+          mkdir -p deb-pkg/usr/share/applications
+          mkdir -p deb-pkg/usr/share/icons/hicolor/512x512/apps
+
+          cp dist/Finly-Linux-x86_64 deb-pkg/usr/bin/finly
+          chmod +x deb-pkg/usr/bin/finly
+          cp finly-app/public/icon-512.png deb-pkg/usr/share/icons/hicolor/512x512/apps/finly.png
+
+          cat <<EOF > deb-pkg/DEBIAN/control
+          Package: finly
+          Version: 1.0.${{ github.run_number }}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Finly <https://github.com/louislefo/Finly>
+          Description: Finly Desktop - Personal Finance and Wealth Management Dashboard
+          EOF
+
+          cat <<EOF > deb-pkg/usr/share/applications/finly.desktop
+          [Desktop Entry]
+          Name=Finly
+          Comment=Personal Finance and Wealth Management Dashboard
+          Exec=/usr/bin/finly
+          Icon=finly
+          Terminal=false
+          Type=Application
+          Categories=Office;Finance;
+          EOF
+
+          dpkg-deb --build deb-pkg dist/Finly-Linux-amd64.deb
+
+      - name: Upload Artifact (Windows Setup Installer)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: Finly-Windows-x64
-          path: dist/Finly.exe
+          name: Finly-Windows-Setup
+          path: dist-installer/Finly-Setup.exe
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Artifact (macOS)
+      - name: Upload Artifact (Windows Portable)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Finly-Windows-Portable
+          path: dist/Finly-Portable.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Artifact (macOS DMG)
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: Finly-macOS-App
+          name: Finly-macOS-DMG
+          path: dist/Finly-macOS.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Artifact (macOS ZIP)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Finly-macOS-ZIP
           path: dist/Finly-macOS.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Artifact (Linux DEB)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Finly-Linux-DEB
+          path: dist/Finly-Linux-amd64.deb
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Artifact (Linux Tarball)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Finly-Linux-Tarball
+          path: dist/Finly-Linux-x86_64.tar.gz
           if-no-files-found: error
           retention-days: 14
 
@@ -178,16 +376,40 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Download Windows Executable Artifact
+      - name: Download Windows Installer Artifact
         uses: actions/download-artifact@v4
         with:
-          name: Finly-Windows-x64
+          name: Finly-Windows-Setup
           path: release-binaries
 
-      - name: Download macOS App Artifact
+      - name: Download Windows Portable Artifact
         uses: actions/download-artifact@v4
         with:
-          name: Finly-macOS-App
+          name: Finly-Windows-Portable
+          path: release-binaries
+
+      - name: Download macOS DMG Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Finly-macOS-DMG
+          path: release-binaries
+
+      - name: Download macOS ZIP Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Finly-macOS-ZIP
+          path: release-binaries
+
+      - name: Download Linux DEB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Finly-Linux-DEB
+          path: release-binaries
+
+      - name: Download Linux Tarball Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Finly-Linux-Tarball
           path: release-binaries
 
       - name: Publish Official Main Release
@@ -201,8 +423,12 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            release-binaries/Finly.exe
+            release-binaries/Finly-Setup.exe
+            release-binaries/Finly-Portable.exe
+            release-binaries/Finly-macOS.dmg
             release-binaries/Finly-macOS.zip
+            release-binaries/Finly-Linux-amd64.deb
+            release-binaries/Finly-Linux-x86_64.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -217,7 +443,11 @@ jobs:
           prerelease: true
           make_latest: false
           files: |
-            release-binaries/Finly.exe
+            release-binaries/Finly-Setup.exe
+            release-binaries/Finly-Portable.exe
+            release-binaries/Finly-macOS.dmg
             release-binaries/Finly-macOS.zip
+            release-binaries/Finly-Linux-amd64.deb
+            release-binaries/Finly-Linux-x86_64.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

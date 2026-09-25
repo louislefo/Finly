@@ -12,6 +12,8 @@ import {
   AdminStats,
   AdminUserItem,
   SyncResult,
+  VersionCheckInfo,
+  UpdateDownloadStatus,
 } from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -877,6 +879,52 @@ export const FinlyAPI = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.detail || "Erreur lors de l'accès au compte utilisateur.")
+    }
+    return await res.json()
+  },
+
+  async checkAppVersion(): Promise<VersionCheckInfo> {
+    const res = await fetch(`${API_BASE_URL}/system/version-check`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      throw new Error("Impossible de vérifier les mises à jour.")
+    }
+    return await res.json()
+  },
+
+  async startUpdateDownload(): Promise<UpdateDownloadStatus> {
+    const res = await fetch(`${API_BASE_URL}/system/update/download`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Impossible de démarrer le téléchargement de la mise à jour.")
+    }
+    return await res.json()
+  },
+
+  async getUpdateDownloadStatus(): Promise<UpdateDownloadStatus> {
+    const res = await fetch(`${API_BASE_URL}/system/update/status`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      throw new Error("Impossible de récupérer la progression du téléchargement.")
+    }
+    return await res.json()
+  },
+
+  async applyUpdate(): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/system/update/apply`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Impossible d'appliquer la mise à jour.")
     }
     return await res.json()
   },
