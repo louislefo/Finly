@@ -12,6 +12,59 @@ backend_dir = get_resource_path("backend")
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+# Setup persistent application logging
+def get_log_file_path() -> str:
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        log_dir = os.path.join(base, "Finly")
+    elif sys.platform == "darwin":
+        log_dir = os.path.expanduser("~/Library/Application Support/Finly")
+    else:
+        log_dir = os.path.expanduser("~/.local/share/finly")
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except Exception:
+        pass
+    return os.path.join(log_dir, "finly.log")
+
+class DualLogger:
+    def __init__(self, log_path: str):
+        self.terminal = sys.stdout
+        try:
+            self.log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+        except Exception:
+            self.log_file = None
+
+    def write(self, message):
+        if self.terminal:
+            try:
+                self.terminal.write(message)
+            except Exception:
+                pass
+        if self.log_file:
+            try:
+                self.log_file.write(message)
+                self.log_file.flush()
+            except Exception:
+                pass
+
+    def flush(self):
+        if self.terminal:
+            try:
+                self.terminal.flush()
+            except Exception:
+                pass
+        if self.log_file:
+            try:
+                self.log_file.flush()
+            except Exception:
+                pass
+
+log_file_path = get_log_file_path()
+dual_logger = DualLogger(log_file_path)
+sys.stdout = dual_logger
+sys.stderr = dual_logger
+
 import socket
 import threading
 import time

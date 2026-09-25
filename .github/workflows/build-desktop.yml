@@ -88,6 +88,10 @@ jobs:
             --collect-all "uvicorn" `
             --collect-all "webview" `
             --collect-all "apscheduler" `
+            --collect-all "woob" `
+            --collect-all "html2text" `
+            --collect-all "lxml" `
+            --copy-metadata "woob" `
             --hidden-import "uvicorn.logging" `
             --hidden-import "uvicorn.loops" `
             --hidden-import "uvicorn.loops.auto" `
@@ -122,6 +126,10 @@ jobs:
             --collect-all "uvicorn" \
             --collect-all "webview" \
             --collect-all "apscheduler" \
+            --collect-all "woob" \
+            --collect-all "html2text" \
+            --collect-all "lxml" \
+            --copy-metadata "woob" \
             --hidden-import "uvicorn.logging" \
             --hidden-import "uvicorn.loops" \
             --hidden-import "uvicorn.loops.auto" \
