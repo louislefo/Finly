@@ -12,6 +12,7 @@ import {
   AdminStats,
   AdminUserItem,
   SyncResult,
+  VersionCheckInfo,
 } from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -877,6 +878,17 @@ export const FinlyAPI = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.detail || "Erreur lors de l'accès au compte utilisateur.")
+    }
+    return await res.json()
+  },
+
+  async checkAppVersion(): Promise<VersionCheckInfo> {
+    const res = await fetch(`${API_BASE_URL}/system/version-check`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      throw new Error("Impossible de vérifier les mises à jour.")
     }
     return await res.json()
   },

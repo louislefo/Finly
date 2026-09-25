@@ -308,3 +308,19 @@ export interface AdminUserItem {
   total_balance: number
 }
 
+export interface VersionCheckInfo {
+  current_version: string
+  latest_version: string
+  has_update: boolean
+  release_title?: string
+  release_notes?: string
+  release_url?: string
+  published_at?: string
+  download_url?: string
+  platform: string
+  is_desktop: boolean
+  is_container: boolean
+  container_update_cmd: string
+}
+
+

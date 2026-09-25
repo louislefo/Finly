@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { NavUser } from "@/components/nav-user"
+import { UpdateNotifier } from "@/components/update-notifier"
 import { useI18n } from "@/components/i18n-context"
 import { cn } from "@/lib/utils"
 
@@ -304,6 +305,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* Account Footer in Bottom Left */}
       <SidebarFooter className="border-t border-white/5 p-3">
+        <UpdateNotifier />
         <NavUser />
       </SidebarFooter>
 
