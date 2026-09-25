@@ -154,7 +154,7 @@ function getStartDateForTimeframe(timeframe: ForexTimeframe): string {
 }
 
 export class ForexAPI {
-  private static baseUrl = "/api/forex"
+  private static baseUrl = "https://api.frankfurter.dev/v1"
 
   /**
    * Get all supported currencies dictionary

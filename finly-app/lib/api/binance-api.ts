@@ -46,9 +46,6 @@ const TOP_SYMBOLS_CONFIG: { symbol: string; baseAsset: string; name: string }[] 
 
 export class BinanceAPI {
   private static getBaseUrl(): string {
-    if (typeof window !== "undefined") {
-      return "/api/crypto"
-    }
     return "https://data-api.binance.vision/api/v3"
   }
 
