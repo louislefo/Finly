@@ -24,24 +24,57 @@ from woob.exceptions import (
 from app.core.config import settings
 
 class WoobService:
+    MODULE_ALIASES = {
+        "ce": "caissedepargne",
+        "caisseepargne": "caissedepargne",
+        "caisse_epargne": "caissedepargne",
+        "caissedepargne": "caissedepargne",
+        "bnporc": "bnp",
+        "bnp": "bnp",
+        "bourso": "boursorama",
+        "boursorama": "boursorama",
+        "sg": "societegenerale",
+        "societegenerale": "societegenerale",
+        "banquepopulaire": "banquepopulaire",
+        "bp": "bp",
+        "labanquepostale": "bp",
+        "cragr": "cragr",
+        "ca": "cragr",
+        "creditagricole": "cragr",
+        "credit_agricole": "cragr",
+        "cm": "creditmutuel",
+        "creditmutuel": "creditmutuel",
+        "cic": "cic",
+        "lcl": "lcl",
+        "fortuneo": "fortuneo",
+        "hellobank": "hellobank",
+        "n26": "n26",
+        "bforbank": "bforbank",
+        "axabanque": "axabanque",
+        "creditcooperatif": "creditcooperatif",
+        "ccf": "ccf",
+        "mafrenchbank": "mafrenchbank",
+    }
+
     SUPPORTED_MODULES = [
-        {"id": "bourso", "name": "BoursoBank", "color": "from-pink-600 to-rose-600", "logo": "B"},
-        {"id": "bnporc", "name": "BNP Paribas", "color": "from-emerald-600 to-teal-600", "logo": "BNP"},
-        {"id": "fortuneo", "name": "Fortuneo", "color": "from-emerald-500 to-teal-700", "logo": "F"},
+        {"id": "boursorama", "name": "BoursoBank (Boursorama)", "color": "from-pink-600 to-rose-700", "logo": "BOURS"},
+        {"id": "bnp", "name": "BNP Paribas", "color": "from-emerald-600 to-teal-700", "logo": "BNP"},
+        {"id": "caissedepargne", "name": "Caisse d'Épargne", "color": "from-rose-600 to-red-800", "logo": "CE"},
+        {"id": "banquepopulaire", "name": "Banque Populaire", "color": "from-cyan-600 to-blue-800", "logo": "BP"},
         {"id": "cragr", "name": "Crédit Agricole", "color": "from-green-600 to-emerald-700", "logo": "CA"},
-        {"id": "sg", "name": "Société Générale", "color": "from-[#18181B] to-[#201f22]", "logo": "SG"},
-        {"id": "n26", "name": "N26 Bank", "color": "from-teal-600 to-cyan-600", "logo": "N26"},
+        {"id": "societegenerale", "name": "Société Générale", "color": "from-red-600 to-rose-700", "logo": "SG"},
+        {"id": "lcl", "name": "LCL", "color": "from-yellow-600 to-amber-700", "logo": "LCL"},
+        {"id": "fortuneo", "name": "Fortuneo", "color": "from-emerald-500 to-teal-700", "logo": "FORTU"},
         {"id": "creditmutuel", "name": "Crédit Mutuel", "color": "from-red-600 to-rose-700", "logo": "CM"},
         {"id": "cic", "name": "CIC", "color": "from-blue-700 to-cyan-700", "logo": "CIC"},
-        {"id": "bp", "name": "Banque Populaire", "color": "from-cyan-600 to-blue-800", "logo": "BP"},
-        {"id": "ce", "name": "Caisse d'Épargne", "color": "from-rose-600 to-red-800", "logo": "CE"},
         {"id": "hellobank", "name": "Hello bank!", "color": "from-teal-500 to-emerald-600", "logo": "HB"},
-        {"id": "lcl", "name": "LCL", "color": "from-yellow-600 to-amber-700", "logo": "LCL"},
-        {"id": "labanquepostale", "name": "La Banque Postale", "color": "from-blue-600 to-indigo-700", "logo": "LBP"},
+        {"id": "bp", "name": "La Banque Postale", "color": "from-blue-600 to-indigo-700", "logo": "LBP"},
         {"id": "bforbank", "name": "BforBank", "color": "from-blue-800 to-cyan-800", "logo": "BFB"},
-        {"id": "monabanq", "name": "Monabanq", "color": "from-orange-600 to-amber-700", "logo": "MONA"},
-        {"id": "shine", "name": "Shine", "color": "from-yellow-500 to-amber-600", "logo": "SHINE"},
-        {"id": "qonto", "name": "Qonto", "color": "from-purple-600 to-indigo-700", "logo": "QON"},
+        {"id": "n26", "name": "N26", "color": "from-teal-600 to-cyan-600", "logo": "N26"},
+        {"id": "axabanque", "name": "AXA Banque", "color": "from-blue-700 to-indigo-800", "logo": "AXA"},
+        {"id": "creditcooperatif", "name": "Crédit Coopératif", "color": "from-teal-600 to-emerald-700", "logo": "CC"},
+        {"id": "ccf", "name": "CCF", "color": "from-gray-700 to-slate-800", "logo": "CCF"},
+        {"id": "mafrenchbank", "name": "Ma French Bank", "color": "from-sky-500 to-blue-600", "logo": "MFB"},
     ]
 
     def __init__(self):
@@ -91,6 +124,9 @@ class WoobService:
         """Test and establish connection to a bank module using official certified Woob modules."""
         w = self._get_woob_instance()
 
+        # Normalize module name via official aliases (e.g. ce -> caissedepargne, bnporc -> bnp, etc.)
+        module_name = self.MODULE_ALIASES.get(module_name.lower(), module_name.lower())
+
         if not backend_name:
             backend_name = f"{module_name}_{uuid.uuid4().hex[:8]}"
 
@@ -107,7 +143,9 @@ class WoobService:
                 if minfo:
                     self.log(f"Installation du module certifie {module_name} (v{getattr(minfo, 'version', 'latest')})...")
                     w.repositories.install(minfo)
-                    w.modules_loader.load_module(module_name)
+                else:
+                    self.log(f"Avertissement: Module {module_name} introuvable dans les depots Woob.")
+            w.modules_loader.get_or_load_module(module_name)
         except Exception as e:
             self.log(f"Note installation module {module_name}: {e}")
 
@@ -309,30 +347,31 @@ class WoobService:
                 continue
 
             # Ensure official module is installed and loaded
+            mod_name = self.MODULE_ALIASES.get(conn.module_name.lower(), conn.module_name.lower())
             try:
-                if not w.modules_loader.module_exists(conn.module_name):
-                    self.log(f"Module {conn.module_name} absent en local. Recherche dans le depot officiel Woob...")
-                    minfo = w.repositories.get_module_info(conn.module_name)
+                if not w.modules_loader.module_exists(mod_name):
+                    self.log(f"Module {mod_name} absent en local. Recherche dans le depot officiel Woob...")
+                    minfo = w.repositories.get_module_info(mod_name)
                     if not minfo:
                         w.repositories.update()
-                        minfo = w.repositories.get_module_info(conn.module_name)
+                        minfo = w.repositories.get_module_info(mod_name)
                     if minfo:
-                        self.log(f"Installation du module certifie {conn.module_name}...")
+                        self.log(f"Installation du module certifie {mod_name}...")
                         w.repositories.install(minfo)
-                    w.modules_loader.load_module(conn.module_name)
+                w.modules_loader.get_or_load_module(mod_name)
             except Exception as mod_err:
-                self.log(f"Note chargement module {conn.module_name}: {mod_err}")
+                self.log(f"Note chargement module {mod_name}: {mod_err}")
 
             # Remove previous backend instance if present
             w.backend_instances.pop(conn.backend_name, None)
 
             try:
-                self.log(f"Reconnexion & rafraichissement de session pour {conn.bank_name} ({conn.module_name})...")
+                self.log(f"Reconnexion & rafraichissement de session pour {conn.bank_name} ({mod_name})...")
                 params = {
                     "login": conn.login,
                     "password": str(decrypted_pwd),
                 }
-                backend = w.build_backend(conn.module_name, params, name=conn.backend_name)
+                backend = w.build_backend(mod_name, params, name=conn.backend_name)
                 w.backend_instances[conn.backend_name] = backend
             except Exception as e:
                 self.log(f"Note chargement backend {conn.backend_name}: {e}")
