@@ -36,9 +36,32 @@ def get_default_database_url() -> str:
     return f"sqlite:///{posix_path}"
 
 
+def get_app_version() -> str:
+    """Get application version from environment or bundled version.txt."""
+    if os.environ.get("FINLY_VERSION"):
+        return os.environ["FINLY_VERSION"].strip().lstrip("v").lstrip("V")
+
+    # Check for embedded/bundled version file
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "version.txt"),
+        os.path.join(getattr(sys, "_MEIPASS", ""), "app", "version.txt") if hasattr(sys, "_MEIPASS") else "",
+        os.path.join(getattr(sys, "_MEIPASS", ""), "version.txt") if hasattr(sys, "_MEIPASS") else "",
+    ]
+    for p in candidates:
+        if p and os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    ver = f.read().strip().lstrip("v").lstrip("V")
+                    if ver:
+                        return ver
+            except Exception:
+                pass
+    return "1.0.0"
+
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Finly API"
-    VERSION: str = os.environ.get("FINLY_VERSION", "1.0.0")
+    VERSION: str = get_app_version()
     API_V1_STR: str = "/api/v1"
     
     # Secret Key for JWT Tokens and AES-256 Fernet Encryption
