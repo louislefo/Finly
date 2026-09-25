@@ -212,9 +212,13 @@ def main():
 
     window.events.closed += on_window_closed
 
-    # Determine GUI engine: WebKit for macOS (Cocoa), EdgeChromium for Windows
-    gui_engine = "cocoa" if sys.platform == "darwin" else "edgechromium"
-    webview.start(gui=gui_engine, debug=False)
+    # Determine GUI engine: Cocoa for macOS, GTK for Linux, EdgeChromium for Windows
+    gui_engine = "cocoa" if sys.platform == "darwin" else ("gtk" if sys.platform.startswith("linux") else "edgechromium")
+    try:
+        webview.start(gui=gui_engine, debug=False)
+    except Exception:
+        # Fallback to default engine auto-detection if specific engine fails
+        webview.start(debug=False)
 
     # Clean shutdown
     server.should_exit = True
