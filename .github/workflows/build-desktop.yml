@@ -8,6 +8,9 @@ on:
       - test-release*
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -135,3 +138,46 @@ jobs:
           path: dist/Finly-macOS.zip
           if-no-files-found: error
           retention-days: 14
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows Executable Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Finly-Windows-x64
+          path: release-binaries
+
+      - name: Download macOS App Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Finly-macOS-App
+          path: release-binaries
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-preview
+          name: "Finly Desktop Test Preview"
+          body: |
+            Automated desktop build for test branch `${{ github.ref_name }}`.
+
+            Download links:
+            - **Windows**: `Finly.exe` (Direct executable, no extraction needed)
+            - **macOS**: `Finly-macOS.zip` (Universal macOS application)
+          draft: false
+          prerelease: true
+          make_latest: false
+          files: |
+            release-binaries/Finly.exe
+            release-binaries/Finly-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
