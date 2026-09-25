@@ -323,4 +323,14 @@ export interface VersionCheckInfo {
   container_update_cmd: string
 }
 
+export interface UpdateDownloadStatus {
+  status: "idle" | "downloading" | "ready" | "error"
+  progress_percent: number
+  downloaded_bytes: number
+  total_bytes: number
+  error_message?: string | null
+  version?: string | null
+}
+
+
 

@@ -82,6 +82,10 @@ export interface TranslationDictionary {
     latestVersion: string
     whatsNew: string
     downloadAndInstall: string
+    downloadingUpdate: string
+    readyToInstall: string
+    installAndRestart: string
+    restartPrompt: string
     containerUpdateTitle: string
     containerUpdateDesc: string
     copyCommand: string

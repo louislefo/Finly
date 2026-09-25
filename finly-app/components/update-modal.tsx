@@ -1,27 +1,27 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import {
-  Download,
   Terminal,
   ExternalLink,
   Copy,
   Check,
-  Sparkles,
   ArrowUpCircle,
-  Monitor,
-  Box,
+  Loader2,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react"
-import { VersionCheckInfo } from "@/lib/types/finance"
+import { VersionCheckInfo, UpdateDownloadStatus } from "@/lib/types/finance"
+import { FinlyAPI } from "@/lib/api/finly-api"
 import { useI18n } from "@/components/i18n-context"
 
 interface UpdateModalProps {
@@ -33,6 +33,16 @@ interface UpdateModalProps {
 export function UpdateModal({ isOpen, onClose, updateInfo }: UpdateModalProps) {
   const { t } = useI18n()
   const [hasCopied, setHasCopied] = useState(false)
+  const [downloadStatus, setDownloadStatus] = useState<UpdateDownloadStatus | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [updatePhase, setUpdatePhase] = useState<"idle" | "downloading" | "installing">("idle")
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [])
 
   if (!updateInfo) return null
 
@@ -43,140 +53,157 @@ export function UpdateModal({ isOpen, onClose, updateInfo }: UpdateModalProps) {
     setTimeout(() => setHasCopied(false), 2000)
   }
 
-  const handleDownload = () => {
-    if (updateInfo.download_url) {
-      window.open(updateInfo.download_url, "_blank")
-    } else if (updateInfo.release_url) {
-      window.open(updateInfo.release_url, "_blank")
+  const handleStartUpdate = async () => {
+    try {
+      setIsUpdating(true)
+      setUpdatePhase("downloading")
+      const initialStatus = await FinlyAPI.startUpdateDownload()
+      setDownloadStatus(initialStatus)
+
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const status = await FinlyAPI.getUpdateDownloadStatus()
+          setDownloadStatus(status)
+
+          if (status.status === "ready") {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+            setUpdatePhase("installing")
+            // Automatically apply update, close app, run setup and relaunch
+            await FinlyAPI.applyUpdate()
+          } else if (status.status === "error") {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+            setUpdatePhase("idle")
+            setIsUpdating(false)
+            if (updateInfo.download_url) {
+              window.open(updateInfo.download_url, "_blank")
+            }
+          }
+        } catch {
+          // ignore transient errors
+        }
+      }, 500)
+    } catch {
+      setIsUpdating(false)
+      setUpdatePhase("idle")
+      if (updateInfo.download_url) {
+        window.open(updateInfo.download_url, "_blank")
+      }
     }
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md sm:max-w-lg bg-[#18181B] border border-white/10 text-white rounded-3xl p-6 shadow-2xl">
-        <DialogHeader className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center size-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                <ArrowUpCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-white tracking-tight">
-                  {t.update.newVersionAvailable}
-                </DialogTitle>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-zinc-400 font-mono">
-                    v{updateInfo.current_version.replace(/^v/, "")}
-                  </span>
-                  <span className="text-xs text-zinc-600">→</span>
-                  <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono font-semibold px-2 py-0.5">
-                    {updateInfo.latest_version}
-                  </Badge>
-                </div>
-              </div>
-            </div>
+  const progress = downloadStatus?.progress_percent ?? 0
 
-            {updateInfo.is_container ? (
-              <Badge variant="outline" className="border-white/10 text-zinc-400 flex items-center gap-1 text-[11px]">
-                <Box className="w-3 h-3" />
-                Docker
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="border-white/10 text-zinc-400 flex items-center gap-1 text-[11px]">
-                <Monitor className="w-3 h-3" />
-                Desktop
-              </Badge>
-            )}
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isUpdating && onClose()}>
+      <DialogContent className="max-w-[340px] sm:max-w-[360px] bg-[#18181B] border border-white/10 text-white rounded-3xl p-5 shadow-2xl">
+        <DialogHeader className="space-y-2 text-center items-center">
+          <div className="flex items-center justify-center size-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-1">
+            <Sparkles className="w-5 h-5 animate-pulse" />
+          </div>
+
+          <DialogTitle className="text-base font-bold text-white tracking-tight">
+            {t.update.updateAvailable}
+          </DialogTitle>
+
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs text-zinc-400 font-mono">
+              v{updateInfo.current_version.replace(/^v/, "")}
+            </span>
+            <span className="text-xs text-zinc-600">→</span>
+            <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono font-semibold px-2 py-0.5">
+              {updateInfo.latest_version}
+            </Badge>
           </div>
         </DialogHeader>
 
-        {/* Content based on environment */}
-        <div className="space-y-4 my-2">
-          {updateInfo.release_notes ? (
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                {t.update.whatsNew}
-              </span>
-              <div className="max-h-40 overflow-y-auto rounded-2xl bg-black/40 border border-white/5 p-3.5 text-xs text-zinc-300 leading-relaxed font-mono whitespace-pre-line select-text">
-                {updateInfo.release_notes}
-              </div>
-            </div>
-          ) : null}
-
+        {/* Content */}
+        <div className="my-2 space-y-3">
           {updateInfo.is_container ? (
-            <div className="space-y-2 rounded-2xl bg-zinc-900/60 border border-white/5 p-3.5">
-              <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
-                <Terminal className="w-4 h-4 text-indigo-400" />
-                <span>{t.update.containerUpdateTitle}</span>
+            <div className="space-y-2 rounded-2xl bg-black/40 border border-white/5 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-300">
+                <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Docker</span>
               </div>
-              <p className="text-[11px] text-zinc-400">
-                {t.update.containerUpdateDesc}
-              </p>
-              <div className="flex items-center justify-between gap-2 bg-black/60 border border-white/10 rounded-xl px-3 py-2 mt-1.5">
-                <code className="text-xs font-mono text-indigo-300 select-all truncate">
+              <div className="flex items-center justify-between gap-1.5 bg-zinc-900 border border-white/10 rounded-xl px-2.5 py-1.5">
+                <code className="text-[11px] font-mono text-indigo-300 truncate select-all">
                   {updateInfo.container_update_cmd}
                 </code>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={handleCopyCommand}
-                  className="h-7 px-2 text-xs text-zinc-400 hover:text-white hover:bg-white/10 shrink-0 cursor-pointer"
+                  className="h-6 px-1.5 text-xs text-zinc-400 hover:text-white hover:bg-white/10 shrink-0 cursor-pointer"
                 >
                   {hasCopied ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <Check className="w-3 h-3 text-emerald-400" />
                   ) : (
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-3 h-3" />
                   )}
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl bg-zinc-900/40 border border-white/5 p-3 text-xs text-zinc-400 flex items-center gap-3">
-              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>
-                {t.update.updateAvailable} ({updateInfo.latest_version})
-              </span>
+            <div className="space-y-3">
+              {updatePhase === "downloading" && (
+                <div className="space-y-2 rounded-2xl bg-black/40 border border-white/5 p-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-300 flex items-center gap-1.5 font-medium text-[11px]">
+                      <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                      {t.update.downloadingUpdate}
+                    </span>
+                    <span className="text-indigo-400 font-mono font-bold text-xs">{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-1.5 bg-zinc-800" />
+                </div>
+              )}
+
+              {updatePhase === "installing" && (
+                <div className="rounded-2xl bg-indigo-500/10 border border-indigo-500/20 p-3 text-center space-y-1">
+                  <RefreshCw className="w-4 h-4 animate-spin text-indigo-400 mx-auto" />
+                  <span className="text-xs text-indigo-300 font-semibold block">Lancement du programme...</span>
+                  <span className="text-[10px] text-zinc-400 block">Finly va redémarrer automatiquement.</span>
+                </div>
+              )}
+
+              {updatePhase === "idle" && (
+                <Button
+                  onClick={handleStartUpdate}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <ArrowUpCircle className="w-4 h-4" />
+                  <span>Mettre à jour maintenant</span>
+                </Button>
+              )}
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex flex-row items-center justify-between sm:justify-between gap-2 pt-2 border-t border-white/5">
+        {/* Minimal Footer */}
+        <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px]">
           {updateInfo.release_url ? (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              type="button"
               onClick={() => window.open(updateInfo.release_url, "_blank")}
-              className="text-xs text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer flex items-center gap-1.5"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>{t.update.viewOnGithub}</span>
-            </Button>
+              <span>GitHub</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
           ) : (
             <div />
           )}
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
+          {!isUpdating && (
+            <button
+              type="button"
               onClick={onClose}
-              className="text-xs text-zinc-400 hover:text-white hover:bg-white/5 cursor-pointer"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
             >
               {t.update.dismiss}
-            </Button>
-
-            {!updateInfo.is_container && (
-              <Button
-                size="sm"
-                onClick={handleDownload}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 rounded-xl px-3.5 shadow-md shadow-indigo-600/20 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{t.update.downloadAndInstall}</span>
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
+            </button>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )
