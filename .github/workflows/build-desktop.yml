@@ -190,13 +190,40 @@ jobs:
           name: Finly-macOS-App
           path: release-binaries
 
-      - name: Create or Update GitHub Release
+      - name: Publish Official Main Release
+        if: github.ref_name == 'main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "Finly Desktop v1.0.0 (Latest Release)"
+          body: |
+            Official standalone desktop release for **Finly**.
+
+            ### Downloads:
+            - **Windows (x64)**: `Finly.exe` (Direct executable, no installation required)
+            - **macOS (Universal)**: `Finly-macOS.zip` (Universal macOS app)
+
+            ### Features:
+            - Standalone desktop application with integrated FastAPI backend and Next.js frontend.
+            - Real-time local bank synchronization with Woob.
+            - Persistent local database stored securely in standard OS AppData.
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            release-binaries/Finly.exe
+            release-binaries/Finly-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Test Preview Release
+        if: github.ref_name != 'main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: test-preview
           name: "Finly Desktop Test Preview"
           body: |
-            Automated desktop build for test branch `${{ github.ref_name }}`.
+            Automated desktop test build for branch `${{ github.ref_name }}`.
 
             Download links:
             - **Windows**: `Finly.exe` (Direct executable, no extraction needed)
