@@ -76,8 +76,16 @@ jobs:
             --onefile `
             --windowed `
             --name "Finly" `
+            --paths "backend" `
             --add-data "finly-app/out;finly-app/out" `
             --add-data "backend/app;app" `
+            --collect-all "fastapi" `
+            --collect-all "starlette" `
+            --collect-all "pydantic" `
+            --collect-all "pydantic_settings" `
+            --collect-all "sqlalchemy" `
+            --collect-all "uvicorn" `
+            --collect-all "webview" `
             --hidden-import "uvicorn.logging" `
             --hidden-import "uvicorn.loops" `
             --hidden-import "uvicorn.loops.auto" `
@@ -100,8 +108,16 @@ jobs:
             --onedir \
             --windowed \
             --name "Finly" \
+            --paths "backend" \
             --add-data "finly-app/out:finly-app/out" \
             --add-data "backend/app:app" \
+            --collect-all "fastapi" \
+            --collect-all "starlette" \
+            --collect-all "pydantic" \
+            --collect-all "pydantic_settings" \
+            --collect-all "sqlalchemy" \
+            --collect-all "uvicorn" \
+            --collect-all "webview" \
             --hidden-import "uvicorn.logging" \
             --hidden-import "uvicorn.loops" \
             --hidden-import "uvicorn.loops.auto" \

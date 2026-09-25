@@ -1,15 +1,5 @@
 import os
 import sys
-import socket
-import threading
-import time
-import uvicorn
-import webview
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
 
 def get_resource_path(relative_path: str) -> str:
     """Get absolute path to resource, works for dev and for PyInstaller."""
@@ -17,11 +7,24 @@ def get_resource_path(relative_path: str) -> str:
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
 
-
-# Ensure backend directory is in sys.path
+# Ensure backend directory is in sys.path before any backend imports
 backend_dir = get_resource_path("backend")
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
+
+import socket
+import threading
+import time
+import uvicorn
+import webview
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# Import backend FastAPI app at top level for PyInstaller AST dependency tracing
+from app.main import app as fastapi_app
 
 # Identify frontend static files directory
 frontend_dist_dir = get_resource_path(os.path.join("finly-app", "out"))
@@ -99,9 +102,6 @@ def run_uvicorn(server: uvicorn.Server):
 
 
 def main():
-    # Import FastAPI application
-    from app.main import app as fastapi_app
-
     # Mount frontend static files onto FastAPI app
     setup_spa_mount(fastapi_app, frontend_dist_dir)
 
