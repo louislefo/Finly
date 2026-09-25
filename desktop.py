@@ -12,6 +12,8 @@ backend_dir = get_resource_path("backend")
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+import io
+
 # Setup persistent application logging
 def get_log_file_path() -> str:
     if sys.platform == "win32":
@@ -30,13 +32,26 @@ def get_log_file_path() -> str:
 class DualLogger:
     def __init__(self, log_path: str):
         self.terminal = sys.stdout
+        self._encoding = getattr(self.terminal, "encoding", "utf-8") or "utf-8"
         try:
             self.log_file = open(log_path, "a", encoding="utf-8", buffering=1)
         except Exception:
             self.log_file = None
 
+    @property
+    def encoding(self):
+        return self._encoding
+
+    def isatty(self) -> bool:
+        if self.terminal and hasattr(self.terminal, "isatty"):
+            try:
+                return self.terminal.isatty()
+            except Exception:
+                return False
+        return False
+
     def write(self, message):
-        if self.terminal:
+        if self.terminal and hasattr(self.terminal, "write"):
             try:
                 self.terminal.write(message)
             except Exception:
@@ -47,9 +62,10 @@ class DualLogger:
                 self.log_file.flush()
             except Exception:
                 pass
+        return len(message) if isinstance(message, str) else 0
 
     def flush(self):
-        if self.terminal:
+        if self.terminal and hasattr(self.terminal, "flush"):
             try:
                 self.terminal.flush()
             except Exception:
@@ -168,6 +184,7 @@ def main():
         port=selected_port,
         log_level="warning",
         access_log=False,
+        use_colors=False,
     )
     server = uvicorn.Server(config)
 
