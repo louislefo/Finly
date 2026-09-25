@@ -76,6 +76,7 @@ jobs:
             --onefile `
             --windowed `
             --name "Finly" `
+            --icon "finly-app/public/favicon.ico" `
             --paths "backend" `
             --add-data "finly-app/out;finly-app/out" `
             --add-data "backend/app;app" `
@@ -109,6 +110,7 @@ jobs:
             --onedir \
             --windowed \
             --name "Finly" \
+            --icon "finly-app/public/icon-512.png" \
             --paths "backend" \
             --add-data "finly-app/out:finly-app/out" \
             --add-data "backend/app:app" \
