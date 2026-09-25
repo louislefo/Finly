@@ -97,12 +97,8 @@ export function UpdateModal({ isOpen, onClose, updateInfo }: UpdateModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isUpdating && onClose()}>
       <DialogContent className="max-w-[340px] sm:max-w-[360px] bg-[#18181B] border border-white/10 text-white rounded-3xl p-5 shadow-2xl">
-        <DialogHeader className="space-y-2 text-center items-center">
-          <div className="flex items-center justify-center size-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-1">
-            <Sparkles className="w-5 h-5 animate-pulse" />
-          </div>
-
-          <DialogTitle className="text-base font-bold text-white tracking-tight">
+        <DialogHeader className="space-y-1.5 text-center items-center">
+          <DialogTitle className="text-sm font-semibold text-white tracking-tight">
             {t.update.updateAvailable}
           </DialogTitle>
 
