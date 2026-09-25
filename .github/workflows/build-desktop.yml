@@ -58,6 +58,16 @@ jobs:
             pkg-config \
             python3-dev
 
+      - name: Inject Dynamic Release Version
+        shell: python
+        run: |
+          import os
+          version = "1.0.${{ github.run_number }}"
+          os.makedirs("backend/app", exist_ok=True)
+          with open("backend/app/version.txt", "w", encoding="utf-8") as f:
+              f.write(version)
+          print(f"Injected release version {version} into backend/app/version.txt")
+
       - name: Build Next.js Static Export
         working-directory: finly-app
         env:
