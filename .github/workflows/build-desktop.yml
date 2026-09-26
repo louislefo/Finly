@@ -127,7 +127,47 @@ jobs:
             --collect-all "woob" `
             --collect-all "html2text" `
             --collect-all "lxml" `
+            --collect-all "jose" `
+            --collect-all "jwt" `
+            --collect-all "cryptography" `
+            --collect-all "Crypto" `
+            --collect-all "schwifty" `
+            --collect-all "chompjs" `
+            --collect-all "pdfminer" `
+            --collect-all "bs4" `
+            --collect-all "unidecode" `
+            --collect-all "PIL" `
+            --collect-all "requests" `
+            --collect-all "httpx" `
+            --collect-all "dateutil" `
+            --collect-all "openpyxl" `
+            --collect-all "email_validator" `
+            --collect-all "yaml" `
+            --collect-all "babel" `
+            --collect-all "pycountry" `
+            --collect-all "rstr" `
+            --collect-all "rsa" `
+            --collect-all "pyasn1" `
+            --collect-all "ecdsa" `
             --copy-metadata "woob" `
+            --copy-metadata "python-jose" `
+            --copy-metadata "cryptography" `
+            --copy-metadata "pyjwt" `
+            --copy-metadata "schwifty" `
+            --copy-metadata "pdfminer.six" `
+            --copy-metadata "pycryptodome" `
+            --copy-metadata "beautifulsoup4" `
+            --copy-metadata "requests" `
+            --copy-metadata "httpx" `
+            --copy-metadata "pillow" `
+            --copy-metadata "pycountry" `
+            --copy-metadata "babel" `
+            --copy-metadata "pyyaml" `
+            --copy-metadata "email-validator" `
+            --copy-metadata "rstr" `
+            --copy-metadata "rsa" `
+            --copy-metadata "pyasn1" `
+            --copy-metadata "ecdsa" `
             --exclude-module "tkinter" `
             --exclude-module "unittest" `
             --exclude-module "pydoc" `
@@ -143,6 +183,23 @@ jobs:
             --hidden-import "uvicorn.lifespans.on" `
             --hidden-import "webview.platforms.winforms" `
             --hidden-import "webview.platforms.edgechromium" `
+            --hidden-import "jose" `
+            --hidden-import "jose.jwt" `
+            --hidden-import "jose.jws" `
+            --hidden-import "jose.jwk" `
+            --hidden-import "jose.exceptions" `
+            --hidden-import "Crypto" `
+            --hidden-import "Crypto.Cipher" `
+            --hidden-import "Crypto.PublicKey" `
+            --hidden-import "Crypto.Hash" `
+            --hidden-import "Crypto.Random" `
+            --hidden-import "Crypto.Util" `
+            --hidden-import "schwifty" `
+            --hidden-import "chompjs" `
+            --hidden-import "pdfminer" `
+            --hidden-import "bs4" `
+            --hidden-import "unidecode" `
+            --hidden-import "PIL" `
             desktop.py
 
           # 2. Build standalone portable onefile executable
@@ -166,7 +223,47 @@ jobs:
             --collect-all "woob" `
             --collect-all "html2text" `
             --collect-all "lxml" `
+            --collect-all "jose" `
+            --collect-all "jwt" `
+            --collect-all "cryptography" `
+            --collect-all "Crypto" `
+            --collect-all "schwifty" `
+            --collect-all "chompjs" `
+            --collect-all "pdfminer" `
+            --collect-all "bs4" `
+            --collect-all "unidecode" `
+            --collect-all "PIL" `
+            --collect-all "requests" `
+            --collect-all "httpx" `
+            --collect-all "dateutil" `
+            --collect-all "openpyxl" `
+            --collect-all "email_validator" `
+            --collect-all "yaml" `
+            --collect-all "babel" `
+            --collect-all "pycountry" `
+            --collect-all "rstr" `
+            --collect-all "rsa" `
+            --collect-all "pyasn1" `
+            --collect-all "ecdsa" `
             --copy-metadata "woob" `
+            --copy-metadata "python-jose" `
+            --copy-metadata "cryptography" `
+            --copy-metadata "pyjwt" `
+            --copy-metadata "schwifty" `
+            --copy-metadata "pdfminer.six" `
+            --copy-metadata "pycryptodome" `
+            --copy-metadata "beautifulsoup4" `
+            --copy-metadata "requests" `
+            --copy-metadata "httpx" `
+            --copy-metadata "pillow" `
+            --copy-metadata "pycountry" `
+            --copy-metadata "babel" `
+            --copy-metadata "pyyaml" `
+            --copy-metadata "email-validator" `
+            --copy-metadata "rstr" `
+            --copy-metadata "rsa" `
+            --copy-metadata "pyasn1" `
+            --copy-metadata "ecdsa" `
             --exclude-module "tkinter" `
             --exclude-module "unittest" `
             --exclude-module "pydoc" `
@@ -182,6 +279,23 @@ jobs:
             --hidden-import "uvicorn.lifespans.on" `
             --hidden-import "webview.platforms.winforms" `
             --hidden-import "webview.platforms.edgechromium" `
+            --hidden-import "jose" `
+            --hidden-import "jose.jwt" `
+            --hidden-import "jose.jws" `
+            --hidden-import "jose.jwk" `
+            --hidden-import "jose.exceptions" `
+            --hidden-import "Crypto" `
+            --hidden-import "Crypto.Cipher" `
+            --hidden-import "Crypto.PublicKey" `
+            --hidden-import "Crypto.Hash" `
+            --hidden-import "Crypto.Random" `
+            --hidden-import "Crypto.Util" `
+            --hidden-import "schwifty" `
+            --hidden-import "chompjs" `
+            --hidden-import "pdfminer" `
+            --hidden-import "bs4" `
+            --hidden-import "unidecode" `
+            --hidden-import "PIL" `
             desktop.py
 
       - name: Build Windows Modern Setup Installer (Inno Setup)
@@ -218,7 +332,47 @@ jobs:
             --collect-all "woob" \
             --collect-all "html2text" \
             --collect-all "lxml" \
+            --collect-all "jose" \
+            --collect-all "jwt" \
+            --collect-all "cryptography" \
+            --collect-all "Crypto" \
+            --collect-all "schwifty" \
+            --collect-all "chompjs" \
+            --collect-all "pdfminer" \
+            --collect-all "bs4" \
+            --collect-all "unidecode" \
+            --collect-all "PIL" \
+            --collect-all "requests" \
+            --collect-all "httpx" \
+            --collect-all "dateutil" \
+            --collect-all "openpyxl" \
+            --collect-all "email_validator" \
+            --collect-all "yaml" \
+            --collect-all "babel" \
+            --collect-all "pycountry" \
+            --collect-all "rstr" \
+            --collect-all "rsa" \
+            --collect-all "pyasn1" \
+            --collect-all "ecdsa" \
             --copy-metadata "woob" \
+            --copy-metadata "python-jose" \
+            --copy-metadata "cryptography" \
+            --copy-metadata "pyjwt" \
+            --copy-metadata "schwifty" \
+            --copy-metadata "pdfminer.six" \
+            --copy-metadata "pycryptodome" \
+            --copy-metadata "beautifulsoup4" \
+            --copy-metadata "requests" \
+            --copy-metadata "httpx" \
+            --copy-metadata "pillow" \
+            --copy-metadata "pycountry" \
+            --copy-metadata "babel" \
+            --copy-metadata "pyyaml" \
+            --copy-metadata "email-validator" \
+            --copy-metadata "rstr" \
+            --copy-metadata "rsa" \
+            --copy-metadata "pyasn1" \
+            --copy-metadata "ecdsa" \
             --exclude-module "tkinter" \
             --exclude-module "unittest" \
             --exclude-module "pydoc" \
@@ -233,6 +387,23 @@ jobs:
             --hidden-import "uvicorn.lifespans" \
             --hidden-import "uvicorn.lifespans.on" \
             --hidden-import "webview.platforms.cocoa" \
+            --hidden-import "jose" \
+            --hidden-import "jose.jwt" \
+            --hidden-import "jose.jws" \
+            --hidden-import "jose.jwk" \
+            --hidden-import "jose.exceptions" \
+            --hidden-import "Crypto" \
+            --hidden-import "Crypto.Cipher" \
+            --hidden-import "Crypto.PublicKey" \
+            --hidden-import "Crypto.Hash" \
+            --hidden-import "Crypto.Random" \
+            --hidden-import "Crypto.Util" \
+            --hidden-import "schwifty" \
+            --hidden-import "chompjs" \
+            --hidden-import "pdfminer" \
+            --hidden-import "bs4" \
+            --hidden-import "unidecode" \
+            --hidden-import "PIL" \
             desktop.py
 
           # 1. Create native macOS DMG disk image installer
@@ -269,7 +440,47 @@ jobs:
             --collect-all "woob" \
             --collect-all "html2text" \
             --collect-all "lxml" \
+            --collect-all "jose" \
+            --collect-all "jwt" \
+            --collect-all "cryptography" \
+            --collect-all "Crypto" \
+            --collect-all "schwifty" \
+            --collect-all "chompjs" \
+            --collect-all "pdfminer" \
+            --collect-all "bs4" \
+            --collect-all "unidecode" \
+            --collect-all "PIL" \
+            --collect-all "requests" \
+            --collect-all "httpx" \
+            --collect-all "dateutil" \
+            --collect-all "openpyxl" \
+            --collect-all "email_validator" \
+            --collect-all "yaml" \
+            --collect-all "babel" \
+            --collect-all "pycountry" \
+            --collect-all "rstr" \
+            --collect-all "rsa" \
+            --collect-all "pyasn1" \
+            --collect-all "ecdsa" \
             --copy-metadata "woob" \
+            --copy-metadata "python-jose" \
+            --copy-metadata "cryptography" \
+            --copy-metadata "pyjwt" \
+            --copy-metadata "schwifty" \
+            --copy-metadata "pdfminer.six" \
+            --copy-metadata "pycryptodome" \
+            --copy-metadata "beautifulsoup4" \
+            --copy-metadata "requests" \
+            --copy-metadata "httpx" \
+            --copy-metadata "pillow" \
+            --copy-metadata "pycountry" \
+            --copy-metadata "babel" \
+            --copy-metadata "pyyaml" \
+            --copy-metadata "email-validator" \
+            --copy-metadata "rstr" \
+            --copy-metadata "rsa" \
+            --copy-metadata "pyasn1" \
+            --copy-metadata "ecdsa" \
             --exclude-module "tkinter" \
             --exclude-module "unittest" \
             --exclude-module "pydoc" \
@@ -284,6 +495,23 @@ jobs:
             --hidden-import "uvicorn.lifespans" \
             --hidden-import "uvicorn.lifespans.on" \
             --hidden-import "webview.platforms.gtk" \
+            --hidden-import "jose" \
+            --hidden-import "jose.jwt" \
+            --hidden-import "jose.jws" \
+            --hidden-import "jose.jwk" \
+            --hidden-import "jose.exceptions" \
+            --hidden-import "Crypto" \
+            --hidden-import "Crypto.Cipher" \
+            --hidden-import "Crypto.PublicKey" \
+            --hidden-import "Crypto.Hash" \
+            --hidden-import "Crypto.Random" \
+            --hidden-import "Crypto.Util" \
+            --hidden-import "schwifty" \
+            --hidden-import "chompjs" \
+            --hidden-import "pdfminer" \
+            --hidden-import "bs4" \
+            --hidden-import "unidecode" \
+            --hidden-import "PIL" \
             desktop.py
 
           # 1. Create portable tar.gz archive

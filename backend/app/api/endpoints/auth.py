@@ -1,3 +1,4 @@
+import random
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -15,11 +16,31 @@ from app.core.security import (
 
 router = APIRouter()
 
+DEFAULT_AVATAR_SEEDS = [
+    "felix",
+    "luna",
+    "oliver",
+    "maya",
+    "alex",
+    "chloe",
+    "milo",
+    "sophie",
+    "leo",
+    "nina",
+    "sam",
+    "emma",
+    "noah",
+    "zoe",
+    "lucas",
+    "eva",
+]
+
 class RegisterRequest(BaseModel):
     email: str
     password: str
     full_name: str
     language: Optional[str] = "en"
+    avatar_seed: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: str
@@ -49,12 +70,19 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
     user_id = f"usr_{uuid.uuid4().hex[:12]}"
     hashed_pw = hash_user_password(req.password)
 
+    assigned_avatar_seed = (
+        req.avatar_seed.strip()
+        if req.avatar_seed and req.avatar_seed.strip()
+        else random.choice(DEFAULT_AVATAR_SEEDS)
+    )
+
     new_user = User(
         id=user_id,
         email=clean_email,
         full_name=req.full_name.strip(),
         hashed_password=hashed_pw,
         role="member",
+        avatar_seed=assigned_avatar_seed,
         language=req.language or "en",
     )
     db.add(new_user)

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -11,20 +11,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { getLineFaceAvatarUri } from "@/lib/avatar"
+import { DEFAULT_LINE_FACE_SEEDS, getLineFaceAvatarUri } from "@/lib/avatar"
 import { useI18n } from "@/components/i18n-context"
-import { Dices, Check, User as UserIcon } from "lucide-react"
-
-const DEFAULT_SEEDS = [
-  "felix",
-  "luna",
-  "oliver",
-  "maya",
-  "alex",
-  "chloe",
-  "milo",
-  "sophie",
-]
+import { Dices, Check, User as UserIcon, Upload, Image as ImageIcon } from "lucide-react"
 
 interface AvatarPickerModalProps {
   isOpen: boolean
@@ -42,16 +31,19 @@ export function AvatarPickerModal({
   onSave,
 }: AvatarPickerModalProps) {
   const { t } = useI18n()
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [selectedSeed, setSelectedSeed] = useState<string | null>(currentSeed || null)
-  const [seeds, setSeeds] = useState<string[]>(DEFAULT_SEEDS)
+  const [seeds, setSeeds] = useState<string[]>(DEFAULT_LINE_FACE_SEEDS.slice(0, 8))
   const [customInput, setCustomInput] = useState<string>("")
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Reset internal state when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedSeed(currentSeed || null)
       setCustomInput("")
+      setUploadError(null)
     }
   }, [isOpen, currentSeed])
 
@@ -73,11 +65,45 @@ export function AvatarPickerModal({
   const handleSelectInitials = () => {
     setSelectedSeed(null)
     setCustomInput("")
+    setUploadError(null)
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null)
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please select a valid image file (PNG, JPG, SVG, WebP).")
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError("Image size must not exceed 2MB.")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUri = event.target?.result as string
+      if (dataUri) {
+        setSelectedSeed(dataUri)
+        setCustomInput("")
+      }
+    }
+    reader.onerror = () => {
+      setUploadError("Failed to read the image file.")
+    }
+    reader.readAsDataURL(file)
   }
 
   const previewUri = useMemo(() => {
     if (!selectedSeed) return null
     return getLineFaceAvatarUri(selectedSeed)
+  }, [selectedSeed])
+
+  const isCustomImage = useMemo(() => {
+    return selectedSeed?.startsWith("data:") || selectedSeed?.startsWith("http")
   }, [selectedSeed])
 
   const handleConfirm = () => {
@@ -102,22 +128,32 @@ export function AvatarPickerModal({
         <div className="flex flex-col items-center justify-center py-4 bg-zinc-950/60 rounded-2xl border border-white/5 mt-2">
           <Avatar className="h-20 w-20 ring-2 ring-indigo-500/40 border border-indigo-400/20 shadow-lg">
             {previewUri ? (
-              <AvatarImage src={previewUri} alt="Line Face Preview" />
+              <AvatarImage src={previewUri} alt="Avatar Preview" />
             ) : null}
             <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white font-bold text-xl tracking-wide">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <span className="text-[11px] text-zinc-400 mt-2 font-mono">
-            {selectedSeed ? `seed: "${selectedSeed}"` : t.accounts.useInitials}
+          <span className="text-[11px] text-zinc-400 mt-2 font-mono truncate max-w-[280px]">
+            {isCustomImage
+              ? t.accounts.uploadAvatar
+              : selectedSeed
+              ? `seed: "${selectedSeed}"`
+              : t.accounts.useInitials}
           </span>
         </div>
+
+        {uploadError && (
+          <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+            {uploadError}
+          </div>
+        )}
 
         {/* DiceBear Line Face Grid */}
         <div className="flex flex-col gap-2 mt-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-zinc-300">
-              Suggestions Line Face
+              {t.accounts.lineFacePresets}
             </span>
             <button
               type="button"
@@ -140,6 +176,7 @@ export function AvatarPickerModal({
                   onClick={() => {
                     setSelectedSeed(seed)
                     setCustomInput("")
+                    setUploadError(null)
                   }}
                   className={`relative p-2 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center group aspect-square ${
                     isSelected
@@ -163,7 +200,7 @@ export function AvatarPickerModal({
           </div>
         </div>
 
-        {/* Custom Seed Input & Initials Fallback */}
+        {/* Custom Seed Input, Upload Option & Initials Fallback */}
         <div className="flex flex-col gap-2.5 mt-2">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-400">
@@ -177,6 +214,23 @@ export function AvatarPickerModal({
               className="bg-zinc-900 border-white/10 text-white rounded-xl text-xs h-10 focus:border-indigo-500"
             />
           </div>
+
+          {/* Upload Custom Image Button */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept="image/png, image/jpeg, image/webp, image/svg+xml"
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full py-2 px-3 rounded-xl border border-white/10 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Upload className="w-3.5 h-3.5 text-indigo-400" />
+            <span>{t.accounts.uploadAvatar}</span>
+          </button>
 
           <button
             type="button"

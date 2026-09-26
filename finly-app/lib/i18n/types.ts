@@ -389,6 +389,9 @@ export interface TranslationDictionary {
     customSeedPlaceholder: string
     useInitials: string
     saveAvatar: string
+    uploadAvatar: string
+    uploadAvatarDesc: string
+    lineFacePresets: string
     title: string
     subtitle: string
     syncAll: string

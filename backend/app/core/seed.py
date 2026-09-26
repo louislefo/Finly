@@ -227,6 +227,9 @@ def init_db_superuser(db: Session = None) -> None:
                 existing_user.is_active = True
                 db.commit()
                 print(f"[Seed] Utilisateur '{superuser_email}' mis a jour avec le role 'admin'.")
+            if not getattr(existing_user, "avatar_seed", None):
+                existing_user.avatar_seed = "felix"
+                db.commit()
             seed_demo_data_for_user(db, existing_user)
         else:
             # Créer un nouveau compte superuser
@@ -238,6 +241,7 @@ def init_db_superuser(db: Session = None) -> None:
                 full_name=settings.FIRST_SUPERUSER_NAME.strip(),
                 hashed_password=hashed_pw,
                 role="admin",
+                avatar_seed="felix",
                 is_active=True,
             )
             db.add(new_admin)
