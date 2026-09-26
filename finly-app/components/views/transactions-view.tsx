@@ -33,6 +33,7 @@ import {
   RotateCcw,
   Trash2,
   Camera,
+  AlertCircle,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
@@ -220,6 +221,8 @@ export function TransactionsView() {
               category: selectedMainCat,
               subcategory: selectedSubCat || undefined,
               is_user_classified: true,
+              is_low_confidence: false,
+              category_confidence: 1.0,
             }
           }
           return t
@@ -233,6 +236,8 @@ export function TransactionsView() {
               category: selectedMainCat,
               subcategory: selectedSubCat || undefined,
               is_user_classified: true,
+              is_low_confidence: false,
+              category_confidence: 1.0,
             }
           : null
       )
@@ -676,6 +681,12 @@ export function TransactionsView() {
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-white/5 text-zinc-400 truncate max-w-[120px]">
                               {tx.account}
                             </span>
+                            {tx.is_low_confidence && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 font-medium flex items-center gap-1">
+                                <span className="size-1 rounded-full bg-amber-400 animate-pulse" />
+                                {t.transactions.uncertainBadge}
+                              </span>
+                            )}
                             {tx.project && (
                               <Badge variant="outline" className="text-[10px] py-0 border-indigo-500/30 text-indigo-300">
                                 {tx.project}
@@ -835,6 +846,28 @@ export function TransactionsView() {
                       </Button>
                     </form>
                   </div>
+                </div>
+              )}
+
+              {/* Uncertainty Warning Banner with 1-Click Confirmation */}
+              {selectedTx.is_low_confidence && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-amber-300">{t.transactions.uncertainCategory}</span>
+                      <span className="text-[11px] text-zinc-400">{t.transactions.lowConfidenceNotice}</span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold text-xs h-8 px-3 rounded-xl shrink-0 cursor-pointer self-start sm:self-auto"
+                  >
+                    <Check className="w-3.5 h-3.5 mr-1" />
+                    <span>{t.transactions.confirmCategory}</span>
+                  </Button>
                 </div>
               )}
 

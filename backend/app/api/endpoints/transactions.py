@@ -108,6 +108,12 @@ def list_transactions(
                 "currency": t.currency,
                 "category": t.category,
                 "subcategory": t.subcategory,
+                "category_confidence": getattr(t, "category_confidence", 1.0) if getattr(t, "category_confidence", None) is not None else 1.0,
+                "is_low_confidence": bool(
+                    (getattr(t, "category_confidence", 1.0) or 1.0) < 0.65
+                    and not t.is_user_classified
+                    and (not t.merchant_name or t.merchant_name not in user_classified_merchants)
+                ),
                 "is_user_classified": bool(t.is_user_classified or (t.merchant_name and t.merchant_name in user_classified_merchants)),
                 "is_excluded_from_budget": bool(t.is_excluded_from_budget),
                 "account": account_name_map.get(t.account_id, "Compte"),
@@ -239,6 +245,7 @@ def update_transaction_category(
 
     tx.category = req.category
     tx.subcategory = req.subcategory
+    tx.category_confidence = 1.0
     tx.is_user_classified = True
 
     updated_count = 1
@@ -275,6 +282,7 @@ def update_transaction_category(
         for other_tx in same_merchant_txs:
             other_tx.category = req.category
             other_tx.subcategory = req.subcategory
+            other_tx.category_confidence = 1.0
             other_tx.is_user_classified = True
             updated_count += 1
 
@@ -394,14 +402,19 @@ def import_csv_transactions(
         category = tx_data.get("category")
         subcategory = tx_data.get("subcategory")
         logo_url = None
+        category_confidence = 1.0
 
         matched_rule = rule_map.get(merchant_name.lower())
         if matched_rule:
             category = matched_rule.category
             subcategory = matched_rule.subcategory
             logo_url = matched_rule.logo_url
+            category_confidence = 1.0
         elif not category or category.lower() in ["divers", "autre", "none"]:
-            category = CategorizerService.categorize(merchant_name, raw_label, amount)
+            cat_res = CategorizerService.categorize(merchant_name, raw_label, amount, db=db, user_id=current_user.id)
+            category = cat_res.category
+            subcategory = cat_res.subcategory
+            category_confidence = cat_res.confidence
 
         label_hash = hashlib.md5(f"{account.id}_{booking_date}_{amount}_{raw_label.upper()}".encode()).hexdigest()[:10]
         bank_tx_id = tx_data.get("id") or f"csv_{account.id}_{label_hash}"
@@ -428,6 +441,7 @@ def import_csv_transactions(
                     existing_tx.subcategory = subcategory
                 if merchant_name:
                     existing_tx.merchant_name = merchant_name
+                existing_tx.category_confidence = category_confidence
             updated_count += 1
         else:
             new_tx = Transaction(
@@ -443,6 +457,7 @@ def import_csv_transactions(
                 merchant_name=merchant_name,
                 category=category or "Divers",
                 subcategory=subcategory,
+                category_confidence=category_confidence,
                 status="confirmed",
                 logo_url=logo_url,
             )

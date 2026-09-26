@@ -266,8 +266,13 @@ class CsvParserService:
                     parsed_category = cat_val
 
             cleaned_merchant = CleanerService.clean_merchant_name(raw_label)
+            subcategory = None
+            category_confidence = 1.0
             if not parsed_category:
-                parsed_category = CategorizerService.categorize(cleaned_merchant, raw_label, parsed_amount)
+                cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, parsed_amount)
+                parsed_category = cat_res.category
+                subcategory = cat_res.subcategory
+                category_confidence = cat_res.confidence
 
             extracted_transactions.append({
                 "row_index": row_idx,
@@ -275,7 +280,10 @@ class CsvParserService:
                 "amount": parsed_amount,
                 "raw_label": raw_label,
                 "merchant_name": cleaned_merchant,
-                "category": parsed_category,
+                "category": parsed_category or "Divers",
+                "subcategory": subcategory,
+                "category_confidence": category_confidence,
+                "is_low_confidence": bool(category_confidence < 0.65),
             })
 
         return {

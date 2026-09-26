@@ -36,8 +36,13 @@ def test_categorizer_service_expenses():
     assert CategorizerService.categorize("SNCF Connect", "CB SNCF CONNECT TGV", -89.00) == "Transports"
     assert CategorizerService.categorize("Netflix", "PRLV NETFLIX ABONNEMENT", -17.99) == "Abonnements"
     assert CategorizerService.categorize("EDF", "PRLV EDF FACTURE ELEC", -110.00) == "Logement"
-    assert CategorizerService.categorize("Doctolib", "CB DOCTOLIB CONSULTATION", -30.00) == "Santé"
-    assert CategorizerService.categorize("Inconnu", "ACHAT BOUTIQUE DIVERS 123", -15.00) == "Divers"
+    assert CategorizerService.categorize("Doctolib", "CB DOCTOLIB CONSULTATION", -30.00) == "Santé & Bien-être"
+    
+    # Test low confidence detection
+    uncertain_res = CategorizerService.categorize("Inconnu", "ACHAT BOUTIQUE DIVERS 123", -15.00)
+    assert uncertain_res.category == "Divers"
+    assert uncertain_res.is_low_confidence is True
+    assert uncertain_res.confidence < 0.65
 
 # --- CsvParserService Tests ---
 def test_csv_parser_detect_delimiter():

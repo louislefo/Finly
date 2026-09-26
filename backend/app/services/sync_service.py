@@ -310,11 +310,14 @@ class SyncService:
                         if user_rule:
                             existing_tx.category = user_rule.category
                             existing_tx.subcategory = user_rule.subcategory
+                            existing_tx.category_confidence = 1.0
                             if user_rule.logo_url:
                                 existing_tx.logo_url = user_rule.logo_url
                         else:
-                            existing_tx.category = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount)
-                            existing_tx.subcategory = None
+                            cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount, db=db, user_id=conn_user_id)
+                            existing_tx.category = cat_res.category
+                            existing_tx.subcategory = cat_res.subcategory
+                            existing_tx.category_confidence = cat_res.confidence
                         is_modified = True
 
                     if is_modified:
@@ -335,13 +338,17 @@ class SyncService:
                     ).first()
 
                 logo_url = None
+                category_confidence = 1.0
                 if user_rule:
                     category = user_rule.category
                     subcategory = user_rule.subcategory
                     logo_url = user_rule.logo_url
+                    category_confidence = 1.0
                 else:
-                    category = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount)
-                    subcategory = None
+                    cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount, db=db, user_id=conn_user_id)
+                    category = cat_res.category
+                    subcategory = cat_res.subcategory
+                    category_confidence = cat_res.confidence
 
                 # Ensure final_bank_tx_id is strictly unique before insert
                 final_bank_tx_id = tx_key
@@ -360,8 +367,9 @@ class SyncService:
                         currency=acc_currency,
                         raw_label=raw_label,
                         merchant_name=cleaned_merchant,
-                        category=category,
+                        category=category or "Divers",
                         subcategory=subcategory,
+                        category_confidence=category_confidence,
                         status=status,
                         logo_url=logo_url,
                     )
