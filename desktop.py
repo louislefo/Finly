@@ -95,6 +95,44 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 # Import backend FastAPI app at top level for PyInstaller AST dependency tracing
 from app.main import app as fastapi_app
 
+# Explicit imports of banking, Woob, and cryptographic modules for PyInstaller frozen binary packaging
+try:
+    import jose
+    import jose.jwt
+    import jose.jws
+    import jose.jwk
+    import jose.exceptions
+    import jwt
+    import Crypto
+    import Crypto.Cipher
+    import Crypto.PublicKey
+    import Crypto.Hash
+    import Crypto.Random
+    import Crypto.Util
+    import cryptography
+    import schwifty
+    import chompjs
+    import pdfminer
+    import bs4
+    import unidecode
+    import PIL
+    import requests
+    import httpx
+    import dateutil
+    import openpyxl
+    import apscheduler
+    import email_validator
+    import yaml
+    import babel
+    import pycountry
+    import rstr
+    import rsa
+    import pyasn1
+    import ecdsa
+    import woob
+except ImportError:
+    pass
+
 # Identify frontend static files directory
 frontend_dist_dir = get_resource_path(os.path.join("finly-app", "out"))
 if not os.path.exists(frontend_dist_dir):
