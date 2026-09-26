@@ -106,6 +106,7 @@ def get_all_users(
             "id": u.id,
             "email": u.email,
             "full_name": u.full_name,
+            "avatar_seed": getattr(u, "avatar_seed", None),
             "role": u.role or "member",
             "is_active": bool(getattr(u, "is_active", True)),
             "auto_sync_enabled": bool(getattr(u, "auto_sync_enabled", False)),

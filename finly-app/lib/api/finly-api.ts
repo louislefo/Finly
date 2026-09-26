@@ -33,7 +33,7 @@ function getAuthHeaders(): HeadersInit {
 
 export const FinlyAPI = {
   // 0. Authentication
-  async register(data: { email: string; password: string; full_name: string; language?: string }): Promise<{ access_token: string; user: User }> {
+  async register(data: { email: string; password: string; full_name: string; language?: string; avatar_seed?: string }): Promise<{ access_token: string; user: User }> {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

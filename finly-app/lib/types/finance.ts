@@ -298,6 +298,7 @@ export interface AdminUserItem {
   id: string
   email: string
   full_name: string
+  avatar_seed?: string | null
   role: string
   is_active: boolean
   auto_sync_enabled: boolean

@@ -11,7 +11,7 @@ interface AuthContextType {
   isImpersonating: boolean
   impersonatedBy: { id: string; email: string; full_name: string } | null
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, fullName: string) => Promise<void>
+  register: (email: string, password: string, fullName: string, avatarSeed?: string) => Promise<void>
   logout: () => void
   impersonateUser: (targetUserId: string) => Promise<void>
   stopImpersonating: () => Promise<void>
@@ -96,10 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const register = async (email: string, password: string, fullName: string) => {
+  const register = async (email: string, password: string, fullName: string, avatarSeed?: string) => {
     setIsLoading(true)
     try {
-      const res = await FinlyAPI.register({ email, password, full_name: fullName })
+      const res = await FinlyAPI.register({ email, password, full_name: fullName, avatar_seed: avatarSeed })
       setUser(res.user)
       router.push("/")
     } finally {

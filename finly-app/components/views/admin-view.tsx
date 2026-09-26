@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/dialog"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { AdminStats, AdminUserItem } from "@/lib/types/finance"
+import { getLineFaceAvatarUri } from "@/lib/avatar"
 
 export function AdminView() {
   const router = useRouter()
@@ -482,14 +484,27 @@ export function AdminView() {
                       return (
                         <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
                           <td className="px-4 py-3.5">
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-white flex items-center gap-1.5">
-                                {u.full_name}
-                                {isSelf && (
-                                  <span className="text-[10px] text-indigo-400 font-normal">({t.admin.youBadge})</span>
-                                )}
-                              </span>
-                              <span className="text-[11px] text-zinc-400">{u.email}</span>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8 rounded-full ring-1 ring-white/10 shrink-0">
+                                {u.avatar_seed ? (
+                                  <AvatarImage
+                                    src={getLineFaceAvatarUri(u.avatar_seed)}
+                                    alt={u.full_name}
+                                  />
+                                ) : null}
+                                <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs">
+                                  {u.full_name ? u.full_name.slice(0, 2).toUpperCase() : "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-semibold text-white flex items-center gap-1.5 truncate">
+                                  {u.full_name}
+                                  {isSelf && (
+                                    <span className="text-[10px] text-indigo-400 font-normal">({t.admin.youBadge})</span>
+                                  )}
+                                </span>
+                                <span className="text-[11px] text-zinc-400 truncate">{u.email}</span>
+                              </div>
                             </div>
                           </td>
 
