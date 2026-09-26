@@ -225,6 +225,10 @@ export interface TranslationDictionary {
     categorization: string
     mainCategory: string
     subcategoryOptional: string
+    uncertainBadge: string
+    uncertainCategory: string
+    confirmCategory: string
+    lowConfidenceNotice: string
     createCategory: string
     newCategoryName: string
     parentCategory: string

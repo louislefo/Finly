@@ -42,6 +42,8 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN user_id TEXT"))
             if "subcategory" not in cols:
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN subcategory TEXT"))
+            if "category_confidence" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN category_confidence FLOAT DEFAULT 1.0"))
             if "is_user_classified" not in cols:
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN is_user_classified BOOLEAN DEFAULT 0"))
             if "is_excluded_from_budget" not in cols:

@@ -18,6 +18,7 @@ class Transaction(Base):
     merchant_name = Column(String, nullable=True)
     category = Column(String, default="Divers")
     subcategory = Column(String, nullable=True)
+    category_confidence = Column(Float, default=1.0, nullable=True)
     is_user_classified = Column(Boolean, default=False)
     is_excluded_from_budget = Column(Boolean, default=False)
     status = Column(String, default="confirmed", index=True)

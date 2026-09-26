@@ -142,6 +142,8 @@ export interface Transaction {
   amount: number
   category: string
   subcategory?: string
+  category_confidence?: number
+  is_low_confidence?: boolean
   is_user_classified?: boolean
   is_excluded_from_budget?: boolean
   account: string
