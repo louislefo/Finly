@@ -1,0 +1,23 @@
+title: "[Idea]: "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share your vision or architectural idea for Finly. Discussions are a great place to brainstorm before drafting formal feature requests or pull requests.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Idea Summary
+      description: Brief overview of your proposal.
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Target Use Case & Benefits
+      description: Who will benefit from this and why?
+    validations:
+      required: true

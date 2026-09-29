@@ -1,0 +1,54 @@
+name: Bank Connector Request
+description: Request support or report a sync issue with a specific banking institution
+title: "[BANK]: "
+labels: ["bank-connector", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Finly connects directly to banks using the open-source Woob engine. Please provide the details below so the connector can be verified or integrated.
+
+  - type: input
+    id: bank-name
+    attributes:
+      label: Bank Name
+      description: What is the official name of the bank or financial institution?
+      placeholder: "e.g., Revolut, Trade Republic, Boursorama..."
+    validations:
+      required: true
+
+  - type: input
+    id: bank-country
+    attributes:
+      label: Country
+      description: Which country is this bank operating in?
+      placeholder: "e.g., France, Germany, Spain, United Kingdom..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: auth-type
+    attributes:
+      label: Authentication / 2FA Type
+      description: How does login work on their official portal?
+      options:
+        - Username / Password + SMS OTP
+        - Username / Password + Mobile App Push Notification
+        - Virtual Pin Keyboard
+        - Hardware Key / Passkey
+        - Other / Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: woob-module
+    attributes:
+      label: Known Woob Module Name (Optional)
+      description: If you know the underlying Woob module name, specify it here.
+      placeholder: "e.g., boursorama, bnporc, n26..."
+
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: Additional Notes
+      description: Any specific account types (checking, PEA, crypto, loan) or behavior notes.
