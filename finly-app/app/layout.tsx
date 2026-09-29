@@ -19,6 +19,30 @@ const greatVibes = Great_Vibes({
 export const metadata: Metadata = {
   title: "Finly - Financial Tracking & Wealth Management",
   description: "Multi-account bank aggregation with Woob, expense tracking, and budget project management.",
+  verification: {
+    google: "4wXa6Y7ytgfPB9Kzv66zwqoKlHwgY_TwUFcfS4t-mPc",
+  },
+  openGraph: {
+    title: "Finly - Financial Tracking & Wealth Management",
+    description: "Multi-account bank aggregation with Woob, expense tracking, and budget project management.",
+    url: "https://louislefo.github.io/finly-site/",
+    siteName: "Finly",
+    images: [
+      {
+        url: "/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "Finly Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Finly - Financial Tracking & Wealth Management",
+    description: "Multi-account bank aggregation with Woob, expense tracking, and budget project management.",
+    images: ["/logo-full.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

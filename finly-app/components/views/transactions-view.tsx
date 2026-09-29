@@ -34,6 +34,7 @@ import {
   Trash2,
   Camera,
   AlertCircle,
+  Upload,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
@@ -57,6 +58,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ExportDialog } from "@/components/modals/export-dialog"
+import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
@@ -80,6 +82,7 @@ export function TransactionsView() {
   const [companyInfo, setCompanyInfo] = useState<any>(null)
   const [isLoadingCompany, setIsLoadingCompany] = useState<boolean>(false)
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
+  const [isImportOpen, setIsImportOpen] = useState<boolean>(false)
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false)
   const [isDeletingTx, setIsDeletingTx] = useState<boolean>(false)
@@ -467,9 +470,21 @@ export function TransactionsView() {
             variant="outline"
             size="sm"
             className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer shrink-0"
+            title={t.common.export}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span className="hidden sm:inline text-xs">{t.common.export}</span>
+          </Button>
+
+          <Button
+            onClick={() => setIsImportOpen(true)}
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer shrink-0"
+            title={t.common.import}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-xs">{t.common.import}</span>
           </Button>
 
           {/* Clean Filter Dropdown Menu Button */}
@@ -728,6 +743,12 @@ export function TransactionsView() {
         transactions={transactionsList}
         accounts={accountsList}
         projects={projectsList}
+      />
+
+      <CsvImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImportSuccess={loadData}
       />
 
       {/* Transaction Detail Dialog (Centered on PC & Responsive) */}

@@ -91,6 +91,7 @@ export interface BudgetSummary {
 export interface Account {
   id: string
   bank: string
+  bank_name?: string
   name?: string
   type: string
   balance: number
@@ -333,6 +334,66 @@ export interface UpdateDownloadStatus {
   total_bytes: number
   error_message?: string | null
   version?: string | null
+}
+
+export interface StockQuote {
+  symbol: string
+  name: string
+  asset_type: "stock" | "etf" | "crypto" | "index" | "commodity"
+  sector?: string
+  price: number
+  change: number
+  change_percent: number
+  currency: string
+  day_high?: number
+  day_low?: number
+  high_52w?: number
+  low_52w?: number
+  volume?: number
+  market_cap?: number
+  pe_ratio?: number
+  dividend_yield?: number
+}
+
+export interface StockHistoryPoint {
+  time: number
+  label: string
+  price: number
+  volume?: number
+}
+
+export interface InvestmentHolding {
+  id: string
+  symbol: string
+  name: string
+  asset_type: string
+  quantity: number
+  buy_price: number
+  current_price: number
+  total_value: number
+  total_cost: number
+  unrealized_pnl: number
+  unrealized_pnl_percent: number
+  daily_change: number
+  daily_change_percent: number
+  currency: string
+  sector?: string
+  weight_percent?: number
+  account_id?: string
+  notes?: string
+  updated_at?: string
+}
+
+export interface PortfolioSummary {
+  total_value: number
+  total_cost: number
+  unrealized_pnl: number
+  unrealized_pnl_percent: number
+  daily_change: number
+  daily_change_percent: number
+  holdings_count: number
+  allocation_by_type: { type: string; value: number; percent: number }[]
+  allocation_by_sector: { sector: string; value: number; percent: number }[]
 }
 
 

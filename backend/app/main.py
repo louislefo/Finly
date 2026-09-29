@@ -91,6 +91,9 @@ def auto_migrate_sqlite():
             if "sync_time" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN sync_time TEXT DEFAULT '08:00'"))
 
+            # Create investment_holdings table if not exists
+            Base.metadata.create_all(bind=conn)
+
             conn.commit()
     except Exception as e:
         print(f"[Auto-Migrate] Note: {e}")

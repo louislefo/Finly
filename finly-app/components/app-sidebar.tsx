@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Coins,
   ArrowLeftRight,
+  LineChart,
   PanelLeft,
 } from "lucide-react"
 
@@ -54,7 +55,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { toggleSidebar } = useSidebar()
 
   const isToolsActive =
-    pathname?.startsWith("/crypto") || pathname?.startsWith("/devises") || false
+    pathname?.startsWith("/actions") ||
+    pathname?.startsWith("/crypto") ||
+    pathname?.startsWith("/devises") ||
+    false
   const [isToolsOpen, setIsToolsOpen] = useState(isToolsActive)
 
   if (pathname === "/login") {
@@ -211,6 +215,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </div>
                       <DropdownMenuSeparator className="bg-white/5 my-1" />
                       <DropdownMenuItem
+                        onClick={() => router.push("/actions")}
+                        className={cn(
+                          "flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium",
+                          pathname?.startsWith("/actions")
+                            ? "text-indigo-400 font-bold bg-white/5"
+                            : "text-zinc-300"
+                        )}
+                      >
+                        <LineChart className="w-4 h-4 text-zinc-400" />
+                        <span>{t.nav.stocks}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         onClick={() => router.push("/crypto")}
                         className={cn(
                           "flex items-center gap-2.5 p-2 rounded-xl cursor-pointer hover:bg-white/5 text-xs font-medium",
@@ -264,6 +280,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   {isToolsOpen && (
                     <SidebarMenuSub className="ml-5 pl-3 border-l border-white/10 my-1 space-y-1">
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          render={<Link href="/actions" />}
+                          isActive={pathname?.startsWith("/actions")}
+                          className={cn(
+                            "px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors cursor-pointer",
+                            pathname?.startsWith("/actions")
+                              ? "bg-indigo-600 text-white font-bold shadow-sm"
+                              : "text-zinc-400 hover:text-white hover:bg-white/5"
+                          )}
+                        >
+                          <LineChart className="w-4 h-4" />
+                          <span>{t.nav.stocks}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton
                           render={<Link href="/crypto" />}

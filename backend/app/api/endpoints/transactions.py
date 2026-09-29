@@ -341,8 +341,8 @@ def preview_csv_transactions(
     current_user: User = Depends(get_current_user),
 ):
     if not req.csv_text or not req.csv_text.strip():
-        raise HTTPException(status_code=400, detail="Contenu CSV vide")
-    return csv_parser_service.analyze_and_parse_csv(req.csv_text, req.custom_mapping)
+        raise HTTPException(status_code=400, detail="Contenu de relevé vide")
+    return csv_parser_service.analyze_and_parse(req.csv_text, req.custom_mapping)
 
 @router.post("/import-csv")
 def import_csv_transactions(
@@ -360,15 +360,15 @@ def import_csv_transactions(
         account = db.query(Account).filter((Account.id == account_id) & (Account.user_id == current_user.id)).first()
 
     if not account:
-        account_name = req.account_name or "Relevé Importé (CSV)"
+        account_name = req.account_name or "Relevé Importé"
         account_type = req.account_type or "Compte Courant"
         account = db.query(Account).filter((Account.name == account_name) & (Account.user_id == current_user.id)).first()
         if not account:
             account = Account(
                 id=f"acc_{uuid.uuid4().hex[:12]}",
                 user_id=current_user.id,
-                bank_account_id=f"csv_{uuid.uuid4().hex[:8]}",
-                backend_name="csv_import",
+                bank_account_id=f"stmt_{uuid.uuid4().hex[:8]}",
+                backend_name="statement_import",
                 bank_name=account_name,
                 name=account_name,
                 account_type=account_type,
@@ -382,7 +382,7 @@ def import_csv_transactions(
     # 2. Get transactions to import
     tx_list = req.transactions
     if not tx_list and req.csv_text:
-        parsed = csv_parser_service.analyze_and_parse_csv(req.csv_text, req.custom_mapping)
+        parsed = csv_parser_service.analyze_and_parse(req.csv_text, req.custom_mapping)
         tx_list = parsed.get("all_transactions", [])
 
     if not tx_list:

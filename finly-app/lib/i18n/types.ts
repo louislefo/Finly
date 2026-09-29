@@ -22,6 +22,8 @@ export interface TranslationDictionary {
     reset: string
     export: string
     exporting: string
+    import: string
+    importing: string
     refresh: string
     refreshing: string
     syncing: string
@@ -59,6 +61,7 @@ export interface TranslationDictionary {
     admin: string
     analysis: string
     tools: string
+    stocks: string
     crypto: string
     forex: string
     addTool: string
@@ -840,6 +843,77 @@ export interface TranslationDictionary {
       simulator: string
       fireRule: string
     }
+  }
+  stocks: {
+    title: string
+    subtitle: string
+    searchPlaceholder: string
+    indices: string
+    popularStocks: string
+    topGainers: string
+    topLosers: string
+    marketCap: string
+    peRatio: string
+    volume: string
+    dayRange: string
+    range52w: string
+    dividendYield: string
+    sector: string
+    livePrice: string
+    change24h: string
+    timeframe1d: string
+    timeframe1w: string
+    timeframe1m: string
+    timeframe1y: string
+    timeframe5y: string
+    timeframeAll: string
+    allCategories: string
+    equities: string
+    etfs: string
+    indicesCategory: string
+    cryptoCategory: string
+    noResults: string
+    viewMarket: string
+    high: string
+    low: string
+    searchPreview: string
+    noLiveResults: string
+    searching: string
+  }
+  investments: {
+    title: string
+    portfolioValue: string
+    totalInvested: string
+    unrealizedPnl: string
+    dailyPnl: string
+    holdings: string
+    addAsset: string
+    editAsset: string
+    deleteAsset: string
+    confirmDelete: string
+    symbol: string
+    symbolPlaceholder: string
+    assetName: string
+    assetType: string
+    quantity: string
+    buyPrice: string
+    currentPrice: string
+    totalValue: string
+    pru: string
+    pnl: string
+    weight: string
+    sector: string
+    stock: string
+    etf: string
+    crypto: string
+    commodity: string
+    fund: string
+    account: string
+    allocationByType: string
+    allocationBySector: string
+    noHoldings: string
+    addFirstAsset: string
+    searchAsset: string
   }
   categories: Record<string, string>
 }

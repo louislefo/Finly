@@ -9,6 +9,10 @@ import {
   Sparkles,
   Edit2,
   Trash2,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  Layers,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
@@ -17,9 +21,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { NewProjectModal } from "@/components/modals/new-project-modal"
+import { AddHoldingModal } from "@/components/modals/add-holding-modal"
+import { StockLogo } from "@/components/ui/stock-logo"
 import { FinlyAPI } from "@/lib/api/finly-api"
+import { StockAPI } from "@/lib/api/stock-api"
 import { cn } from "@/lib/utils"
-import { Account, Project, BankConnection, RealEstateData } from "@/lib/types/finance"
+import { Account, Project, BankConnection, RealEstateData, InvestmentHolding, PortfolioSummary } from "@/lib/types/finance"
 
 export type WealthCategoryMode = "all" | "liquidities" | "savings" | "investments" | "crypto" | "real_estate"
 
@@ -32,11 +39,14 @@ export function PatrimoineView() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [bankConnections, setBankConnections] = useState<BankConnection[]>([])
+  const [holdings, setHoldings] = useState<InvestmentHolding[]>([])
+  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null)
   const [totalBalance, setTotalBalance] = useState<number>(0)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [isNewProjectOpen, setIsNewProjectOpen] = useState<boolean>(false)
+  const [isAddHoldingOpen, setIsAddHoldingOpen] = useState<boolean>(false)
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
   const [reEstimatingId, setReEstimatingId] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<WealthCategoryMode>("all")
@@ -50,21 +60,35 @@ export function PatrimoineView() {
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [accRes, projRes, connsRes] = await Promise.all([
+      const [accRes, projRes, connsRes, holdingsRes, summaryRes] = await Promise.all([
         FinlyAPI.getAccounts(),
         FinlyAPI.getProjects(),
         FinlyAPI.getBankConnections(),
+        StockAPI.getHoldings(),
+        StockAPI.getPortfolioSummary(),
       ])
       setAccounts(accRes.accounts || [])
       setTotalBalance(accRes.total_balance || 0)
       setProjects(projRes || [])
       setBankConnections(connsRes || [])
+      setHoldings(holdingsRes || [])
+      setPortfolioSummary(summaryRes || null)
     } catch {
       // Fallback
     } finally {
       setIsLoading(false)
     }
   }, [])
+
+  const handleDeleteHolding = async (id: string) => {
+    if (!confirm(t.investments.confirmDelete)) return
+    try {
+      await StockAPI.deleteHolding(id)
+      loadData()
+    } catch {
+      // Handle error
+    }
+  }
 
   useEffect(() => {
     loadData()
@@ -109,6 +133,10 @@ export function PatrimoineView() {
       }
     }
 
+    if (portfolioSummary && portfolioSummary.total_value > 0) {
+      investments = Math.max(investments, portfolioSummary.total_value)
+    }
+
     // Real estate / Projects valuation & loans
     let realEstateGrossValue = 0
     let totalRealEstateDebt = 0
@@ -144,7 +172,7 @@ export function PatrimoineView() {
       grossAssets,
       netWorth,
     }
-  }, [accounts, realEstateProjects])
+  }, [accounts, realEstateProjects, portfolioSummary])
 
   // Bank Breakdown
   const bankBreakdown = useMemo(() => {
@@ -739,13 +767,171 @@ export function PatrimoineView() {
               </Button>
             </div>
           </Card>
+        ) : selectedCategory === "investments" ? (
+          <Card className="lg:col-span-7 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-4">
+            {/* Header with Add Button */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div>
+                <h2 className="text-sm font-semibold text-white tracking-tight">
+                  {t.investments.title}
+                </h2>
+                <span className="text-xs text-zinc-500 font-mono">
+                  {holdings.length} {language === "fr" ? `position${holdings.length > 1 ? "s" : ""}` : `holding${holdings.length > 1 ? "s" : ""}`}
+                </span>
+              </div>
+              <Button
+                onClick={() => setIsAddHoldingOpen(true)}
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3 font-semibold"
+              >
+                + {t.investments.addAsset}
+              </Button>
+            </div>
+
+            {/* Portfolio Summary Mini KPIs */}
+            {portfolioSummary && portfolioSummary.total_value > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.investments.portfolioValue}</span>
+                  <span className="text-sm font-bold text-white font-mono mt-0.5 block">
+                    {formatAmount(portfolioSummary.total_value)}
+                  </span>
+                </div>
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.investments.totalInvested}</span>
+                  <span className="text-sm font-semibold text-zinc-300 font-mono mt-0.5 block">
+                    {formatAmount(portfolioSummary.total_cost)}
+                  </span>
+                </div>
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.investments.unrealizedPnl}</span>
+                  <span
+                    className={cn(
+                      "text-sm font-bold font-mono mt-0.5 block",
+                      portfolioSummary.unrealized_pnl >= 0 ? "text-emerald-400" : "text-rose-400"
+                    )}
+                  >
+                    {portfolioSummary.unrealized_pnl >= 0 ? "+" : ""}
+                    {formatAmount(portfolioSummary.unrealized_pnl)} ({portfolioSummary.unrealized_pnl_percent >= 0 ? "+" : ""}
+                    {portfolioSummary.unrealized_pnl_percent.toFixed(2)}%)
+                  </span>
+                </div>
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.investments.dailyPnl}</span>
+                  <span
+                    className={cn(
+                      "text-sm font-bold font-mono mt-0.5 block",
+                      portfolioSummary.daily_change >= 0 ? "text-emerald-400" : "text-rose-400"
+                    )}
+                  >
+                    {portfolioSummary.daily_change >= 0 ? "+" : ""}
+                    {formatAmount(portfolioSummary.daily_change)} ({portfolioSummary.daily_change_percent >= 0 ? "+" : ""}
+                    {portfolioSummary.daily_change_percent.toFixed(2)}%)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Holdings Table */}
+            {holdings.length === 0 ? (
+              <div className="py-12 text-center flex flex-col items-center justify-center gap-2 text-zinc-500">
+                <span className="text-sm font-medium text-zinc-300">
+                  {t.investments.noHoldings}
+                </span>
+                <p className="text-xs max-w-sm">{t.investments.addFirstAsset}</p>
+                <Button
+                  onClick={() => setIsAddHoldingOpen(true)}
+                  size="sm"
+                  className="mt-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3.5 font-semibold"
+                >
+                  + {t.investments.addAsset}
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead>
+                    <tr className="border-b border-white/5 text-zinc-400 font-sans font-semibold text-[11px]">
+                      <th className="pb-2.5 pl-1">{t.investments.symbol}</th>
+                      <th className="pb-2.5 text-right">{t.investments.quantity}</th>
+                      <th className="pb-2.5 text-right">{t.investments.pru}</th>
+                      <th className="pb-2.5 text-right">{t.investments.currentPrice}</th>
+                      <th className="pb-2.5 text-right">{t.investments.totalValue}</th>
+                      <th className="pb-2.5 text-right">{t.investments.pnl}</th>
+                      <th className="pb-2.5 text-right hidden sm:table-cell">{t.investments.weight}</th>
+                      <th className="pb-2.5 text-right pr-1"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {holdings.map((h) => {
+                      const isGain = h.unrealized_pnl >= 0
+                      return (
+                        <tr key={h.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-2.5 pl-1 font-sans">
+                            <div className="flex items-center gap-2.5">
+                              <StockLogo symbol={h.symbol} name={h.name} size="sm" />
+                              <div>
+                                <span className="font-bold text-white block text-xs">{h.name}</span>
+                                <span className="text-[10px] text-zinc-500 font-mono uppercase">{h.symbol}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2.5 text-right text-zinc-300">{h.quantity}</td>
+                          <td className="py-2.5 text-right text-zinc-400">
+                            {h.buy_price.toFixed(2)} {h.currency === "USD" ? "$" : "€"}
+                          </td>
+                          <td className="py-2.5 text-right text-white font-bold">
+                            {h.current_price.toFixed(2)} {h.currency === "USD" ? "$" : "€"}
+                          </td>
+                          <td className="py-2.5 text-right font-bold text-white">
+                            {formatAmount(h.total_value)}
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <span className={isGain ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}>
+                              {isGain ? "+" : ""}{formatAmount(h.unrealized_pnl)}
+                              <span className="text-[10px] ml-1">
+                                ({isGain ? "+" : ""}{h.unrealized_pnl_percent.toFixed(1)}%)
+                              </span>
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right hidden sm:table-cell text-zinc-400">
+                            {h.weight_percent ? `${h.weight_percent.toFixed(1)}%` : "-"}
+                          </td>
+                          <td className="py-2.5 text-right pr-1 font-sans">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHolding(h.id)}
+                              className="p-1 rounded-md text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title={t.investments.deleteAsset}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/actions")}
+                className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer p-0 h-auto text-xs"
+              >
+                {language === "fr" ? "Explorer les cours de bourse & ETF →" : "Explore live stock quotes & ETFs →"}
+              </Button>
+            </div>
+          </Card>
         ) : (
           <Card className="lg:col-span-7 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h2 className="text-sm font-semibold text-white tracking-tight">
                 {selectedCategory === "liquidities" && (language === "fr" ? "Comptes courants & Liquidités" : "Cash & Checking Accounts")}
                 {selectedCategory === "savings" && (language === "fr" ? "Comptes d'épargne & Livrets" : "Savings Accounts & Books")}
-                {selectedCategory === "investments" && (language === "fr" ? "Comptes d'investissement (PEA, CTO, Assurance-vie)" : "Investment & Brokerage Accounts")}
                 {selectedCategory === "crypto" && (language === "fr" ? "Portefeuilles & Comptes Crypto" : "Crypto Accounts & Wallets")}
               </h2>
               <span className="text-xs text-zinc-500 font-mono">
@@ -928,6 +1114,14 @@ export function PatrimoineView() {
         }}
         onSaveProject={handleSaveProject}
         projectToEdit={projectToEdit}
+        accounts={accounts}
+      />
+
+      {/* Add Investment Holding Modal */}
+      <AddHoldingModal
+        isOpen={isAddHoldingOpen}
+        onClose={() => setIsAddHoldingOpen(false)}
+        onSuccess={loadData}
         accounts={accounts}
       />
     </div>

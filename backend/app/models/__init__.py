@@ -6,6 +6,7 @@ from app.models.project import Project
 from app.models.bank_connection import BankConnection
 from app.models.merchant_rule import MerchantRule
 from app.models.budget import Budget
+from app.models.investment import InvestmentHolding
 
 __all__ = [
     "User",
@@ -16,4 +17,5 @@ __all__ = [
     "BankConnection",
     "MerchantRule",
     "Budget",
+    "InvestmentHolding",
 ]

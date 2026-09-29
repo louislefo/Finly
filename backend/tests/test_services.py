@@ -104,3 +104,99 @@ def test_csv_parser_empty_csv():
     result = CsvParserService.analyze_and_parse_csv("")
     assert result["status"] == "error"
     assert result["total_count"] == 0
+
+def test_ofx_parser_detection_and_parsing():
+    raw_ofx = """OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+SECURITY:NONE
+ENCODING:USASCII
+CHARSET:1252
+COMPRESSION:NONE
+OLDFILEVERSION:102
+NEWFILEVERSION:102
+
+<OFX>
+<BANKMSGSRSV1>
+<STMTTRNRS>
+<STMTRS>
+<CURDEF>EUR
+<BANKACCTFROM>
+<BANKID>30004
+<ACCTID>01234567890
+<ACCTTYPE>CHECKING
+</BANKACCTFROM>
+<BANKTRANLIST>
+<DTSTART>20260901
+<DTEND>20260920
+<STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20260912120000[0:GMT]
+<TRNAMT>-45.50
+<FITID>20260912001
+<NAME>CB CARREFOUR
+<MEMO>PAIEMENT CARTE PARIS
+</STMTTRN>
+<STMTTRN>
+<TRNTYPE>CREDIT
+<DTPOSTED>20260915
+<TRNAMT>2500.00
+<FITID>20260915002
+<NAME>VIR SALAIRE ACME
+<MEMO>VIREMENT RECU
+</STMTTRN>
+</BANKTRANLIST>
+</STMTRS>
+</STMTTRNRS>
+</BANKMSGSRSV1>
+</OFX>"""
+
+    assert CsvParserService.detect_format(raw_ofx) == "ofx"
+    result = CsvParserService.analyze_and_parse(raw_ofx)
+
+    assert result["status"] == "success"
+    assert result["format"] == "ofx"
+    assert result["total_count"] == 2
+
+    txs = result["all_transactions"]
+    assert txs[0]["date"] == "2026-09-12"
+    assert txs[0]["amount"] == -45.50
+    assert txs[0]["merchant_name"] == "Carrefour"
+    assert txs[0]["category"] == "Alimentation"
+    assert txs[0]["id"] == "20260912001"
+
+    assert txs[1]["date"] == "2026-09-15"
+    assert txs[1]["amount"] == 2500.00
+    assert txs[1]["category"] == "Revenus"
+
+def test_qif_parser_detection_and_parsing():
+    raw_qif = """!Type:Bank
+D12/09/2026
+T-45.50
+PCarrefour Market
+MCourses hebdomadaires
+LAlimentation
+^
+D15/09/2026
+T2500.00
+PVirement Salaire
+MEntreprise ACME
+LRevenus
+^"""
+
+    assert CsvParserService.detect_format(raw_qif) == "qif"
+    result = CsvParserService.analyze_and_parse(raw_qif)
+
+    assert result["status"] == "success"
+    assert result["format"] == "qif"
+    assert result["total_count"] == 2
+
+    txs = result["all_transactions"]
+    assert txs[0]["date"] == "2026-09-12"
+    assert txs[0]["amount"] == -45.50
+    assert txs[0]["merchant_name"] == "Carrefour"
+
+    assert txs[1]["date"] == "2026-09-15"
+    assert txs[1]["amount"] == 2500.00
+    assert txs[1]["category"] == "Revenus"
+

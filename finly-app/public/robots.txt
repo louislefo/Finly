@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://louislefo.github.io/finly-site/sitemap.xml

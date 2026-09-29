@@ -1,353 +1,277 @@
-# Finly
-
-Finly is a self-hosted, privacy-first personal finance and wealth management progressive web application (PWA). It combines direct bank synchronization, envelope budgeting, real-time net worth tracking, cashflow analysis, and savings goal management within a minimalist dark-mode interface inspired by Apple and Linear.
+<p align="center">
+  <img src="finly-app/public/logo-full.png" alt="Finly Logo" width="220" />
+</p>
 
 <p align="center">
-  <img src="Documents/images_v2/Overview.png" alt="Finly - Overview Dashboard" width="100%" />
+  <b>Self-Hosted, Privacy-First Personal Wealth & Financial Operations Platform</b>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16_App_Router-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="License" />
+</p>
+
+---
+
+Finly is an autonomous, self-hosted progressive web application (PWA) designed for complete privacy and total control over personal finances, bank accounts, investments, and net worth. Built with an exclusive Dark Mode aesthetic inspired by Linear and Apple, Finly eliminates third-party SaaS dependencies, fees, and telemetry.
+
+<p align="center">
+  <img src="Documents/images_v2/Overview.png" alt="Finly Overview Dashboard" width="100%" />
 </p>
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Interface Gallery](#interface-gallery)
+- [Core Principles](#core-principles)
 - [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
+- [Architecture & Tech Stack](#architecture--tech-stack)
 - [Prerequisites](#prerequisites)
 - [Quick Start with Docker](#quick-start-with-docker)
 - [Manual Development Setup](#manual-development-setup)
-  - [FastAPI Backend](#fastapi-backend)
-  - [Next.js Frontend](#nextjs-frontend)
-- [Testing and Quality Assurance](#testing-and-quality-assurance)
-- [Woob Bank Connectors Management](#woob-bank-connectors-management)
-- [CLI Administration Tools](#cli-administration-tools)
-- [Security and Data Protection](#security-and-data-protection)
+- [API Endpoints Reference](#api-endpoints-reference)
+- [Testing & Quality Assurance](#testing--quality-assurance)
+- [CLI Administration Utilities](#cli-administration-utilities)
+- [Security & Encryption Architecture](#security--encryption-architecture)
 - [Project Structure](#project-structure)
-- [Contributing Guide](#contributing-guide)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
-## Overview
+## Core Principles
 
-Finly is built for individuals who want complete sovereignty and control over their personal financial data without relying on third-party SaaS platforms or external cloud aggregation services.
-
-- **100% Self-Hosted & Private:** All account details, bank credentials, and transaction histories remain strictly stored inside your local database.
-- **Direct Bank Synchronization:** Automated retrieval of balances and operations powered by the open-source Woob engine, without paid intermediaries or remote telemetry.
-- **Minimalist Aesthetic:** Exclusive Dark Mode UI (Zinc 950 `#09090B`), designed to highlight essential key metrics, charts, and actionable insights without superfluous clutter.
-- **Responsive PWA:** Tailored experience across desktop screens, tablets, and mobile devices with dedicated bottom-bar navigation and native gesture feel.
-
----
-
-## Interface Gallery
-
-### Overview and Net Worth Dashboard
-
-Centralized dashboard aggregating total net worth, asset distribution (checking accounts, savings, investments, real estate), historical trajectory, and one-click privacy masking.
-
-| Desktop Version | Mobile Version |
-| :--- | :--- |
-| <img src="Documents/images_v2/Overview.png" alt="Overview Desktop" width="100%" /> | <img src="Documents/images_v2/mobile/Overview.png" alt="Overview Mobile" width="100%" /> |
-
----
-
-### Expenses and Transactions
-
-Comprehensive transaction ledger with date filtering (day, month, custom range), search, auto-categorization rules, and side-sheet transaction inspector.
-
-| Transactions Ledger |
-| :--- |
-| <img src="Documents/images_v2/Expenses.png" alt="Expenses Ledger" width="100%" /> |
-
----
-
-### Financial Analysis and Insights
-
-In-depth spending breakdowns by category, merchant analysis, and comparative historical trends.
-
-| Desktop Analysis | Mobile Analysis |
-| :--- | :--- |
-| <img src="Documents/images_v2/Analysis.png" alt="Analysis Desktop" width="100%" /> | <img src="Documents/images_v2/mobile/Analysis.png" alt="Analysis Mobile" width="100%" /> |
-
----
-
-### Envelope Budgeting and Cashflow
-
-Define spending caps per expense category with visual progress gauges and monitor monthly inflows versus outflows.
-
-| Envelope Budgeting | Cashflow Analysis |
-| :--- | :--- |
-| <img src="Documents/images_v2/Budget.png" alt="Envelope Budgeting" width="100%" /> | <img src="Documents/images_v2/Cashflow.png" alt="Cashflow Breakdown" width="100%" /> |
-
----
-
-### Mobile Budgeting and Savings Goals
-
-Track envelope consumption and target savings milestones on mobile.
-
-| Mobile Budget | Mobile Savings Goals |
-| :--- | :--- |
-| <img src="Documents/images_v2/mobile/Budget.png" alt="Budget Mobile" width="100%" /> | <img src="Documents/images_v2/mobile/Goals.png" alt="Goals Mobile" width="100%" /> |
-
----
-
-### Savings Goals and Settings
-
-Set multi-stage savings targets with deadlines and configure direct bank connections.
-
-| Savings Goals & Projects | Bank Connections & Settings |
-| :--- | :--- |
-| <img src="Documents/images_v2/Goals.png" alt="Savings Goals Desktop" width="100%" /> | <img src="Documents/images_v2/Setting.png" alt="Settings Desktop" width="100%" /> |
+- **Complete Data Sovereignty:** Account credentials, transaction ledgers, bank connections, and analytics are stored locally on your own machine or private server.
+- **Direct Bank Synchronization:** Automated, direct bank synchronization powered by the open-source Woob engine, operating without paid intermediaries or remote cloud collectors.
+- **Minimalist OLED Interface:** Dark Mode UI (Zinc 950 `#09090B` background, `#18181B` surfaces, subtle `border-white/10`) engineered for clarity and immediate comprehension.
+- **Precision Financial Modeling:** Live market quotes, real-time index feeds, compound interest simulators, and automated recurring subscription detection.
 
 ---
 
 ## Key Features
 
-### 1. Net Worth & Asset Tracking
-- Real-time aggregation of total net worth across multiple institutions.
-- Comprehensive asset support: checking accounts, savings books, investment portfolios, and real estate properties (property value and remaining mortgage balance).
-- Privacy Mode: Mask all monetary figures with a single click without altering interface layouts.
-- Historical net worth evolution and trajectory charts.
+### 1. Global Stock Market & Equities Hub
+- Real-time quote tracking for major world market indices (CAC 40, S&P 500, Nasdaq 100, DAX 40, Euro Stoxx 50) and global stocks.
+- High-precision interactive area charts with authentic historical data across 1D (5-minute intraday ticks), 1W, 1M, 1Y, 5Y, and MAX horizons.
+- Intelligent multi-criteria search supporting French and English semantic keywords (e.g., *voiture*, *ia*, *luxe*, *pétrole*, *chips*, *spacex*, *satellites*) with instant floating preview popovers.
+- High-resolution brand logo resolution system with fallback monograms.
 
-### 2. Envelope Budgeting
-- Configurable budget envelopes per category (Housing, Food, Transport, Leisure, Subscriptions, etc.).
-- Real-time gauge consumption and visual overflow warnings.
-- Structured monthly budget PDF export with breakdown charts.
+### 2. Net Worth & Multi-Institution Aggregation
+- Multi-asset consolidation: Checking accounts, savings books, stock brokerage portfolios, life insurance policies, crypto assets, and real estate properties (property valuation, down payment, and remaining mortgage balance).
+- Real-time portfolio PnL, PRU (average purchase price), asset allocation by class, and sector diversification breakdown.
+- Privacy Mode: Mask all monetary values with a single click across the entire interface without layout disruption.
 
-### 3. Transaction Normalization & Categorization
-- Automated merchant name cleaning and raw statement label normalization.
-- Keyword-based dynamic rule engine for automatic categorization.
-- Side drawer for rapid inspection, notes, category updates, and project assignment.
+### 3. Automated Bank Synchronization & Reconciliation
+- Direct synchronization with European and international banks via the Woob connector engine.
+- Intelligent transaction deduplication, reconciliation, and balance continuity.
+- In-browser CSV file import parser supporting standard bank exports.
+- Background synchronization scheduler (APScheduler) with configurable refresh intervals.
 
-### 4. Savings Goals & Financial Projects
-- Goal creation with target amount, target completion date, and visual progress meters.
-- Remaining amount calculation and completed milestones tracking.
+### 4. Expense Ledger & Auto-Categorization
+- Dynamic keyword rule engine that normalizes raw bank descriptors and automatically assigns categories.
+- Side drawer transaction inspector for rapid updates, subcategories, custom notes, and project linking.
+- Date range filtering, category distribution breakdowns, and merchant frequency analysis.
 
-### 5. Local Bank Aggregation Engine (Woob)
-- Direct integration with French and European banking institutions.
-- AES-256 symmetric encryption (Fernet) for all stored credentials and session tokens.
-- Integrated background scheduler (APScheduler) for automated periodic syncs.
+### 5. Envelope Budgeting & Runway Analysis
+- Configurable monthly budget envelopes per spending category with real-time consumption progress gauges.
+- 50/30/20 budget framework compliance diagnostics and financial runway calculation (months of survival without income).
+- Professional PDF budget report generation and multi-tab Excel (`.xlsx`) export with native spreadsheet formulas (`SUM`, `SUMIF`).
 
-### 6. Advanced Excel and PDF Exports
-- Multi-tab Excel workbook (`.xlsx`) generation with native spreadsheet formulas (`SUM`, `SUMIF`).
-- Formatted PDF budget and summary reports.
+### 6. Subscriptions Hub & Recurring Cost Detector
+- Automated time-series detection of recurring debits across multi-month transaction histories.
+- Monthly and annual recurring burn rate aggregation with renewal calendar alerts.
 
-### 7. Administration & Maintenance Panel
-- Dedicated `/admin` dashboard with system metrics (user count, active bank links, SQLite database size, background scheduler health).
-- Complete user management: activation, password resets, and cascade account deletion.
-- Admin Impersonation Mode for immediate diagnostics of user environments.
-- Database maintenance utilities: forced global sync and database compaction (`VACUUM`).
+### 7. Administration & Maintenance Console
+- Dedicated `/admin` control dashboard monitoring user counts, active bank connections, SQLite database file size, and background worker health.
+- User management: account activation, password resets, role promotions, and database compaction (`VACUUM`).
 
 ---
 
-## Technology Stack
+## Architecture & Tech Stack
+
+```text
++-------------------------------------------------------------------------+
+|                              Next.js 16                                 |
+|          App Router, React 19, TypeScript, Tailwind CSS, Shadcn UI      |
++------------------------------------+------------------------------------+
+                                     |
+                         HTTP / REST | (JWT Auth)
+                                     v
++------------------------------------+------------------------------------+
+|                           FastAPI Backend                               |
+|              Python 3.11+, Pydantic V2, SQLAlchemy, Uvicorn             |
++------------------+-----------------+-------------------+----------------+
+                   |                 |                   |
+                   v                 v                   v
+            +--------------+  +--------------+   +---------------+
+            |    SQLite    |  |  Woob Engine |   | Yahoo Finance |
+            |  (SQLAlchemy)|  | (Bank Sync)  |   | (Market Data) |
+            +--------------+  +--------------+   +---------------+
+```
 
 ### Frontend
 - **Framework:** Next.js 16 (App Router, React 19, TypeScript)
-- **Styling:** Tailwind CSS, Shadcn UI, Radix UI primitives
+- **Styling & Components:** Tailwind CSS, Shadcn UI, Radix UI Primitives
 - **Data Visualization:** Recharts, Lucide Icons
-- **Export Engines:** xlsx, xlsx-js-style, jspdf
+- **Document Engines:** xlsx, xlsx-js-style, jspdf
 
 ### Backend
-- **API Framework:** FastAPI (Python 3.11+)
-- **Database:** SQLite with SQLAlchemy ORM
-- **Authentication:** JWT (JSON Web Tokens) with bcrypt password hashing
-- **Data Encryption:** Cryptography (AES-256 Fernet)
-- **Banking Engine:** Woob (Web Outside of Browsers)
-- **Background Tasks:** APScheduler
-
-### Deployment & Tooling
-- **Containerization:** Docker, Docker Compose
-- **Testing:** Pytest (backend), Vitest & Testing Library (frontend)
+- **Framework:** FastAPI (Python 3.11+)
+- **Database Engine:** SQLite with SQLAlchemy ORM
+- **Authentication:** JWT (JSON Web Tokens) with salted bcrypt password hashing
+- **Security & Cryptography:** AES-256 Fernet symmetric encryption
+- **Banking Driver:** Woob (Web Outside of Browsers)
+- **Task Scheduling:** APScheduler
 
 ---
 
 ## Prerequisites
 
-- **Docker Approach (Recommended):**
-  - Docker Engine 20.10+
-  - Docker Compose 2.0+
-- **Manual Development Approach:**
-  - Node.js 20+ and npm
-  - Python 3.11+ and pip
+### Docker Approach (Recommended)
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+
+### Manual Development Approach
+- Node.js 20+ and npm
+- Python 3.11+ and pip
 
 ---
 
 ## Quick Start with Docker
 
-The fastest and most reliable way to run Finly on a local machine or home server.
-
-### 1. Clone the repository
 ```bash
+# 1. Clone repository
 git clone https://github.com/louislefo/Finly.git
 cd Finly
-```
 
-### 2. Configure backend environment
-Copy the environment template:
-```bash
+# 2. Configure environment
 cp backend/.env.example backend/.env
-```
 
-Generate a secure secret key:
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-Paste this value into `SECRET_KEY` inside `backend/.env`.
-
-### 3. Launch containers
-```bash
+# 3. Launch containers
 docker compose up -d --build
 ```
 
-### 4. Access the application
-- **Web Interface:** [http://localhost:3000](http://localhost:3000)
-- **API Documentation (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Health Check:** [http://localhost:8000/health](http://localhost:8000/health)
+Access points:
+- Web Interface: [http://localhost:3000](http://localhost:3000)
+- REST API Documentation (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
+- Health Check: [http://localhost:8000/health](http://localhost:8000/health)
 
-**Default Admin Credentials:**
-- Username/Email: `admin` (or `admin@finly.local`)
+Default initial administrator credentials:
+- Username: `admin` (or `admin@finly.local`)
 - Password: `admin`
-
-*Note: The admin account is provisioned automatically upon initial startup. Credentials can be modified from the `/admin` dashboard or via CLI.*
-
-### 5. Stop containers
-```bash
-docker compose down
-```
 
 ---
 
 ## Manual Development Setup
 
-### FastAPI Backend
+### Backend (FastAPI)
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Create and activate a Python virtual environment:
-   ```bash
-   # Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-
-   # Windows (PowerShell)
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
-
-3. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Prepare local configuration:
-   ```bash
-   cp .env.example .env
-   ```
-
-5. Run the backend development server:
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
----
-
-### Next.js Frontend
-
-1. Open a second terminal and navigate to the frontend directory:
-   ```bash
-   cd finly-app
-   ```
-
-2. Install Node.js dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the Next.js development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## Testing and Quality Assurance
-
-### Backend Tests (Pytest)
 ```bash
 cd backend
-pytest -v
+
+# Virtual environment setup
+python -m venv .venv
+
+# Activate environment (Linux / macOS)
+source .venv/bin/activate
+# Activate environment (Windows PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+
+# Run development server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend Tests (Vitest)
+### Frontend (Next.js)
+
 ```bash
+cd finly-app
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## API Endpoints Reference
+
+| Module | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/api/v1/auth/login` | Authenticate user and issue JWT bearer token |
+| **Auth** | `GET` | `/api/v1/auth/me` | Fetch authenticated user profile and permissions |
+| **Accounts** | `GET` | `/api/v1/accounts` | List aggregated bank and manual accounts |
+| **Accounts** | `POST` | `/api/v1/accounts` | Create a new manual bank or asset account |
+| **Transactions**| `GET` | `/api/v1/transactions` | Query and filter transaction ledger |
+| **Investments** | `GET` | `/api/v1/investments/indices` | Real-time global market indices quotes |
+| **Investments** | `GET` | `/api/v1/investments/stocks` | Search stocks and ETFs with semantic matching |
+| **Investments** | `GET` | `/api/v1/investments/stocks/{symbol}/history` | High-precision chart candles (1D, 1W, 1M, 1Y, 5Y, ALL) |
+| **Investments** | `GET` | `/api/v1/investments/holdings` | Portfolio holdings with PRU and valuation |
+| **Budgets** | `GET` | `/api/v1/budgets` | Fetch monthly envelope budgets and consumption |
+| **Woob Sync** | `POST` | `/api/v1/sync/trigger` | Trigger immediate banking connector refresh |
+| **Admin** | `GET` | `/api/v1/admin/stats` | System metrics, database size, and scheduler state |
+| **Admin** | `POST` | `/api/v1/admin/maintenance/vacuum` | Execute SQLite database compaction |
+
+---
+
+## Testing & Quality Assurance
+
+```bash
+# Run backend test suite (Pytest)
+cd backend
+pytest -v
+
+# Run frontend test suite (Vitest)
 cd finly-app
 npm test
-```
 
-### Frontend Linting
-```bash
+# Run frontend production build validation
 cd finly-app
-npm run lint
+npm run build
 ```
 
 ---
 
-## Woob Bank Connectors Management
+## CLI Administration Utilities
 
-Finly leverages the Woob framework to interface with banking institutions.
+The backend provides a command-line interface for administrative operations:
 
-### Update banking modules
-Banking interfaces evolve regularly; keep your local Woob modules updated:
 ```bash
-woob config update
-```
+# Create an administrator
+python -m app.cli create-admin --email admin@domain.local --password StrongPassword123 --name "Admin"
 
-### List supported banking modules
-```bash
-woob bank
-```
-
----
-
-## CLI Administration Tools
-
-The backend includes a command-line interface for administrator management without accessing the web UI:
-
-### Create an administrator account
-```bash
-python -m app.cli create-admin --email admin@domain.local --password MyStrongPassword --name "Main Admin"
-```
-
-### Promote an existing user to administrator
-```bash
+# Promote existing user
 python -m app.cli promote-admin --email user@domain.local
-```
 
-### List all registered users
-```bash
+# List all users
 python -m app.cli list-users
-```
 
-### Reset user password
-```bash
+# Reset user password
 python -m app.cli reset-password --email user@domain.local --password NewPassword123
 ```
 
 ---
 
-## Security and Data Protection
+## Security & Encryption Architecture
 
-1. **Zero External Telemetry:** No financial data, transactions, or usage analytics leave your local host.
-2. **AES-256 Symmetric Encryption:** Stored banking credentials and access tokens are encrypted with Fernet (AES-256-CBC with HMAC-SHA256).
-3. **Robust Password Hashing:** User passwords are encrypted with salted bcrypt hashing.
-4. **Local Data Persistence:** SQLite database remains local to your filesystem or Docker volume. Backups consist simply of copying the database file.
+1. **Zero External Telemetry:** All accounts, financial figures, transaction descriptions, and encryption keys remain exclusively on your host.
+2. **AES-256 Symmetric Encryption:** Banking credentials and access tokens are encrypted with Fernet (AES-256-CBC with HMAC-SHA256 authentication).
+3. **Password Security:** User authentication uses salted bcrypt password hashing with configurable complexity rounds.
+4. **Isolated Storage:** SQLite database runs locally in your volume; full backups consist of copying the `.db` file.
 
 ---
 
@@ -357,42 +281,39 @@ python -m app.cli reset-password --email user@domain.local --password NewPasswor
 Finly/
 |-- backend/                     # FastAPI REST API (Python)
 |   |-- app/
-|   |   |-- api/                 # API endpoints (auth, accounts, budgets, sync, admin)
+|   |   |-- api/                 # Endpoints (auth, accounts, investments, budgets, sync, admin)
 |   |   |-- core/                # Configuration, security, database engine
-|   |   |-- models/              # SQLAlchemy ORM models
-|   |   |-- scheduler/           # Automated background sync tasks
-|   |   |-- services/            # Woob engine, Excel & PDF exporters
+|   |   |-- models/              # SQLAlchemy database models
+|   |   |-- scheduler/           # Automated background sync worker
+|   |   |-- services/            # Market data service, Woob engine, Excel & PDF exporters
 |   |   |-- cli.py               # Administrative CLI tool
 |   |   `-- main.py              # FastAPI application entrypoint
-|   |-- tests/                   # Pytest test suite
-|   |-- Dockerfile               # Backend Docker container definition
-|   |-- requirements.txt         # Python dependencies
-|   `-- .env.example             # Environment template
+|   |-- tests/                   # Pytest test suite (36 tests)
+|   |-- Dockerfile               # Backend container definition
+|   `-- requirements.txt         # Python dependencies
 |
 |-- finly-app/                   # Next.js 16 frontend (App Router)
-|   |-- app/                     # Next.js pages & routes (dashboard, budget, expenses, admin)
+|   |-- app/                     # Next.js routes (overview, wealth, analysis, budget, stocks, admin)
 |   |-- components/              # Shadcn UI components, Recharts visualizations, drawers
-|   |-- hooks/                   # Custom React hooks (privacy state, data fetching)
-|   |-- lib/                     # API client, formatters, PDF generator
-|   |-- __tests__/               # Vitest test suite
-|   |-- Dockerfile               # Frontend Docker container definition
+|   |-- hooks/                   # React hooks (privacy, language, auth)
+|   |-- lib/                     # API clients, formatters, i18n dictionaries, types
+|   |-- __tests__/               # Vitest test suite (54 tests)
+|   |-- Dockerfile               # Frontend container definition
 |   `-- package.json             # Node.js dependencies and scripts
 |
-|-- Documents/                   # Documentation and visual resources
-|   `-- images_v2/               # High-resolution application screenshots
-|       `-- mobile/              # Mobile screenshots
+|-- Documents/                   # Documentation and project resources
+|   `-- images_v2/               # High-resolution application preview
 |
-|-- docker-compose.yml           # Multi-container service definition
-|-- CONTRIBUTING.md              # Contribution guidelines and standards
-|-- commandes.md                 # Command reference cheat sheet
-`-- README.md                    # Project presentation and documentation
+|-- docker-compose.yml           # Multi-container service specification
+|-- CONTRIBUTING.md              # Contribution standards and guidelines
+`-- README.md                    # Project documentation
 ```
 
 ---
 
-## Contributing Guide
+## Contributing
 
-Contributions to Finly are welcome. Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, architecture guidelines, and the pull request submission process.
+Contributions are welcome. Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for architecture guidelines, code formatting standards, and pull request procedures.
 
 ---
 

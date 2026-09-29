@@ -31,6 +31,7 @@ import {
   HelpCircle,
   Camera,
   FolderTree,
+  Upload,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/dialog"
 import { BankLogo } from "@/components/ui/bank-icons"
 import { WoobModal } from "@/components/modals/woob-modal"
+import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
 import { AvatarPickerModal } from "@/components/modals/avatar-picker-modal"
@@ -199,6 +201,7 @@ export function AccountView() {
 
   // Modals & Actions States
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
+  const [isStatementImportOpen, setIsStatementImportOpen] = useState<boolean>(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [editName, setEditName] = useState<string>("")
   const [editType, setEditType] = useState<string>("")
@@ -1431,6 +1434,16 @@ export function AccountView() {
                     </Button>
 
                     <Button
+                      onClick={() => setIsStatementImportOpen(true)}
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3.5 gap-1.5 border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 rounded-xl cursor-pointer text-xs font-semibold"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{t.common.import}</span>
+                    </Button>
+
+                    <Button
                       onClick={() => setIsWoobOpen(true)}
                       size="sm"
                       className="h-9 px-4 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer text-xs font-semibold shadow-md shadow-indigo-600/20"
@@ -2011,6 +2024,13 @@ export function AccountView() {
         isOpen={isWoobOpen}
         onClose={() => setIsWoobOpen(false)}
         onBankConnected={loadData}
+      />
+
+      {/* Universal Bank Statement Import Modal */}
+      <CsvImportModal
+        isOpen={isStatementImportOpen}
+        onClose={() => setIsStatementImportOpen(false)}
+        onImportSuccess={loadData}
       />
 
       {/* Post-Import Bank Credentials Modal */}
