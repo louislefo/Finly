@@ -116,6 +116,12 @@ def main():
     reset_parser.add_argument("--email", required=True, help="Email de l'utilisateur")
     reset_parser.add_argument("--password", required=True, help="Nouveau mot de passe")
 
+    # mcp
+    mcp_parser = subparsers.add_parser("mcp", help="Demarrer le serveur Model Context Protocol (MCP)")
+    mcp_parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio", help="Protocole de transport ('stdio' ou 'sse')")
+    mcp_parser.add_argument("--host", default="127.0.0.1", help="Hote d'ecoute pour le transport SSE")
+    mcp_parser.add_argument("--port", type=int, default=8001, help="Port d'ecoute pour le transport SSE")
+
     args = parser.parse_args()
 
     if args.command == "create-admin":
@@ -126,6 +132,15 @@ def main():
         list_users()
     elif args.command == "reset-password":
         reset_password(args.email, args.password)
+    elif args.command == "mcp":
+        from app.mcp.server import create_mcp_server
+        server = create_mcp_server()
+        if args.transport == "stdio":
+            server.run(transport="stdio")
+        elif args.transport == "sse":
+            server.settings.host = args.host
+            server.settings.port = args.port
+            server.run(transport="sse")
 
 if __name__ == "__main__":
     main()

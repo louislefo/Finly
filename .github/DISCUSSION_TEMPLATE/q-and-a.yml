@@ -1,0 +1,21 @@
+title: "[Q&A]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Need help setting up Finly, configuring Docker, or connecting a specific bank account? Ask your question here.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What is your question?
+      description: Provide clear context and details about what you are trying to accomplish.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment & Setup
+      description: OS version, Docker Compose configuration, browser, or Python version if relevant.

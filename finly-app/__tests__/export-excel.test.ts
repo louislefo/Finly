@@ -10,7 +10,6 @@ describe("Excel Export Utility - generateExportFileName", () => {
       bank: "BoursoBank",
       type: "Compte Courant",
       balance: 1500,
-      currency: "EUR",
       accountNumber: "FR76...",
     },
   ]

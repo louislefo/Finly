@@ -1,0 +1,78 @@
+name: Bug Report
+description: File a bug report to help improve Finly
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report an issue. Please search existing issues and discussions before filing a new one.
+
+  - type: input
+    id: version
+    attributes:
+      label: Finly Version
+      description: What version of Finly are you running (e.g., v1.0.26, latest dev branch)?
+      placeholder: "e.g., v1.0.26"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating System / Deployment Mode
+      description: Where are you running Finly?
+      options:
+        - Windows 11 (Desktop App)
+        - Windows 10 (Desktop App)
+        - macOS Apple Silicon (Desktop App)
+        - macOS Intel (Desktop App)
+        - Linux .deb package
+        - Linux tarball
+        - Docker Compose
+        - Manual Development Setup
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what the bug is.
+      placeholder: "When navigating to the Cashflow tab after importing new accounts..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      value: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Please copy and paste any relevant logs from the terminal, console, or log files. Please ensure no credentials or tokens are included.
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or Screen Recordings
+      description: If applicable, add screenshots to help explain the problem.

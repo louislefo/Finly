@@ -91,6 +91,7 @@ export interface BudgetSummary {
 export interface Account {
   id: string
   bank: string
+  bank_name?: string
   name?: string
   type: string
   balance: number
@@ -135,13 +136,15 @@ export interface SyncResult {
 export interface Transaction {
   id: string
   merchant: string
-  rawLabel: string
+  rawLabel?: string
   raw_label?: string
   date: string
-  time: string
+  time?: string
   amount: number
   category: string
   subcategory?: string
+  tags?: string[]
+  matched_rule_id?: string
   category_confidence?: number
   is_low_confidence?: boolean
   is_user_classified?: boolean
@@ -153,6 +156,58 @@ export interface Transaction {
   project?: string
   logo_url?: string
   status?: string
+}
+
+export type RuleMatchType = "contains" | "exact" | "regex" | "starts_with" | "ends_with"
+export type RuleApplyField = "all" | "raw_label" | "merchant_name"
+export type RuleAmountType = "any" | "expense" | "income"
+
+export interface CategorizationRule {
+  id: string
+  name: string
+  is_active: boolean
+  priority: number
+  pattern: string
+  match_type: RuleMatchType
+  apply_to_field: RuleApplyField
+  account_id?: string | null
+  account_name?: string | null
+  amount_type: RuleAmountType
+  min_amount?: number | null
+  max_amount?: number | null
+  category: string
+  subcategory?: string | null
+  tags?: string[]
+  is_excluded_from_budget: boolean
+  mark_as_transfer: boolean
+  logo_url?: string | null
+  matched_count?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface RuleTestResponse {
+  matched_count: number
+  pattern: string
+  match_type: string
+  samples: {
+    id: string
+    date: string
+    amount: number
+    raw_label: string
+    merchant_name: string
+    current_category: string
+    current_subcategory?: string
+    is_user_classified: boolean
+  }[]
+}
+
+export interface BatchApplyRulesResponse {
+  status: string
+  message: string
+  total_scanned: number
+  matched_count: number
+  updated_count: number
 }
 
 export interface AddressSearchResult {
@@ -333,6 +388,66 @@ export interface UpdateDownloadStatus {
   total_bytes: number
   error_message?: string | null
   version?: string | null
+}
+
+export interface StockQuote {
+  symbol: string
+  name: string
+  asset_type: "stock" | "etf" | "crypto" | "index" | "commodity"
+  sector?: string
+  price: number
+  change: number
+  change_percent: number
+  currency: string
+  day_high?: number
+  day_low?: number
+  high_52w?: number
+  low_52w?: number
+  volume?: number
+  market_cap?: number
+  pe_ratio?: number
+  dividend_yield?: number
+}
+
+export interface StockHistoryPoint {
+  time: number
+  label: string
+  price: number
+  volume?: number
+}
+
+export interface InvestmentHolding {
+  id: string
+  symbol: string
+  name: string
+  asset_type: string
+  quantity: number
+  buy_price: number
+  current_price: number
+  total_value: number
+  total_cost: number
+  unrealized_pnl: number
+  unrealized_pnl_percent: number
+  daily_change: number
+  daily_change_percent: number
+  currency: string
+  sector?: string
+  weight_percent?: number
+  account_id?: string
+  notes?: string
+  updated_at?: string
+}
+
+export interface PortfolioSummary {
+  total_value: number
+  total_cost: number
+  unrealized_pnl: number
+  unrealized_pnl_percent: number
+  daily_change: number
+  daily_change_percent: number
+  holdings_count: number
+  allocation_by_type: { type: string; value: number; percent: number }[]
+  allocation_by_sector: { sector: string; value: number; percent: number }[]
 }
 
 

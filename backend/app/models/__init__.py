@@ -5,7 +5,9 @@ from app.models.category import Category
 from app.models.project import Project
 from app.models.bank_connection import BankConnection
 from app.models.merchant_rule import MerchantRule
+from app.models.categorization_rule import CategorizationRule
 from app.models.budget import Budget
+from app.models.investment import InvestmentHolding
 
 __all__ = [
     "User",
@@ -15,5 +17,7 @@ __all__ = [
     "Project",
     "BankConnection",
     "MerchantRule",
+    "CategorizationRule",
     "Budget",
+    "InvestmentHolding",
 ]

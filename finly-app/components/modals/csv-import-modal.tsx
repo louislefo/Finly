@@ -287,7 +287,7 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.tsv,.txt"
+                  accept=".csv,.ofx,.qfx,.qif,.tsv,.txt"
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -346,15 +346,22 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
                   <Building2 className="w-3.5 h-3.5 text-indigo-400" />
                   {isCreatingNewAccount ? tm.newAccountSection : tm.destinationAccount}
                 </span>
-                {accounts.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingNewAccount(!isCreatingNewAccount)}
-                    className="text-[11px] text-zinc-400 hover:text-white underline cursor-pointer"
-                  >
-                    {isCreatingNewAccount ? tm.linkToExisting : tm.createNewAccount}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {analysisResult.format && (
+                    <Badge variant="outline" className="uppercase text-[10px] font-mono border-white/15 text-zinc-300">
+                      {analysisResult.format}
+                    </Badge>
+                  )}
+                  {accounts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingNewAccount(!isCreatingNewAccount)}
+                      className="text-[11px] text-zinc-400 hover:text-white underline cursor-pointer"
+                    >
+                      {isCreatingNewAccount ? tm.linkToExisting : tm.createNewAccount}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {isCreatingNewAccount ? (
@@ -365,7 +372,7 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
                       type="text"
                       value={customAccountTitle}
                       onChange={(e) => setCustomAccountTitle(e.target.value)}
-                      placeholder="Ex: Relevé Trade Republic, Livret..."
+                      placeholder="Ex: Relevé Boursorama, Livret A..."
                       className="bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl"
                     />
                   </div>
@@ -400,62 +407,64 @@ export function CsvImportModal({ isOpen, onClose, onImportSuccess }: CsvImportMo
               )}
             </div>
 
-            {/* Column Recognition Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.dateCol}</span>
-                <select
-                  value={dateCol}
-                  onChange={(e) => handleMappingChange("date", Number(e.target.value))}
-                  className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
-                >
-                  {analysisResult.columns.map((c: string, i: number) => (
-                    <option key={i} value={i}>{c}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Column Recognition Summary (Displayed for CSV) */}
+            {analysisResult.format === "csv" && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.dateCol}</span>
+                  <select
+                    value={dateCol}
+                    onChange={(e) => handleMappingChange("date", Number(e.target.value))}
+                    className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
+                  >
+                    {analysisResult.columns.map((c: string, i: number) => (
+                      <option key={i} value={i}>{c}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.amountCol}</span>
-                <select
-                  value={amountCol}
-                  onChange={(e) => handleMappingChange("amount", Number(e.target.value))}
-                  className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
-                >
-                  {analysisResult.columns.map((c: string, i: number) => (
-                    <option key={i} value={i}>{c}</option>
-                  ))}
-                </select>
-              </div>
+                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.amountCol}</span>
+                  <select
+                    value={amountCol}
+                    onChange={(e) => handleMappingChange("amount", Number(e.target.value))}
+                    className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
+                  >
+                    {analysisResult.columns.map((c: string, i: number) => (
+                      <option key={i} value={i}>{c}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.labelCol}</span>
-                <select
-                  value={labelCol ?? -1}
-                  onChange={(e) => handleMappingChange("label", Number(e.target.value))}
-                  className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
-                >
-                  <option value={-1}>{tm.autoDetect}</option>
-                  {analysisResult.columns.map((c: string, i: number) => (
-                    <option key={i} value={i}>{c}</option>
-                  ))}
-                </select>
-              </div>
+                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.labelCol}</span>
+                  <select
+                    value={labelCol ?? -1}
+                    onChange={(e) => handleMappingChange("label", Number(e.target.value))}
+                    className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
+                  >
+                    <option value={-1}>{tm.autoDetect}</option>
+                    {analysisResult.columns.map((c: string, i: number) => (
+                      <option key={i} value={i}>{c}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.categoryCol}</span>
-                <select
-                  value={categoryCol ?? -1}
-                  onChange={(e) => handleMappingChange("category", Number(e.target.value))}
-                  className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
-                >
-                  <option value={-1}>{tm.aiCategorization}</option>
-                  {analysisResult.columns.map((c: string, i: number) => (
-                    <option key={i} value={i}>{c}</option>
-                  ))}
-                </select>
+                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col gap-1">
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">{tm.categoryCol}</span>
+                  <select
+                    value={categoryCol ?? -1}
+                    onChange={(e) => handleMappingChange("category", Number(e.target.value))}
+                    className="bg-zinc-900 border border-white/10 text-white text-xs h-8 px-2 rounded-lg"
+                  >
+                    <option value={-1}>{tm.aiCategorization}</option>
+                    {analysisResult.columns.map((c: string, i: number) => (
+                      <option key={i} value={i}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Extracted Transactions List Preview */}
             <div className="flex flex-col gap-2">

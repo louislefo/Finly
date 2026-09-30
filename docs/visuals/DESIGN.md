@@ -104,70 +104,77 @@ spacing:
 
 ## Brand & Style
 
-This design system is engineered for high-net-worth individual wealth management and sophisticated retail banking. The brand personality is authoritative yet approachable, blending the precision of institutional finance with the fluidity of modern consumer technology. 
+This design system is engineered for high-net-worth individual wealth management and sophisticated retail banking, drawing inspiration from the minimal, purposeful aesthetics of Apple, Linear, and Finary.
 
-The aesthetic follows a **Modern Minimalist** approach with heavy **Bento Grid** influences. It prioritizes information density through structured modularity, utilizing high-end materials like frosted glass and micro-borders to create a sense of digital craftsmanship. The interface should feel "expensive"—achieved through generous negative space, crisp typography, and restrained use of color. 
+The aesthetic follows a **Modern Minimalist** philosophy with heavy **Bento Grid** modularity. It prioritizes information density and typographic hierarchy over visual ornamentation. The interface achieves a luxury digital feel through generous negative space, crisp typography, subtle micro-borders, and disciplined visual restraint.
 
 Key attributes:
-- **Precision:** Every element is aligned to a strict grid.
-- **Privacy:** Native support for obfuscated data states.
-- **Tactility:** Physicality is conveyed through subtle gradients and depth, rather than heavy shadows.
+- **Sobriety & Restraint:** No visual noise, no superfluous filler icons, no wordy explanatory subtitles under card headers.
+- **Precision:** Every component conforms strictly to a consistent geometric grid.
+- **Data-First:** Financial figures, balances, and trends take precedence with high-contrast typography.
+- **Privacy:** Native support for obfuscated data states across all financial indicators.
+
+## Iconography & Visual Restraint
+
+A defining principle of the Finly visual language is **iconographic restraint**. Icons must serve an unambiguous functional purpose rather than decorative filler.
+
+- **No Decorative Title Icons:** Card headers, modal titles, and section titles must rely on clean typography. Do not prepend decorative icons to titles (e.g., avoid icons beside "Security", "Preferences", or "Automatic Rules" headers).
+- **Functional Icons Only:** Icons are strictly reserved for:
+  - Direct interactive controls (e.g., Close `X`, Back `ArrowLeft`, Search magnifying glass, Plus for adding resources, Edit pencil, Trash for deletion).
+  - Primary navigation links where spatial economy demands clear wayfinding.
+- **No Icon Clutter in Badges:** Avoid packing icons inside badges or status pills when concise text suffices.
+- **No Filter Chips / Tag Pills:** Filter chips and tag pills are banned from the design system to prevent visual fragmentation.
+- **Subtle Visual Weight:** When functional icons are rendered, use a light-to-medium stroke (`w-4 h-4` or `w-5 h-5`) in muted tones (`text-zinc-400` or `text-zinc-500`) that do not distract from numerical data.
 
 ## Colors
 
-The palette is optimized for OLED displays and low-light environments, emphasizing a "Deep Space" hierarchy.
+The palette is optimized for OLED displays and low-light environments, emphasizing a "Deep Space" dark hierarchy.
 
-- **Background:** The base layer uses a true-black Slate (#09090B) to maximize contrast.
-- **Surfaces:** Cards and containers use Zinc 900 (#18181B). For interactive states, apply a linear gradient from `white/5` to `transparent`.
+- **Background:** True-black Slate / Zinc 950 (`#09090B`) to maximize contrast and power efficiency.
+- **Surfaces:** Cards and containers use Zinc 900 (`#18181B`). Interactive surfaces use a subtle hover gradient from `white/5` to `transparent`.
 - **Accents:** 
-    - **Primary (Indigo):** Used for primary actions, active navigation states, and brand-defining moments.
-    - **Success (Green):** Specifically for positive portfolio performance and completed transactions.
-    - **Danger (Red):** Used for outflows, budget overages, and critical alerts.
-- **Borders:** All cards must utilize a 1px solid border at `rgba(255, 255, 255, 0.1)`.
+    - **Primary (Indigo):** Used for primary buttons, active navigation states, and focal highlights.
+    - **Success (Emerald / Green):** Reserved for positive portfolio performance and completed sync/validations.
+    - **Danger (Rose / Red):** Used for outflows, negative balances, and destructive actions.
+- **Borders:** All cards utilize a 1px solid border at `rgba(255, 255, 255, 0.1)`.
 
 ## Typography
 
 The system utilizes **Inter** for its systematic, utilitarian clarity. The hierarchy relies on extreme weight contrast—pairing heavy, tight-tracked display titles with light, airy sub-captions.
 
-- **Privacy Mode:** When "Privacy Masking" is toggled, sensitive financial values (balances, account numbers) are replaced by the `masked_content_char` token. The font weight should remain consistent with the original value to prevent layout shift.
-- **Alignment:** Financial figures should ideally use tabular lining (tnum) to ensure decimal points and currency symbols align perfectly in lists.
-- **Captions:** Use `caption-xs` with reduced opacity (50%) for metadata to maintain visual hierarchy.
+- **Privacy Mode:** When "Privacy Masking" is toggled, sensitive financial values (balances, account numbers) are replaced by the `masked_content_char` token without layout shift.
+- **Alignment:** Financial figures use tabular lining (`font-mono` / `tnum`) to ensure decimal points and currency symbols align across lists and tables.
+- **Subtitles & Descriptions:** Card titles are concise and direct; avoid redundant explanatory text beneath titles.
 
 ## Layout & Spacing
 
 The layout is governed by a **Bento Grid** philosophy, where content is grouped into discrete, high-radius containers of varying sizes.
 
-- **The Bento Logic:** On desktop, use a 12-column grid. Components should span 3, 4, 6, or 12 columns. On mobile, components default to full-width but can be arranged in a 2-column masonry style for smaller stats.
-- **Spacing Rhythm:** Use a base-4 increment. `12px` is the standard gap between Bento cards to maintain a tight, integrated feel.
-- **Safe Areas:** Ensure all bottom-sheet components respect the iOS Home Indicator safe area, providing at least 34px of bottom padding.
+- **The Bento Logic:** On desktop, use a 12-column grid. Components span 3, 4, 6, or 12 columns. On mobile, components default to full-width or a 2-column masonry layout.
+- **Spacing Rhythm:** Base-4 increment. `12px` to `16px` standard gap between Bento cards.
+- **Safe Areas:** Respect the iOS Home Indicator safe area on mobile devices with at least 34px bottom padding.
 
 ## Elevation & Depth
 
-Depth in this design system is created through **Tonal Layering** and **Glassmorphism** rather than traditional drop shadows.
+Depth is created through **Tonal Layering** and **Glassmorphism** rather than heavy drop shadows.
 
-- **Level 0 (Base):** Background (#09090B).
-- **Level 1 (Cards):** Surface (#18181B) with a 1px border (`white/10`).
-- **Level 2 (Overlays/Modals):** Use `backdrop-blur-md` with a background of `rgba(24, 24, 27, 0.8)`. 
-- **Glass Effects:** Top navigation bars and bottom tab bars must be translucent to allow content to peek through during scroll, creating an "iOS-native" feeling of continuity.
-- **Shadows:** Use only for high-level floating elements (e.g., Action Buttons). If used, they should be "Ambient Shadows": Black, 25% opacity, 20px blur, 0px offset.
+- **Level 0 (Base):** Background (`#09090B`).
+- **Level 1 (Cards):** Surface (`#18181B`) with 1px border (`border-white/10`).
+- **Level 2 (Modals / Overlays):** `backdrop-blur-md` with background `rgba(24, 24, 27, 0.8)`.
+- **Glass Effects:** Translucent top navigation bars and bottom tab bars for seamless scroll depth.
 
-## Shapes
+## Shapes & Radius
 
-The shape language is sophisticated and friendly, utilizing large corner radii to soften the data-heavy nature of finance.
+- **Containers:** Bento cards utilize `24px` (`rounded-3xl`) radius.
+- **Modals & Dialogs:** Rounded `24px` to `32px` on desktop; bottom sheets on mobile use `32px` on top corners.
+- **Inputs & Buttons:** Rounded `12px` to `16px` (`rounded-xl` / `rounded-2xl`) for sharp micro-interactions.
 
-- **Containers:** Bento cards utilize a `24px` (rounded-3xl) radius.
-- **Interactions:** Bottom sheets use a more aggressive `32px` radius on top corners only to signal their status as temporary overlays.
-- **Input/Buttons:** Smaller elements use a `12px` radius to maintain a distinct visual identity from the layout containers they sit within.
-- **Drag Handles:** Bottom sheets must include a center-aligned, rounded-pill handle (width: 36px, height: 4px, color: `white/20`).
+## Components & Shadcn UI
 
-## Components
-
-- **Buttons:** Primary buttons use a solid Indigo background. Secondary buttons use the card surface color with a `white/10` border. Labels are always semi-bold.
-- **Bento Cards:** Every card must have a padding of `20px` or `24px`. Headlines within cards should use `title-md`.
-- **Lists:** Transaction lists should be borderless, separated by subtle `1px` lines of `white/5` that don't touch the container edges (inset dividers).
-- **Bottom Tabs:** Use a glass-morphic blur background. Active icons use the Primary Indigo color; inactive icons use `white/40`.
-- **Inputs:** Fields are dark (#09090B), inset into the card surface, with a `white/10` border that glows slightly (Indigo) when focused.
-- **Haptic feedback:** All primary actions (transfer, buy, sell) should be documented as triggering a "Medium" haptic impact on mobile devices.
+- **Buttons:** Primary buttons use solid Indigo (`bg-indigo-600 hover:bg-indigo-500`). Secondary buttons use zinc surface (`bg-zinc-900 border border-white/10 hover:bg-zinc-800`).
+- **Bento Cards:** Standard padding `20px` or `24px`. Card titles use concise `title-md`.
+- **Lists:** Clean borderless lists with subtle `1px` inset dividers (`border-white/5`).
+- **Inputs:** Dark inset fields (`#09090B` or `bg-zinc-900`) with subtle `border-white/10` and Indigo focus ring.
 
 ## Visual Reference Examples
 

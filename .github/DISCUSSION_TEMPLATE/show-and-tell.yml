@@ -1,0 +1,21 @@
+title: "[Showcase]: "
+labels: ["showcase"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Showcase how you run Finly (custom dashboards, self-hosted Docker home lab setups, backup scripts, custom automations).
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: Setup Overview
+      description: Describe your hardware, infrastructure, or customized workflow.
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Configurations, Scripts, or Screenshots
+      description: Share your configuration snippets or screenshots (ensure private financial numbers or credentials are redacted).

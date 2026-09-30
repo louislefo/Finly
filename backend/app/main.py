@@ -54,6 +54,10 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN logo_url TEXT"))
             if "status" not in cols:
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'confirmed'"))
+            if "tags" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN tags TEXT"))
+            if "matched_rule_id" not in cols:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN matched_rule_id TEXT"))
 
             # Check projects
             res = conn.execute(text("PRAGMA table_info(projects)")).fetchall()
@@ -75,6 +79,13 @@ def auto_migrate_sqlite():
             if "logo_url" not in cols:
                 conn.execute(text("ALTER TABLE merchant_rules ADD COLUMN logo_url TEXT"))
 
+            # Check categorization_rules
+            Base.metadata.create_all(bind=conn)
+            res = conn.execute(text("PRAGMA table_info(categorization_rules)")).fetchall()
+            cols = [r[1] for r in res]
+            if "apply_to_field" not in cols and len(cols) > 0:
+                conn.execute(text("ALTER TABLE categorization_rules ADD COLUMN apply_to_field TEXT DEFAULT 'all'"))
+
             # Check users
             res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
             cols = [r[1] for r in res]
@@ -90,6 +101,9 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE users ADD COLUMN sync_interval_hours INTEGER DEFAULT 12"))
             if "sync_time" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN sync_time TEXT DEFAULT '08:00'"))
+
+            # Create investment_holdings table if not exists
+            Base.metadata.create_all(bind=conn)
 
             conn.commit()
     except Exception as e:

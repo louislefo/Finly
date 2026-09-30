@@ -9,6 +9,20 @@ from app.services.categorizer_service import CategorizerService
 
 class CsvParserService:
     @staticmethod
+    def detect_format(raw_text: str) -> str:
+        """Detect whether input is OFX/QFX, QIF, or CSV/TSV."""
+        trimmed = raw_text.strip()
+        upper_sample = trimmed[:1000].upper()
+
+        if "OFXHEADER" in upper_sample or "<OFX>" in upper_sample or "<STMTTRN>" in upper_sample:
+            return "ofx"
+
+        if upper_sample.startswith("!TYPE:") or (upper_sample.startswith("D") and "\n^" in trimmed[:500]):
+            return "qif"
+
+        return "csv"
+
+    @staticmethod
     def detect_delimiter(raw_text: str) -> str:
         """Detect CSV/TSV delimiter based on frequency and consistency across lines."""
         lines = [line for line in raw_text.splitlines() if line.strip()][:15]
@@ -46,7 +60,7 @@ class CsvParserService:
             return None
 
         # Remove currency symbols and non-numeric fluff
-        s = s.replace("€", "").replace("$", "").replace("EUR", "").replace("USD", "").strip()
+        s = s.replace("€", "").replace("$", "").replace("EUR", "").replace("USD", "").replace("£", "").strip()
         # Remove spaces used as thousand separators (e.g. 1 250,50)
         s = s.replace("\xa0", "").replace(" ", "")
 
@@ -77,7 +91,17 @@ class CsvParserService:
         if not s:
             return None
 
-        # 1. DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+        # 1. OFX compact format: YYYYMMDD or YYYYMMDDHHMMSS...
+        m_ofx = re.match(r"^(\d{4})(\d{2})(\d{2})", s)
+        if m_ofx and len(s) >= 8 and s[:8].isdigit():
+            y, m, d = int(m_ofx.group(1)), int(m_ofx.group(2)), int(m_ofx.group(3))
+            try:
+                dt = datetime(y, m, d)
+                return dt.strftime("%Y-%m-%d")
+            except Exception:
+                pass
+
+        # 2. DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
         m_fr = re.match(r"^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$", s)
         if m_fr:
             d, m, y = int(m_fr.group(1)), int(m_fr.group(2)), int(m_fr.group(3))
@@ -89,7 +113,7 @@ class CsvParserService:
             except Exception:
                 pass
 
-        # 2. YYYY/MM/DD or YYYY-MM-DD
+        # 3. YYYY/MM/DD or YYYY-MM-DD
         m_iso = re.match(r"^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$", s)
         if m_iso:
             y, m, d = int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))
@@ -99,7 +123,218 @@ class CsvParserService:
             except Exception:
                 pass
 
+        # 4. QIF apostrophe year: DD/MM'YY or DD/MM'YYYY
+        m_qif = re.match(r"^(\d{1,2})[/\-.](\d{1,2})'(\d{2,4})$", s)
+        if m_qif:
+            d, m, y = int(m_qif.group(1)), int(m_qif.group(2)), int(m_qif.group(3))
+            if y < 100:
+                y += 2000
+            try:
+                dt = datetime(y, m, d)
+                return dt.strftime("%Y-%m-%d")
+            except Exception:
+                pass
+
         return None
+
+    @classmethod
+    def parse_ofx(cls, raw_text: str) -> Dict[str, Any]:
+        """Parse OFX / QFX (Open Financial Exchange) format."""
+        # Find all transaction blocks
+        trn_blocks = re.findall(r"<STMTTRN>([\s\S]*?)(?:</STMTTRN>|(?=<STMTTRN>)|(?=</BANKTRANLIST>)|$)", raw_text, re.IGNORECASE)
+        
+        # Also extract account metadata if present
+        bank_id_m = re.search(r"<BANKID>([^<\r\n]+)", raw_text, re.IGNORECASE)
+        acct_id_m = re.search(r"<ACCTID>([^<\r\n]+)", raw_text, re.IGNORECASE)
+        acct_type_m = re.search(r"<ACCTTYPE>([^<\r\n]+)", raw_text, re.IGNORECASE)
+        cur_m = re.search(r"<CURDEF>([^<\r\n]+)", raw_text, re.IGNORECASE)
+
+        account_info = {
+            "bank_id": bank_id_m.group(1).strip() if bank_id_m else None,
+            "account_id": acct_id_m.group(1).strip() if acct_id_m else None,
+            "account_type": acct_type_m.group(1).strip() if acct_type_m else "CHECKING",
+            "currency": cur_m.group(1).strip() if cur_m else "EUR",
+        }
+
+        extracted_transactions = []
+        for idx, block in enumerate(trn_blocks):
+            if not block.strip():
+                continue
+
+            dt_m = re.search(r"<DTPOSTED>([^<\r\n]+)", block, re.IGNORECASE)
+            amt_m = re.search(r"<TRNAMT>([^<\r\n]+)", block, re.IGNORECASE)
+            fitid_m = re.search(r"<FITID>([^<\r\n]+)", block, re.IGNORECASE)
+            name_m = re.search(r"<NAME>([^<\r\n]+)", block, re.IGNORECASE)
+            memo_m = re.search(r"<MEMO>([^<\r\n]+)", block, re.IGNORECASE)
+            checknum_m = re.search(r"<CHECKNUM>([^<\r\n]+)", block, re.IGNORECASE)
+
+            parsed_date = cls.parse_date(dt_m.group(1).strip()) if dt_m else None
+            parsed_amount = cls.parse_amount(amt_m.group(1).strip()) if amt_m else None
+
+            if not parsed_date or parsed_amount is None:
+                continue
+
+            name_val = name_m.group(1).strip() if name_m else ""
+            memo_val = memo_m.group(1).strip() if memo_m else ""
+
+            if name_val and memo_val and name_val.lower() != memo_val.lower():
+                raw_label = f"{name_val} {memo_val}".strip()
+            elif name_val:
+                raw_label = name_val
+            elif memo_val:
+                raw_label = memo_val
+            else:
+                raw_label = "Paiement / Virement OFX"
+
+            cleaned_merchant = CleanerService.clean_merchant_name(raw_label)
+            cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, parsed_amount)
+
+            extracted_transactions.append({
+                "row_index": idx,
+                "id": fitid_m.group(1).strip() if fitid_m else None,
+                "date": parsed_date,
+                "amount": parsed_amount,
+                "raw_label": raw_label,
+                "merchant_name": cleaned_merchant,
+                "category": cat_res.category or "Divers",
+                "subcategory": cat_res.subcategory,
+                "category_confidence": cat_res.confidence,
+                "is_low_confidence": bool(cat_res.confidence < 0.65),
+                "check_number": checknum_m.group(1).strip() if checknum_m else None,
+            })
+
+        return {
+            "status": "success",
+            "format": "ofx",
+            "has_header": True,
+            "columns": ["Date", "Montant", "Libellé", "Catégorie", "ID Transaction"],
+            "detected_mapping": {
+                "date_col": 0,
+                "amount_col": 1,
+                "label_cols": [2],
+                "category_col": 3,
+            },
+            "account_metadata": account_info,
+            "total_count": len(extracted_transactions),
+            "sample_transactions": extracted_transactions[:20],
+            "all_transactions": extracted_transactions,
+        }
+
+    @classmethod
+    def parse_qif(cls, raw_text: str) -> Dict[str, Any]:
+        """Parse QIF (Quicken Interchange Format) format."""
+        # Split by '^' character which marks end of entry in QIF
+        entries = raw_text.split("^")
+        extracted_transactions = []
+
+        for idx, entry in enumerate(entries):
+            lines = [l.strip() for l in entry.strip().splitlines() if l.strip()]
+            if not lines:
+                continue
+
+            # Ignore header lines like !Type:Bank
+            data_lines = [l for l in lines if not l.startswith("!")]
+            if not data_lines:
+                continue
+
+            date_val = None
+            amount_val = None
+            payee_val = ""
+            memo_val = ""
+            category_val = None
+            checknum_val = None
+
+            for l in data_lines:
+                code = l[0].upper()
+                content = l[1:].strip()
+
+                if code == "D":
+                    date_val = cls.parse_date(content)
+                elif code in ["T", "U"]:
+                    amount_val = cls.parse_amount(content)
+                elif code == "P":
+                    payee_val = content
+                elif code == "M":
+                    memo_val = content
+                elif code == "L":
+                    category_val = content
+                elif code == "N":
+                    checknum_val = content
+
+            if not date_val or amount_val is None:
+                continue
+
+            if payee_val and memo_val and payee_val.lower() != memo_val.lower():
+                raw_label = f"{payee_val} {memo_val}".strip()
+            elif payee_val:
+                raw_label = payee_val
+            elif memo_val:
+                raw_label = memo_val
+            else:
+                raw_label = "Paiement / Virement QIF"
+
+            cleaned_merchant = CleanerService.clean_merchant_name(raw_label)
+            subcategory = None
+            category_confidence = 1.0
+
+            if not category_val or category_val.lower() in ["divers", "autre", "none", "0"]:
+                cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, amount_val)
+                category_val = cat_res.category
+                subcategory = cat_res.subcategory
+                category_confidence = cat_res.confidence
+
+            extracted_transactions.append({
+                "row_index": idx,
+                "date": date_val,
+                "amount": amount_val,
+                "raw_label": raw_label,
+                "merchant_name": cleaned_merchant,
+                "category": category_val or "Divers",
+                "subcategory": subcategory,
+                "category_confidence": category_confidence,
+                "is_low_confidence": bool(category_confidence < 0.65),
+                "check_number": checknum_val,
+            })
+
+        return {
+            "status": "success",
+            "format": "qif",
+            "has_header": True,
+            "columns": ["Date", "Montant", "Libellé", "Catégorie"],
+            "detected_mapping": {
+                "date_col": 0,
+                "amount_col": 1,
+                "label_cols": [2],
+                "category_col": 3,
+            },
+            "total_count": len(extracted_transactions),
+            "sample_transactions": extracted_transactions[:20],
+            "all_transactions": extracted_transactions,
+        }
+
+    @classmethod
+    def analyze_and_parse(
+        cls,
+        raw_text: str,
+        custom_mapping: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Universal entrypoint: automatically detects file format (OFX, QIF, CSV) and parses."""
+        if not raw_text or not raw_text.strip():
+            return {
+                "status": "error",
+                "message": "Fichier ou contenu vide",
+                "columns": [],
+                "transactions": [],
+                "total_count": 0,
+            }
+
+        fmt = cls.detect_format(raw_text)
+        if fmt == "ofx":
+            return cls.parse_ofx(raw_text)
+        elif fmt == "qif":
+            return cls.parse_qif(raw_text)
+        else:
+            return cls.analyze_and_parse_csv(raw_text, custom_mapping)
 
     @classmethod
     def analyze_and_parse_csv(
@@ -146,7 +381,7 @@ class CsvParserService:
         if not data_rows:
             return {
                 "status": "error",
-                "message": "Aucune ligne de transaction trouvée dans le CSV",
+                "message": "Aucune ligne de transaction trouvée dans le fichier",
                 "columns": headers,
                 "transactions": [],
                 "total_count": 0,
@@ -288,6 +523,7 @@ class CsvParserService:
 
         return {
             "status": "success",
+            "format": "csv",
             "delimiter": delimiter,
             "has_header": has_header,
             "columns": headers,

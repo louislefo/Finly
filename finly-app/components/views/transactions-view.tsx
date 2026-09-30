@@ -34,6 +34,8 @@ import {
   Trash2,
   Camera,
   AlertCircle,
+  Upload,
+  Wand2,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
@@ -57,9 +59,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ExportDialog } from "@/components/modals/export-dialog"
+import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
+import { RuleManager } from "@/components/rules/rule-manager"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Transaction, Project, Account, CategoryItem, SyncResult, BankSyncError } from "@/lib/types/finance"
 import { MerchantAvatar } from "@/components/ui/merchant-avatar"
@@ -80,6 +84,7 @@ export function TransactionsView() {
   const [companyInfo, setCompanyInfo] = useState<any>(null)
   const [isLoadingCompany, setIsLoadingCompany] = useState<boolean>(false)
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
+  const [isImportOpen, setIsImportOpen] = useState<boolean>(false)
   const [isWoobOpen, setIsWoobOpen] = useState<boolean>(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false)
   const [isDeletingTx, setIsDeletingTx] = useState<boolean>(false)
@@ -93,6 +98,12 @@ export function TransactionsView() {
   const [newCatParent, setNewCatParent] = useState<string>("")
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
+
+  // Rule management modal & transaction tags state
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState<boolean>(false)
+  const [ruleModalTx, setRuleModalTx] = useState<any>(null)
+  const [txTagInput, setTxTagInput] = useState<string>("")
+  const [isEditingTags, setIsEditingTags] = useState<boolean>(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -115,12 +126,14 @@ export function TransactionsView() {
     loadData()
   }, [loadData])
 
-  // Sync selected category and fetch enterprise enrichment when transaction is opened
+  // Sync selected category, tags, and fetch enterprise enrichment when transaction is opened
   useEffect(() => {
     if (selectedTx) {
       setSelectedMainCat(selectedTx.category || "Divers")
       setSelectedSubCat(selectedTx.subcategory || "")
       setShowDeleteConfirm(false)
+      setIsEditingTags(false)
+      setTxTagInput("")
       setCompanyInfo(null)
       setIsLoadingCompany(true)
 
@@ -130,6 +143,59 @@ export function TransactionsView() {
         .finally(() => setIsLoadingCompany(false))
     }
   }, [selectedTx])
+
+  const handleOpenCreateRule = (tx: Transaction) => {
+    const rawLabel = tx.rawLabel || tx.raw_label || tx.merchant
+    setRuleModalTx({
+      raw_label: rawLabel,
+      merchant_name: tx.merchant,
+      category: tx.category,
+      subcategory: tx.subcategory,
+      amount: tx.amount,
+      account_id: tx.account_id,
+    })
+    setIsRuleModalOpen(true)
+  }
+
+  const handleAddTagToSelectedTx = async (tagToAdd: string) => {
+    if (!selectedTx) return
+    let clean = tagToAdd.trim().replace(/^,+|,+$/g, "")
+    if (!clean) return
+    if (!clean.startsWith("#")) clean = `#${clean}`
+
+    const currentTags = selectedTx.tags || []
+    if (currentTags.includes(clean)) {
+      setTxTagInput("")
+      return
+    }
+
+    const updatedTags = [...currentTags, clean]
+    try {
+      await FinlyAPI.updateTransactionTags(selectedTx.id, updatedTags)
+      setSelectedTx({ ...selectedTx, tags: updatedTags })
+      setTransactionsList((prev) =>
+        prev.map((t) => (t.id === selectedTx.id ? { ...t, tags: updatedTags } : t))
+      )
+      setTxTagInput("")
+    } catch (err: any) {
+      console.error("Failed to update tags:", err)
+    }
+  }
+
+  const handleRemoveTagFromSelectedTx = async (tagToRemove: string) => {
+    if (!selectedTx) return
+    const currentTags = selectedTx.tags || []
+    const updatedTags = currentTags.filter((t) => t !== tagToRemove)
+    try {
+      await FinlyAPI.updateTransactionTags(selectedTx.id, updatedTags)
+      setSelectedTx({ ...selectedTx, tags: updatedTags })
+      setTransactionsList((prev) =>
+        prev.map((t) => (t.id === selectedTx.id ? { ...t, tags: updatedTags } : t))
+      )
+    } catch (err: any) {
+      console.error("Failed to remove tag:", err)
+    }
+  }
 
   // Checking vs Savings Account IDs
   const checkingAccountIds = useMemo(() => {
@@ -148,7 +214,8 @@ export function TransactionsView() {
         rawText.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tx.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (tx.subcategory && tx.subcategory.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (tx.account && tx.account.toLowerCase().includes(searchQuery.toLowerCase()))
+        (tx.account && tx.account.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (tx.tags && tx.tags.some((tg: string) => tg.toLowerCase().includes(searchQuery.toLowerCase())))
 
       const matchesCategory =
         selectedCategory === "all" ||
@@ -467,9 +534,21 @@ export function TransactionsView() {
             variant="outline"
             size="sm"
             className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer shrink-0"
+            title={t.common.export}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span className="hidden sm:inline text-xs">{t.common.export}</span>
+          </Button>
+
+          <Button
+            onClick={() => setIsImportOpen(true)}
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 gap-1.5 border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer shrink-0"
+            title={t.common.import}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-xs">{t.common.import}</span>
           </Button>
 
           {/* Clean Filter Dropdown Menu Button */}
@@ -687,6 +766,16 @@ export function TransactionsView() {
                                 {t.transactions.uncertainBadge}
                               </span>
                             )}
+                            {tx.matched_rule_id && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center gap-1" title={t.rules?.title || "Règle auto"}>
+                                <Wand2 className="w-2.5 h-2.5" />
+                              </span>
+                            )}
+                            {tx.tags && tx.tags.map((tg: string) => (
+                              <span key={tg} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono">
+                                {tg}
+                              </span>
+                            ))}
                             {tx.project && (
                               <Badge variant="outline" className="text-[10px] py-0 border-indigo-500/30 text-indigo-300">
                                 {tx.project}
@@ -728,6 +817,12 @@ export function TransactionsView() {
         transactions={transactionsList}
         accounts={accountsList}
         projects={projectsList}
+      />
+
+      <CsvImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImportSuccess={loadData}
       />
 
       {/* Transaction Detail Dialog (Centered on PC & Responsive) */}
@@ -904,6 +999,80 @@ export function TransactionsView() {
                     <span className="font-medium text-indigo-300">{selectedTx.project}</span>
                   </div>
                 )}
+
+                {/* Tags Section */}
+                <div className="flex flex-col gap-2 px-2 py-1.5 pt-2 border-t border-white/5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400 flex items-center gap-1.5">
+                      <Hash className="w-3.5 h-3.5 text-indigo-400" /> {t.rules?.tags || "Tags"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTags(!isEditingTags)}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 cursor-pointer font-medium"
+                    >
+                      {isEditingTags ? t.common.close : (selectedTx.tags && selectedTx.tags.length > 0 ? t.common.edit : "+ " + (t.rules?.addTag || "Ajouter"))}
+                    </button>
+                  </div>
+
+                  {/* Display existing tags */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {selectedTx.tags && selectedTx.tags.length > 0 ? (
+                      selectedTx.tags.map((tg: string) => (
+                        <span
+                          key={tg}
+                          className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-lg text-xs font-mono flex items-center gap-1"
+                        >
+                          <span>{tg}</span>
+                          {isEditingTags && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTagFromSelectedTx(tg)}
+                              className="text-indigo-400 hover:text-rose-400 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      ))
+                    ) : (
+                      !isEditingTags && (
+                        <span className="text-[11px] text-zinc-500 italic">
+                          {language === "fr" ? "Aucun tag (#vacances, #remboursable...)" : "No tags (#vacation, #reimbursable...)"}
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  {/* Add tag input form */}
+                  {isEditingTags && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="text"
+                        placeholder="#vacances, #remboursable..."
+                        value={txTagInput}
+                        onChange={(e) => setTxTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleAddTagToSelectedTx(txTagInput)
+                          }
+                        }}
+                        className="bg-zinc-950 border-white/10 text-white font-mono text-xs h-8 rounded-xl flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleAddTagToSelectedTx(txTagInput)}
+                        disabled={!txTagInput.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 px-3 rounded-xl cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        <span>{t.common.add || "Ajouter"}</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 1. Category & Subcategory Direct Selectors Panel */}
@@ -1167,7 +1336,7 @@ export function TransactionsView() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex gap-2.5">
+                  <div className="flex flex-col sm:flex-row gap-2.5">
                     {!isEditingCategory && (
                       <>
                         <Button
@@ -1178,11 +1347,18 @@ export function TransactionsView() {
                           {t.transactions.categorization}
                         </Button>
                         <Button
-                          onClick={() => setShowDeleteConfirm(true)}
-                          className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 font-medium text-xs py-4 cursor-pointer transition-colors"
+                          onClick={() => handleOpenCreateRule(selectedTx)}
+                          className="flex-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 font-medium text-xs py-4 cursor-pointer"
+                          title={t.rules?.createRule || "Créer une règle automatique"}
                         >
-                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                          {t.common.delete}
+                          <Wand2 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                          <span>{t.rules?.createRule || "Créer une règle"}</span>
+                        </Button>
+                        <Button
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 font-medium text-xs py-4 px-3.5 cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </>
                     )}
@@ -1203,6 +1379,18 @@ export function TransactionsView() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Auto-Categorization Rule Modal */}
+      <Dialog open={isRuleModalOpen} onOpenChange={setIsRuleModalOpen}>
+        <DialogContent className="bg-[#18181B] border-white/10 text-white rounded-3xl p-6 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <RuleManager
+            isModal={true}
+            onClose={() => setIsRuleModalOpen(false)}
+            onRulesChanged={loadData}
+            initialTransaction={ruleModalTx}
+          />
         </DialogContent>
       </Dialog>
 
