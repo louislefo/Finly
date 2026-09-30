@@ -1,3 +1,4 @@
+import json
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from app.models.transaction import Transaction
 from app.models.account import Account
 from app.models.user import User
 from app.models.merchant_rule import MerchantRule
+from app.models.categorization_rule import CategorizationRule
 from app.core.security import get_current_user
 from app.services.merchant_enrichment import fetch_company_info
 from app.services.csv_parser_service import csv_parser_service
@@ -17,6 +19,23 @@ from app.services.categorizer_service import CategorizerService
 from app.services.reconciliation_service import ReconciliationService
 
 router = APIRouter()
+
+
+def _parse_tags(tags_val: Any) -> List[str]:
+    if not tags_val:
+        return []
+    if isinstance(tags_val, list):
+        return [str(t).strip() for t in tags_val if str(t).strip()]
+    if isinstance(tags_val, str):
+        try:
+            parsed = json.loads(tags_val)
+            if isinstance(parsed, list):
+                return [str(t).strip() for t in parsed if str(t).strip()]
+        except Exception:
+            pass
+        return [t.strip() for t in tags_val.split(",") if t.strip()]
+    return []
+
 
 class PreviewCsvRequest(BaseModel):
     csv_text: str
@@ -40,6 +59,9 @@ class UpdateCategoryRequest(BaseModel):
     category: str
     subcategory: Optional[str] = None
     apply_to_all_merchant: Optional[bool] = True
+
+class UpdateTagsRequest(BaseModel):
+    tags: List[str]
 
 class UpdateLogoRequest(BaseModel):
     logo_url: Optional[str] = None  # "none", "https://...", or None
@@ -108,6 +130,8 @@ def list_transactions(
                 "currency": t.currency,
                 "category": t.category,
                 "subcategory": t.subcategory,
+                "tags": _parse_tags(t.tags),
+                "matched_rule_id": t.matched_rule_id,
                 "category_confidence": getattr(t, "category_confidence", 1.0) if getattr(t, "category_confidence", None) is not None else 1.0,
                 "is_low_confidence": bool(
                     (getattr(t, "category_confidence", 1.0) or 1.0) < 0.65
@@ -126,6 +150,30 @@ def list_transactions(
             }
             for t in transactions
         ],
+    }
+
+@router.patch("/{tx_id}/tags")
+def update_transaction_tags(
+    tx_id: str,
+    req: UpdateTagsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    tx = db.query(Transaction).filter(
+        (Transaction.id == tx_id) & (Transaction.user_id == current_user.id)
+    ).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction non trouvée")
+
+    tags_list = [t.strip() for t in req.tags if t.strip()]
+    tx.tags = json.dumps(tags_list) if tags_list else None
+    db.commit()
+    db.refresh(tx)
+
+    return {
+        "status": "success",
+        "transaction_id": tx.id,
+        "tags": _parse_tags(tx.tags),
     }
 
 @router.patch("/{tx_id}/logo")
@@ -253,7 +301,7 @@ def update_transaction_category(
 
     # Save rule to memory & propagate to all transactions from same merchant
     if req.apply_to_all_merchant and merchant_name:
-        # Upsert rule
+        # Upsert MerchantRule
         existing_rule = db.query(MerchantRule).filter(
             (MerchantRule.user_id == current_user.id) &
             (MerchantRule.merchant_pattern == merchant_name)
@@ -271,6 +319,31 @@ def update_transaction_category(
                 subcategory=req.subcategory,
             )
             db.add(new_rule)
+
+        # Upsert CategorizationRule
+        existing_cat_rule = db.query(CategorizationRule).filter(
+            (CategorizationRule.user_id == current_user.id) &
+            (CategorizationRule.pattern == merchant_name)
+        ).first()
+
+        if existing_cat_rule:
+            existing_cat_rule.category = req.category
+            existing_cat_rule.subcategory = req.subcategory
+            existing_cat_rule.updated_at = datetime.utcnow()
+        else:
+            new_cat_rule = CategorizationRule(
+                id=f"crule_{uuid.uuid4().hex[:12]}",
+                user_id=current_user.id,
+                name=merchant_name,
+                pattern=merchant_name,
+                match_type="contains",
+                apply_to_field="all",
+                category=req.category,
+                subcategory=req.subcategory,
+                is_active=True,
+                priority=1,
+            )
+            db.add(new_cat_rule)
 
         # Propagate to all existing transactions with same merchant_name
         same_merchant_txs = db.query(Transaction).filter(
@@ -402,19 +475,32 @@ def import_csv_transactions(
         category = tx_data.get("category")
         subcategory = tx_data.get("subcategory")
         logo_url = None
+        tags = None
+        is_excluded_from_budget = False
+        matched_rule_id = None
         category_confidence = 1.0
 
-        matched_rule = rule_map.get(merchant_name.lower())
-        if matched_rule:
-            category = matched_rule.category
-            subcategory = matched_rule.subcategory
-            logo_url = matched_rule.logo_url
-            category_confidence = 1.0
-        elif not category or category.lower() in ["divers", "autre", "none"]:
-            cat_res = CategorizerService.categorize(merchant_name, raw_label, amount, db=db, user_id=current_user.id)
+        cat_res = CategorizerService.categorize(
+            merchant=merchant_name,
+            raw_label=raw_label,
+            amount=amount,
+            db=db,
+            user_id=current_user.id,
+            account_id=account.id,
+        )
+
+        if not category or category.lower() in ["divers", "autre", "none"] or cat_res.match_source.startswith("rule:"):
             category = cat_res.category
             subcategory = cat_res.subcategory
             category_confidence = cat_res.confidence
+            if cat_res.logo_url:
+                logo_url = cat_res.logo_url
+            if cat_res.tags:
+                tags = cat_res.tags
+            if cat_res.is_excluded_from_budget:
+                is_excluded_from_budget = True
+            if cat_res.rule_id:
+                matched_rule_id = cat_res.rule_id
 
         label_hash = hashlib.md5(f"{account.id}_{booking_date}_{amount}_{raw_label.upper()}".encode()).hexdigest()[:10]
         bank_tx_id = tx_data.get("id") or f"csv_{account.id}_{label_hash}"
@@ -442,6 +528,10 @@ def import_csv_transactions(
                 if merchant_name:
                     existing_tx.merchant_name = merchant_name
                 existing_tx.category_confidence = category_confidence
+                if tags and not existing_tx.tags:
+                    existing_tx.tags = tags
+                if matched_rule_id:
+                    existing_tx.matched_rule_id = matched_rule_id
             updated_count += 1
         else:
             new_tx = Transaction(
@@ -458,8 +548,11 @@ def import_csv_transactions(
                 category=category or "Divers",
                 subcategory=subcategory,
                 category_confidence=category_confidence,
+                is_excluded_from_budget=is_excluded_from_budget,
                 status="confirmed",
                 logo_url=logo_url,
+                tags=tags,
+                matched_rule_id=matched_rule_id,
             )
             db.add(new_tx)
             imported_count += 1

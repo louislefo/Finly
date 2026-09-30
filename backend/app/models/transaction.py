@@ -24,4 +24,6 @@ class Transaction(Base):
     status = Column(String, default="confirmed", index=True)
     project_id = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
+    tags = Column(String, nullable=True)
+    matched_rule_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

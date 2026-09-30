@@ -32,6 +32,7 @@ import {
   Camera,
   FolderTree,
   Upload,
+  Wand2,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -56,12 +57,13 @@ import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
 import { AvatarPickerModal } from "@/components/modals/avatar-picker-modal"
 import { AdminView } from "@/components/views/admin-view"
 import { CategoryManager } from "@/components/categories/category-manager"
+import { RuleManager } from "@/components/rules/rule-manager"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { Account, BankConnection, User, SyncResult, BankSyncError } from "@/lib/types/finance"
 import { getLineFaceAvatarUri } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
 
-type AccountTab = "profile" | "categories" | "security" | "preferences" | "banks" | "backup" | "admin"
+type AccountTab = "profile" | "categories" | "rules" | "security" | "preferences" | "banks" | "backup" | "admin"
 
 export function AccountView() {
   const router = useRouter()
@@ -74,13 +76,13 @@ export function AccountView() {
 
   // Navigation Tab State
   const [activeTab, setActiveTab] = useState<AccountTab>(() => {
-    if (tabParam && ["profile", "categories", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+    if (tabParam && ["profile", "categories", "rules", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
       return tabParam
     }
     return "profile"
   })
   const [mobileSubView, setMobileSubView] = useState<"menu" | AccountTab>(() => {
-    if (tabParam && ["profile", "categories", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+    if (tabParam && ["profile", "categories", "rules", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
       return tabParam
     }
     return "menu"
@@ -88,7 +90,7 @@ export function AccountView() {
 
   // Synchronize when URL search params change
   useEffect(() => {
-    if (tabParam && ["profile", "categories", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
+    if (tabParam && ["profile", "categories", "rules", "security", "preferences", "banks", "backup", "admin"].includes(tabParam)) {
       setActiveTab(tabParam)
       setMobileSubView(tabParam)
     }
@@ -704,6 +706,18 @@ export function AccountView() {
 
         <button
           type="button"
+          onClick={() => selectTab("rules")}
+          className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
+        >
+          <div className="flex items-center gap-3.5">
+            <Wand2 className="w-5 h-5 text-zinc-400" />
+            <span className="text-base font-medium text-white">{t.rules.nav || t.rules.title || (language === "fr" ? "Règles automatiques" : "Automatic Rules")}</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        </button>
+
+        <button
+          type="button"
           onClick={() => selectTab("security")}
           className="flex items-center justify-between py-4 text-left cursor-pointer group active:opacity-75 transition-opacity"
         >
@@ -951,6 +965,7 @@ export function AccountView() {
               </button>
               <h1 className="text-base font-bold text-white text-center">
                 {mobileSubView === "categories" && t.accounts.categoriesNav}
+                {mobileSubView === "rules" && (t.rules.nav || t.rules.title || (language === "fr" ? "Règles automatiques" : "Automatic Rules"))}
                 {mobileSubView === "banks" && t.accounts.banksNav}
                 {mobileSubView === "security" && t.accounts.securityNav}
                 {mobileSubView === "preferences" && t.accounts.preferencesNav}
@@ -1080,6 +1095,20 @@ export function AccountView() {
               >
                 <FolderTree className="w-4 h-4 text-zinc-400" />
                 <span>{t.accounts.categoriesNav || "Catégories"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectTab("rules")}
+                className={cn(
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer",
+                  activeTab === "rules"
+                    ? "bg-zinc-800 text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+                )}
+              >
+                <Wand2 className="w-4 h-4 text-zinc-400" />
+                <span>{t.rules.nav || t.rules.title || (language === "fr" ? "Règles automatiques" : "Automatic Rules")}</span>
               </button>
             </div>
 
@@ -1264,14 +1293,20 @@ export function AccountView() {
               </div>
             )}
 
+            {/* TAB: RÈGLES AUTOMATIQUES */}
+            {activeTab === "rules" && (
+              <div className="flex flex-col gap-6 w-full">
+                <RuleManager onRulesChanged={loadData} />
+              </div>
+            )}
+
             {/* TAB 2: SÉCURITÉ */}
             {activeTab === "security" && (
               <div className="flex flex-col gap-6 max-w-2xl">
                 <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
                   <CardHeader className="p-0 pb-5">
-                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-indigo-400" />
-                      <span>{t.accounts.changePasswordTitle}</span>
+                    <CardTitle className="text-base font-bold text-white">
+                      {t.accounts.changePasswordTitle}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -1363,9 +1398,8 @@ export function AccountView() {
               <div className="flex flex-col gap-6 max-w-2xl">
                 <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
                   <CardHeader className="p-0 pb-5">
-                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-indigo-400" />
-                      <span>{t.accounts.languagePreference}</span>
+                    <CardTitle className="text-base font-bold text-white">
+                      {t.accounts.languagePreference}
                     </CardTitle>
                     <p className="text-xs text-zinc-400 mt-1">
                       {t.accounts.languagePreferenceDesc}
@@ -1777,9 +1811,8 @@ export function AccountView() {
                 {/* Auto-Sync Settings Card */}
                 <Card className="p-6 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
                   <CardHeader className="p-0 pb-4">
-                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 text-indigo-400" />
-                      <span>{t.accounts.autoSyncTitle}</span>
+                    <CardTitle className="text-base font-bold text-white">
+                      {t.accounts.autoSyncTitle}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -1865,9 +1898,8 @@ export function AccountView() {
       <Dialog open={Boolean(editingAccount)} onOpenChange={(open) => !open && setEditingAccount(null)}>
         <DialogContent className="max-w-md p-6 bg-[#18181B] border-white/10 text-white rounded-3xl">
           <DialogHeader className="p-0 text-left">
-            <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
-              <Edit2 className="w-4 h-4 text-indigo-400" />
-              <span>{t.accounts.editAccount}</span>
+            <DialogTitle className="text-base font-bold text-white">
+              {t.accounts.editAccount}
             </DialogTitle>
           </DialogHeader>
 

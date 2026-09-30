@@ -299,25 +299,23 @@ class SyncService:
                     # Re-clean merchant & re-categorize only if not user-classified
                     if not existing_tx.is_user_classified:
                         existing_tx.merchant_name = cleaned_merchant
-
-                        user_rule = None
-                        if conn_user_id:
-                            user_rule = db.query(MerchantRule).filter(
-                                (MerchantRule.user_id == conn_user_id) &
-                                (MerchantRule.merchant_pattern == cleaned_merchant)
-                            ).first()
-
-                        if user_rule:
-                            existing_tx.category = user_rule.category
-                            existing_tx.subcategory = user_rule.subcategory
-                            existing_tx.category_confidence = 1.0
-                            if user_rule.logo_url:
-                                existing_tx.logo_url = user_rule.logo_url
-                        else:
-                            cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount, db=db, user_id=conn_user_id)
-                            existing_tx.category = cat_res.category
-                            existing_tx.subcategory = cat_res.subcategory
-                            existing_tx.category_confidence = cat_res.confidence
+                        cat_res = CategorizerService.categorize(
+                            cleaned_merchant,
+                            raw_label,
+                            raw_amount,
+                            db=db,
+                            user_id=conn_user_id,
+                            account_id=db_account.id,
+                        )
+                        existing_tx.category = cat_res.category
+                        existing_tx.subcategory = cat_res.subcategory
+                        existing_tx.category_confidence = cat_res.confidence
+                        if cat_res.logo_url:
+                            existing_tx.logo_url = cat_res.logo_url
+                        if cat_res.tags and not existing_tx.tags:
+                            existing_tx.tags = cat_res.tags
+                        if cat_res.rule_id:
+                            existing_tx.matched_rule_id = cat_res.rule_id
                         is_modified = True
 
                     if is_modified:
@@ -330,25 +328,21 @@ class SyncService:
                     continue
 
                 # Priority 4: Truly new transaction, insert into DB
-                user_rule = None
-                if conn_user_id:
-                    user_rule = db.query(MerchantRule).filter(
-                        (MerchantRule.user_id == conn_user_id) &
-                        (MerchantRule.merchant_pattern == cleaned_merchant)
-                    ).first()
-
-                logo_url = None
-                category_confidence = 1.0
-                if user_rule:
-                    category = user_rule.category
-                    subcategory = user_rule.subcategory
-                    logo_url = user_rule.logo_url
-                    category_confidence = 1.0
-                else:
-                    cat_res = CategorizerService.categorize(cleaned_merchant, raw_label, raw_amount, db=db, user_id=conn_user_id)
-                    category = cat_res.category
-                    subcategory = cat_res.subcategory
-                    category_confidence = cat_res.confidence
+                cat_res = CategorizerService.categorize(
+                    cleaned_merchant,
+                    raw_label,
+                    raw_amount,
+                    db=db,
+                    user_id=conn_user_id,
+                    account_id=db_account.id,
+                )
+                category = cat_res.category
+                subcategory = cat_res.subcategory
+                category_confidence = cat_res.confidence
+                logo_url = cat_res.logo_url
+                tags = cat_res.tags
+                is_excluded_from_budget = cat_res.is_excluded_from_budget
+                matched_rule_id = cat_res.rule_id
 
                 # Ensure final_bank_tx_id is strictly unique before insert
                 final_bank_tx_id = tx_key
@@ -372,6 +366,9 @@ class SyncService:
                         category_confidence=category_confidence,
                         status=status,
                         logo_url=logo_url,
+                        tags=tags,
+                        is_excluded_from_budget=is_excluded_from_budget,
+                        matched_rule_id=matched_rule_id,
                     )
                     db.add(new_tx)
                     db.commit()

@@ -16,9 +16,21 @@
   <img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="License" />
 </p>
 
+<p align="center">
+  <a href="https://gitdiagram.com/louislefo/finly?utm_source=readme&utm_medium=badge"><img src="https://gitdiagram.com/diagram-badge.svg" alt="Architecture diagram" /></a>
+  &nbsp;
+  <a href="https://gitdiagram.com/louislefo/finly/video"><img src="https://gitdiagram.com/video-badge.svg" alt="Watch a one-minute video tour of finly" /></a>
+</p>
+
 ---
 
 Finly is an autonomous, self-hosted progressive web application (PWA) designed for complete privacy and total control over personal finances, bank accounts, investments, and net worth. Built with an exclusive Dark Mode aesthetic inspired by Linear and Apple, Finly eliminates third-party SaaS dependencies, fees, and telemetry.
+
+<p align="center">
+  <video src="docs/video/louislefo-finly-explained.mp4" controls="controls" width="100%">
+    Your browser does not support the video tag.
+  </video>
+</p>
 
 <p align="center">
   <img src="Documents/images_v2/Overview.png" alt="Finly Overview Dashboard" width="100%" />
@@ -262,6 +274,44 @@ python -m app.cli list-users
 
 # Reset user password
 python -m app.cli reset-password --email user@domain.local --password NewPassword123
+
+# Start Model Context Protocol (MCP) server over stdio (for Claude Desktop / Cursor)
+python -m app.cli mcp --transport stdio
+
+# Start Model Context Protocol (MCP) server over SSE (for network AI agents)
+python -m app.cli mcp --transport sse --host 127.0.0.1 --port 8001
+```
+
+---
+
+## Model Context Protocol (MCP) Server
+
+Finly includes a built-in, strictly read-only **Model Context Protocol (MCP)** server for local AI agent integration (Claude Desktop, Cursor, local agentic pipelines).
+
+### Exposed Tools & Resources
+
+- `get_net_worth`: Aggregated wealth breakdown by asset class (checking, savings, life insurance, stocks/PEA, crypto).
+- `get_budget_status`: Active envelope limits, spent amount, remaining balances, and consumption percentages.
+- `search_transactions`: Filter transactions by merchant, category, date range, and amount bounds.
+- `get_cashflow_forecast`: Forward-looking cashflow projections, recurring subscription burn, and estimated balances for upcoming months.
+
+### Claude Desktop Integration Configuration
+
+Add the following to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "finly": {
+      "command": "python",
+      "args": ["-m", "app.cli", "mcp", "--transport", "stdio"],
+      "cwd": "/path/to/Finly/backend",
+      "env": {
+        "PYTHONPATH": "backend"
+      }
+    }
+  }
+}
 ```
 
 ---

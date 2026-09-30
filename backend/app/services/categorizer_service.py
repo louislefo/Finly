@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Dict, Any, List
 from sqlalchemy.orm import Session
 
 from app.models.merchant_rule import MerchantRule
+from app.models.categorization_rule import CategorizationRule
 from app.services.cleaner_service import CleanerService
 
 
@@ -16,12 +17,22 @@ class CategorizationResult:
         confidence: float = 1.0,
         is_low_confidence: bool = False,
         match_source: str = "default",
+        tags: Optional[str] = None,
+        is_excluded_from_budget: bool = False,
+        mark_as_transfer: bool = False,
+        logo_url: Optional[str] = None,
+        rule_id: Optional[str] = None,
     ):
         self.category = category
         self.subcategory = subcategory
         self.confidence = round(confidence, 2)
         self.is_low_confidence = is_low_confidence or (self.confidence < 0.65)
         self.match_source = match_source
+        self.tags = tags
+        self.is_excluded_from_budget = is_excluded_from_budget
+        self.mark_as_transfer = mark_as_transfer
+        self.logo_url = logo_url
+        self.rule_id = rule_id
 
     def __str__(self) -> str:
         return self.category
@@ -511,6 +522,96 @@ class CategorizerService:
         return clean
 
     @classmethod
+    def matches_rule(
+        cls,
+        rule: Any,
+        merchant: Optional[str] = None,
+        raw_label: Optional[str] = None,
+        amount: float = 0.0,
+        account_id: Optional[str] = None,
+    ) -> bool:
+        """
+        Evaluate if a CategorizationRule matches the given transaction parameters.
+        """
+        if not getattr(rule, "is_active", True):
+            return False
+
+        # 1. Account filter
+        rule_account_id = getattr(rule, "account_id", None)
+        if rule_account_id and account_id and rule_account_id != account_id:
+            return False
+
+        # 2. Amount type filter
+        amount_type = getattr(rule, "amount_type", "any") or "any"
+        if amount_type == "expense" and amount > 0:
+            return False
+        if amount_type == "income" and amount < 0:
+            return False
+
+        # 3. Amount min/max limits (evaluated on absolute values)
+        abs_amount = abs(amount)
+        min_amt = getattr(rule, "min_amount", None)
+        max_amt = getattr(rule, "max_amount", None)
+
+        if min_amt is not None and min_amt > 0 and abs_amount < float(min_amt):
+            return False
+        if max_amt is not None and max_amt > 0 and abs_amount > float(max_amt):
+            return False
+
+        # 4. Pattern matching
+        pattern = getattr(rule, "pattern", "") or getattr(rule, "merchant_pattern", "")
+        if not pattern:
+            return False
+
+        apply_to = getattr(rule, "apply_to_field", "all") or "all"
+        match_type = getattr(rule, "match_type", "contains") or "contains"
+
+        clean_merchant = CleanerService.clean_merchant_name(merchant or raw_label or "")
+        m_text = (merchant or "").strip()
+        r_text = (raw_label or "").strip()
+
+        candidates = []
+        if apply_to == "raw_label":
+            if r_text:
+                candidates.append(r_text)
+        elif apply_to == "merchant_name":
+            if m_text:
+                candidates.append(m_text)
+            if clean_merchant and clean_merchant != m_text:
+                candidates.append(clean_merchant)
+        else:  # "all"
+            if r_text:
+                candidates.append(r_text)
+            if m_text:
+                candidates.append(m_text)
+            if clean_merchant and clean_merchant not in (m_text, r_text):
+                candidates.append(clean_merchant)
+
+        if not candidates:
+            return False
+
+        pat_clean = pattern.strip()
+
+        if match_type == "regex":
+            try:
+                compiled = re.compile(pat_clean, re.IGNORECASE)
+                return any(compiled.search(c) is not None for c in candidates)
+            except re.error:
+                return False
+        elif match_type == "exact":
+            pat_lower = pat_clean.lower()
+            return any(c.lower() == pat_lower for c in candidates)
+        elif match_type == "starts_with":
+            pat_lower = pat_clean.lower()
+            return any(c.lower().startswith(pat_lower) for c in candidates)
+        elif match_type == "ends_with":
+            pat_lower = pat_clean.lower()
+            return any(c.lower().endswith(pat_lower) for c in candidates)
+        else:  # "contains" default
+            pat_lower = pat_clean.lower()
+            return any(pat_lower in c.lower() for c in candidates)
+
+    @classmethod
     def categorize(
         cls,
         merchant: str,
@@ -518,14 +619,16 @@ class CategorizerService:
         amount: float,
         db: Optional[Session] = None,
         user_id: Optional[str] = None,
+        account_id: Optional[str] = None,
     ) -> CategorizationResult:
         """
         Cascade Categorization Engine:
-        1. User learned history & custom MerchantRule (Confidence 1.0)
-        2. Transfer / Internal Movement & Positive Income Patterns (Confidence 0.95-0.98)
-        3. Curated High-Accuracy Merchant Database & Fuzzy Matching (Confidence 0.85-0.98)
-        4. Semantic Regex Rules (Confidence 0.75-0.90)
-        5. Weak guess fallback marked as Low Confidence (Confidence < 0.65 -> Yellow Badge)
+        1. User customizable CategorizationRules (Confidence 1.0, ordered by priority)
+        2. User legacy MerchantRules (Confidence 1.0)
+        3. Transfer / Internal Movement & Positive Income Patterns (Confidence 0.95-0.98)
+        4. Curated High-Accuracy Merchant Database & Fuzzy Matching (Confidence 0.85-0.98)
+        5. Semantic Regex Rules (Confidence 0.75-0.90)
+        6. Weak guess fallback marked as Low Confidence (Confidence < 0.65 -> Yellow Badge)
         """
         clean_merchant = CleanerService.clean_merchant_name(merchant or raw_label or "")
         norm_merchant = cls.normalize_text(clean_merchant)
@@ -533,28 +636,56 @@ class CategorizerService:
         combined_norm = f"{norm_merchant} {norm_raw}".strip()
 
         # ------------------------------------------------------------------
-        # Step 1: Check User Custom Merchant Rules (100% confidence)
+        # Step 1: Check User Custom Categorization Rules (100% confidence)
         # ------------------------------------------------------------------
-        if db and user_id and clean_merchant:
+        if db and user_id:
             try:
-                user_rule = db.query(MerchantRule).filter(
-                    (MerchantRule.user_id == user_id) &
-                    (
-                        (MerchantRule.merchant_pattern == clean_merchant) |
-                        (MerchantRule.merchant_pattern == merchant)
-                    )
-                ).first()
+                user_rules = db.query(CategorizationRule).filter(
+                    (CategorizationRule.user_id == user_id) &
+                    (CategorizationRule.is_active == True)
+                ).order_by(CategorizationRule.priority.desc(), CategorizationRule.created_at.asc()).all()
 
-                if user_rule:
-                    return CategorizationResult(
-                        category=user_rule.category,
-                        subcategory=user_rule.subcategory,
-                        confidence=1.0,
-                        is_low_confidence=False,
-                        match_source="user_rule",
-                    )
+                for rule in user_rules:
+                    if cls.matches_rule(rule, merchant=merchant, raw_label=raw_label, amount=amount, account_id=account_id):
+                        cat = "Virements & Épargne" if rule.mark_as_transfer else rule.category
+                        subcat = "Virement interne" if rule.mark_as_transfer else rule.subcategory
+                        return CategorizationResult(
+                            category=cat,
+                            subcategory=subcat,
+                            confidence=1.0,
+                            is_low_confidence=False,
+                            match_source=f"rule:{rule.id}",
+                            tags=rule.tags,
+                            is_excluded_from_budget=rule.is_excluded_from_budget,
+                            mark_as_transfer=rule.mark_as_transfer,
+                            logo_url=rule.logo_url,
+                            rule_id=rule.id,
+                        )
             except Exception:
                 pass
+
+            # Legacy MerchantRule fallback
+            if clean_merchant:
+                try:
+                    legacy_rule = db.query(MerchantRule).filter(
+                        (MerchantRule.user_id == user_id) &
+                        (
+                            (MerchantRule.merchant_pattern == clean_merchant) |
+                            (MerchantRule.merchant_pattern == merchant)
+                        )
+                    ).first()
+
+                    if legacy_rule:
+                        return CategorizationResult(
+                            category=legacy_rule.category,
+                            subcategory=legacy_rule.subcategory,
+                            confidence=1.0,
+                            is_low_confidence=False,
+                            match_source="user_merchant_rule",
+                            logo_url=legacy_rule.logo_url,
+                        )
+                except Exception:
+                    pass
 
         # ------------------------------------------------------------------
         # Step 2: Internal Transfers & Genuine Incomes

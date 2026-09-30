@@ -136,13 +136,15 @@ export interface SyncResult {
 export interface Transaction {
   id: string
   merchant: string
-  rawLabel: string
+  rawLabel?: string
   raw_label?: string
   date: string
-  time: string
+  time?: string
   amount: number
   category: string
   subcategory?: string
+  tags?: string[]
+  matched_rule_id?: string
   category_confidence?: number
   is_low_confidence?: boolean
   is_user_classified?: boolean
@@ -154,6 +156,58 @@ export interface Transaction {
   project?: string
   logo_url?: string
   status?: string
+}
+
+export type RuleMatchType = "contains" | "exact" | "regex" | "starts_with" | "ends_with"
+export type RuleApplyField = "all" | "raw_label" | "merchant_name"
+export type RuleAmountType = "any" | "expense" | "income"
+
+export interface CategorizationRule {
+  id: string
+  name: string
+  is_active: boolean
+  priority: number
+  pattern: string
+  match_type: RuleMatchType
+  apply_to_field: RuleApplyField
+  account_id?: string | null
+  account_name?: string | null
+  amount_type: RuleAmountType
+  min_amount?: number | null
+  max_amount?: number | null
+  category: string
+  subcategory?: string | null
+  tags?: string[]
+  is_excluded_from_budget: boolean
+  mark_as_transfer: boolean
+  logo_url?: string | null
+  matched_count?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface RuleTestResponse {
+  matched_count: number
+  pattern: string
+  match_type: string
+  samples: {
+    id: string
+    date: string
+    amount: number
+    raw_label: string
+    merchant_name: string
+    current_category: string
+    current_subcategory?: string
+    is_user_classified: boolean
+  }[]
+}
+
+export interface BatchApplyRulesResponse {
+  status: string
+  message: string
+  total_scanned: number
+  matched_count: number
+  updated_count: number
 }
 
 export interface AddressSearchResult {

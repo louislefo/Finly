@@ -14,6 +14,9 @@ import {
   SyncResult,
   VersionCheckInfo,
   UpdateDownloadStatus,
+  CategorizationRule,
+  RuleTestResponse,
+  BatchApplyRulesResponse,
 } from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -925,6 +928,158 @@ export const FinlyAPI = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.detail || "Impossible d'appliquer la mise à jour.")
+    }
+    return await res.json()
+  },
+
+  // 14. Categorization Rules
+  async getRules(): Promise<CategorizationRule[]> {
+    const res = await fetch(`${API_BASE_URL}/rules`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      throw new Error("Impossible de récupérer les règles d'automatisation.")
+    }
+    const data = await res.json()
+    return data.rules || []
+  },
+
+  async getRule(ruleId: string): Promise<CategorizationRule> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}`, {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      throw new Error("Règle non trouvée.")
+    }
+    const data = await res.json()
+    return data.rule
+  },
+
+  async createRule(data: Partial<CategorizationRule>): Promise<{ status: string; rule: CategorizationRule }> {
+    const res = await fetch(`${API_BASE_URL}/rules`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la création de la règle.")
+    }
+    return await res.json()
+  },
+
+  async updateRule(ruleId: string, data: Partial<CategorizationRule>): Promise<{ status: string; rule: CategorizationRule }> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour de la règle.")
+    }
+    return await res.json()
+  },
+
+  async toggleRule(ruleId: string): Promise<{ status: string; rule_id: string; is_active: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}/toggle`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'activation/désactivation de la règle.")
+    }
+    return await res.json()
+  },
+
+  async deleteRule(ruleId: string): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la suppression de la règle.")
+    }
+    return await res.json()
+  },
+
+  async reorderRules(ruleIds: string[]): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/rules/reorder`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ rule_ids: ruleIds }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors du réordonnancement des règles.")
+    }
+    return await res.json()
+  },
+
+  async testRule(data: {
+    pattern: string
+    match_type?: string
+    apply_to_field?: string
+    account_id?: string | null
+    amount_type?: string
+    min_amount?: number | null
+    max_amount?: number | null
+  }): Promise<RuleTestResponse> {
+    const res = await fetch(`${API_BASE_URL}/rules/test`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors du test de la règle.")
+    }
+    return await res.json()
+  },
+
+  async batchApplyRules(options?: {
+    rule_ids?: string[]
+    overwrite_user_classified?: boolean
+    account_id?: string | null
+  }): Promise<BatchApplyRulesResponse> {
+    const res = await fetch(`${API_BASE_URL}/rules/batch-apply`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(options || {}),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'application des règles.")
+    }
+    return await res.json()
+  },
+
+  async applyRule(ruleId: string, options?: { overwrite_user_classified?: boolean }): Promise<BatchApplyRulesResponse> {
+    const res = await fetch(`${API_BASE_URL}/rules/${ruleId}/apply`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(options || {}),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de l'application de la règle.")
+    }
+    return await res.json()
+  },
+
+  async updateTransactionTags(txId: string, tags: string[]): Promise<{ status: string; transaction_id: string; tags: string[] }> {
+    const res = await fetch(`${API_BASE_URL}/transactions/${txId}/tags`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ tags }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour des tags.")
     }
     return await res.json()
   },

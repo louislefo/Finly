@@ -346,6 +346,7 @@ export interface TranslationDictionary {
     manageAccount: string
     profileNav: string
     categoriesNav: string
+    rulesNav: string
     categoriesTitle: string
     categoriesDesc: string
     addCategoryBtn: string
@@ -914,6 +915,67 @@ export interface TranslationDictionary {
     noHoldings: string
     addFirstAsset: string
     searchAsset: string
+  }
+  rules: {
+    title: string
+    subtitle: string
+    nav: string
+    addRuleBtn: string
+    batchApplyBtn: string
+    batchApplyConfirmTitle: string
+    batchApplyConfirmDesc: string
+    batchApplySuccess: string
+    overwriteManualLabel: string
+    searchPlaceholder: string
+    noRulesFound: string
+    noRulesDesc: string
+    ruleName: string
+    ruleNamePlaceholder: string
+    pattern: string
+    patternPlaceholder: string
+    matchType: string
+    matchTypeContains: string
+    matchTypeExact: string
+    matchTypeRegex: string
+    matchTypeStartsWith: string
+    matchTypeEndsWith: string
+    applyToField: string
+    applyToAll: string
+    applyToRawLabel: string
+    applyToMerchant: string
+    accountFilter: string
+    allAccounts: string
+    amountCondition: string
+    amountTypeAny: string
+    amountTypeExpense: string
+    amountTypeIncome: string
+    minAmount: string
+    maxAmount: string
+    category: string
+    subcategory: string
+    tags: string
+    tagsPlaceholder: string
+    addTag: string
+    isExcludedFromBudget: string
+    markAsTransfer: string
+    testRuleBtn: string
+    testMatchesCount: string
+    noTestMatches: string
+    editRule: string
+    createRule: string
+    deleteRuleTitle: string
+    deleteRuleDesc: string
+    activeRule: string
+    inactiveRule: string
+    matchesCount: string
+    priorityUp: string
+    priorityDown: string
+    applyToPastBtn: string
+    ruleCreatedSuccess: string
+    ruleUpdatedSuccess: string
+    ruleDeletedSuccess: string
+    ruleToggledSuccess: string
+    createRuleFromTx: string
   }
   categories: Record<string, string>
 }
