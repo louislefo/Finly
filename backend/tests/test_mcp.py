@@ -223,4 +223,3 @@ def test_mcp_get_cashflow_forecast(mcp_test_data):
 def test_mcp_server_factory():
     server = create_mcp_server()
     assert server.name == "Finly"
-    assert server.version == "1.0.0"

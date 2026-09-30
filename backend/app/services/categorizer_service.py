@@ -686,7 +686,6 @@ class CategorizerService:
                         )
                 except Exception:
                     pass
-
         # ------------------------------------------------------------------
         # Step 2: Internal Transfers & Genuine Incomes
         # ------------------------------------------------------------------

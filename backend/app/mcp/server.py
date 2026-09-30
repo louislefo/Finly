@@ -8,7 +8,7 @@ import json
 import argparse
 from typing import Optional, Dict, Any
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server.fastmcp import FastMCP
 from app.core.database import SessionLocal
 from app.mcp.service import (
     get_net_worth_data,
@@ -17,14 +17,13 @@ from app.mcp.service import (
     get_cashflow_forecast_data,
 )
 
-def create_mcp_server() -> MCPServer:
+def create_mcp_server() -> FastMCP:
     """
     Creates and configures the Finly MCP Server instance with tools and resources.
     """
-    server = MCPServer(
+    server = FastMCP(
         name="Finly",
         instructions="Finly MCP Server provides strictly read-only access to local personal finance data, account balances, budgets, expense transactions, and cashflow forecasts.",
-        version="1.0.0",
     )
 
     @server.tool(
