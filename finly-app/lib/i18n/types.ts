@@ -97,6 +97,12 @@ export interface TranslationDictionary {
     close: string
     dismiss: string
     upToDate: string
+    upToDateDesc: string
+    checkForUpdates: string
+    checkingForUpdates: string
+    updateFound: string
+    errorChecking: string
+    systemCardTitle: string
   }
   auth: {
     loginTitle: string

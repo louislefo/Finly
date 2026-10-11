@@ -139,17 +139,22 @@ def select_best_download_url(assets: List[Dict[str, Any]], current_platform: str
 
 
 async def get_latest_github_release() -> Optional[Dict[str, Any]]:
-    """Fetch or return cached GitHub release metadata."""
+    """Fetch or return cached GitHub release metadata with redirect fallback to bypass rate limiting."""
     now = time.time()
     if _release_cache["data"] and (now - _release_cache["timestamp"] < CACHE_TTL_SECONDS):
         return _release_cache["data"]
 
+    # 1. Try official GitHub API with timeout
     try:
         async with httpx.AsyncClient(timeout=4.0) as client:
             headers = {
                 "Accept": "application/vnd.github.v3+json",
                 "User-Agent": "Finly-Update-Checker",
             }
+            token = os.environ.get("GITHUB_TOKEN")
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
             res = await client.get(
                 "https://api.github.com/repos/louislefo/Finly/releases/latest",
                 headers=headers,
@@ -161,6 +166,47 @@ async def get_latest_github_release() -> Optional[Dict[str, Any]]:
                 return data
     except Exception:
         pass
+
+    # 2. Fallback to unmetered GitHub web redirect (HEAD request to /releases/latest)
+    # This bypasses the GitHub REST API 60 req/hr IP rate limit completely
+    try:
+        async with httpx.AsyncClient(follow_redirects=False, timeout=5.0) as client:
+            res = await client.head("https://github.com/louislefo/Finly/releases/latest")
+            location = res.headers.get("location")
+            if location and "/tag/" in location:
+                tag = location.split("/tag/")[-1].strip()
+                if tag:
+                    synthesized_data = {
+                        "tag_name": tag,
+                        "name": f"Finly Desktop {tag}",
+                        "html_url": f"https://github.com/louislefo/Finly/releases/tag/{tag}",
+                        "body": "A new version of Finly is available.",
+                        "published_at": None,
+                        "assets": [
+                            {
+                                "name": "Finly-Setup.exe",
+                                "browser_download_url": f"https://github.com/louislefo/Finly/releases/download/{tag}/Finly-Setup.exe",
+                            },
+                            {
+                                "name": "Finly-macOS.dmg",
+                                "browser_download_url": f"https://github.com/louislefo/Finly/releases/download/{tag}/Finly-macOS.dmg",
+                            },
+                            {
+                                "name": "Finly-Linux-amd64.deb",
+                                "browser_download_url": f"https://github.com/louislefo/Finly/releases/download/{tag}/Finly-Linux-amd64.deb",
+                            },
+                            {
+                                "name": "Finly-Portable.exe",
+                                "browser_download_url": f"https://github.com/louislefo/Finly/releases/download/{tag}/Finly-Portable.exe",
+                            },
+                        ],
+                    }
+                    _release_cache["data"] = synthesized_data
+                    _release_cache["timestamp"] = now
+                    return synthesized_data
+    except Exception:
+        pass
+
     return _release_cache.get("data")
 
 

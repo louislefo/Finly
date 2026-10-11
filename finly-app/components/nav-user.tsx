@@ -31,6 +31,7 @@ import {
   MoreVertical,
   ChevronRight,
   Globe,
+  Settings,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { useI18n } from "@/components/i18n-context"
@@ -187,6 +188,14 @@ export function NavUser() {
               >
                 <Lock className="w-4 h-4 text-zinc-400" />
                 <span>{t.nav.security}</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => handleNavigate("preferences")}
+                className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 cursor-pointer"
+              >
+                <Settings className="w-4 h-4 text-zinc-400" />
+                <span>{t.accounts.preferencesNav || "Préférences"}</span>
               </DropdownMenuItem>
 
               {user.role === "admin" && (

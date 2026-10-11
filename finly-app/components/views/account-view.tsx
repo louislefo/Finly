@@ -43,6 +43,7 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  ArrowUpCircle,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -68,11 +69,12 @@ import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { ImportCredentialsModal, PendingBankConnection } from "@/components/modals/import-credentials-modal"
 import { SyncFeedbackModal } from "@/components/modals/sync-feedback-modal"
 import { AvatarPickerModal } from "@/components/modals/avatar-picker-modal"
+import { UpdateModal } from "@/components/update-modal"
 import { AdminView } from "@/components/views/admin-view"
 import { CategoryManager } from "@/components/categories/category-manager"
 import { RuleManager } from "@/components/rules/rule-manager"
 import { FinlyAPI } from "@/lib/api/finly-api"
-import { Account, BankConnection, User, SyncResult, BankSyncError } from "@/lib/types/finance"
+import { Account, BankConnection, User, SyncResult, BankSyncError, VersionCheckInfo } from "@/lib/types/finance"
 import { getLineFaceAvatarUri } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
 
@@ -317,6 +319,46 @@ export function AccountView() {
         .catch(() => {})
     }
   }, [aiMode])
+
+  // Application Update Check States (Preferences Tab)
+  const [updateInfo, setUpdateInfo] = useState<VersionCheckInfo | null>(null)
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false)
+  const [updateCheckStatus, setUpdateCheckStatus] = useState<"idle" | "up_to_date" | "update_available" | "error">("idle")
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false)
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true)
+    setUpdateCheckStatus("idle")
+    try {
+      const info = await FinlyAPI.checkAppVersion()
+      setUpdateInfo(info)
+      if (info && info.has_update) {
+        setUpdateCheckStatus("update_available")
+        setIsUpdateModalOpen(true)
+      } else {
+        setUpdateCheckStatus("up_to_date")
+      }
+    } catch {
+      setUpdateCheckStatus("error")
+    } finally {
+      setIsCheckingUpdate(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "preferences" && !updateInfo) {
+      FinlyAPI.checkAppVersion()
+        .then((info) => {
+          if (info) {
+            setUpdateInfo(info)
+            if (info.has_update) {
+              setUpdateCheckStatus("update_available")
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }, [activeTab, updateInfo])
 
   const handleSaveAISettings = (newMode?: "disabled" | "local" | "cloud", newProvider?: AIProviderType) => {
     const targetMode = newMode !== undefined ? newMode : aiMode
@@ -1617,6 +1659,93 @@ export function AccountView() {
                   </CardContent>
                 </Card>
 
+                {/* Application Updates Card */}
+                <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+                  <CardHeader className="p-0 pb-5">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-indigo-400" />
+                        {t.update.systemCardTitle}
+                      </CardTitle>
+                      {updateInfo && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs px-2.5 py-0.5 font-mono font-medium border",
+                            updateCheckStatus === "update_available"
+                              ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                              : "bg-zinc-800 text-zinc-400 border-white/5"
+                          )}
+                        >
+                          v{updateInfo.current_version.replace(/^v/, "")}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-900/60 border border-white/5">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-zinc-400">
+                            {t.update.currentVersion} :
+                          </span>
+                          <span className="text-xs font-mono font-bold text-white">
+                            {updateInfo ? `v${updateInfo.current_version.replace(/^v/, "")}` : "..."}
+                          </span>
+                        </div>
+
+                        {updateCheckStatus === "up_to_date" && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-emerald-400">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span>{t.update.upToDateDesc}</span>
+                          </div>
+                        )}
+
+                        {updateCheckStatus === "update_available" && updateInfo && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-indigo-300">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span>
+                              {t.update.updateFound} : <strong className="font-mono text-white">{updateInfo.latest_version}</strong>
+                            </span>
+                          </div>
+                        )}
+
+                        {updateCheckStatus === "error" && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-rose-400">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{t.update.errorChecking}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {updateCheckStatus === "update_available" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => setIsUpdateModalOpen(true)}
+                            className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 px-3.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                          >
+                            <ArrowUpCircle className="w-3.5 h-3.5 mr-1.5" />
+                            <span>{t.update.downloadAndInstall}</span>
+                          </Button>
+                        )}
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleCheckUpdate}
+                          disabled={isCheckingUpdate}
+                          className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-75 text-white rounded-xl h-9 px-3.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                        >
+                          <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", isCheckingUpdate && "animate-spin")} />
+                          <span>{isCheckingUpdate ? t.update.checkingForUpdates : t.update.checkForUpdates}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Assistant IA Multi-Fournisseurs */}
                 <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
                   <CardHeader className="p-0 pb-5">
@@ -2624,6 +2753,13 @@ export function AccountView() {
         currentSeed={user?.avatar_seed}
         initials={initials}
         onSave={handleSaveAvatar}
+      />
+
+      {/* Application Update Action Modal */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        updateInfo={updateInfo}
       />
     </div>
   )

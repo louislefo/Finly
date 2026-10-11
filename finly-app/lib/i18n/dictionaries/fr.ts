@@ -97,6 +97,12 @@ export const fr: TranslationDictionary = {
     close: "Fermer",
     dismiss: "Plus tard",
     upToDate: "Finly est à jour",
+    upToDateDesc: "Vous utilisez la dernière version disponible de Finly.",
+    checkForUpdates: "Rechercher une mise à jour",
+    checkingForUpdates: "Recherche en cours...",
+    updateFound: "Nouvelle version trouvée",
+    errorChecking: "Impossible de vérifier les mises à jour.",
+    systemCardTitle: "Mises à jour de l'application",
   },
   auth: {
     loginTitle: "Connexion à votre espace financier",
