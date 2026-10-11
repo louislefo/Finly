@@ -28,11 +28,9 @@ import {
   Power,
   RefreshCw,
   Cpu,
-  Database,
   ShieldCheck,
   Download,
   Key,
-  Cloud,
 } from "lucide-react"
 
 interface AssistantChatPanelProps {
@@ -62,7 +60,6 @@ export function AssistantChatPanel({
   const [isStartingDaemon, setIsStartingDaemon] = useState(false)
   const [isReindexing, setIsReindexing] = useState(false)
   const [reindexFeedback, setReindexFeedback] = useState<string | null>(null)
-  const [customModelName, setCustomModelName] = useState("")
   const [pullingCustomModel, setPullingCustomModel] = useState(false)
   const [pullProgress, setPullProgress] = useState<{ status: string; percent: number } | null>(null)
 
@@ -209,7 +206,6 @@ export function AssistantChatPanel({
             setPullProgress({ status: p.status, percent: p.percent })
             if (p.done) {
               setPullingCustomModel(false)
-              setCustomModelName("")
               onStatusRefresh()
               handleSelectModel(target)
             }

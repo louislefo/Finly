@@ -1,0 +1,98 @@
+site_name: Finly Documentation
+site_description: Comprehensive technical architecture, features, and deployment documentation for Finly.
+site_author: Louis Lefebvre
+site_url: https://louislefo.github.io/finly-site/docs/
+repo_name: louislefo/Finly
+repo_url: https://github.com/louislefo/Finly
+
+not_in_nav: |
+  infos/*
+  visuals/*
+  finary/*
+  video/*
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - attr_list
+  - md_in_html
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Changelog & Releases: changelog.md
+  - Getting Started:
+      - Overview & Philosophy: getting-started/overview.md
+      - Installation & Deployment: getting-started/installation.md
+      - Configuration & Environment: getting-started/configuration.md
+  - Architecture:
+      - System Architecture: architecture/system-overview.md
+      - Database & Data Models: architecture/database-schema.md
+      - Security & Privacy: architecture/security-and-privacy.md
+  - Core Features:
+      - Bank Synchronization & 2FA: features/bank-synchronization.md
+      - Categorization Engine & Rules: features/transaction-engine.md
+      - Budgeting & Cash Flow: features/budgeting-and-analytics.md
+      - Wealth & Portfolio Tracking: features/wealth-and-investments.md
+      - Loans & Amortization: features/loans-and-amortization.md
+      - AI Financial Assistant: features/assistant-and-ai.md
+  - Integrations:
+      - Model Context Protocol (MCP): integrations/mcp-server.md
+      - Import & Export Formats: integrations/import-export.md
+  - Administration:
+      - Admin Console & Operations: administration/admin-dashboard.md
+      - Maintenance & Diagnostics: administration/maintenance-and-ops.md
+  - Development:
+      - Backend Engineering: development/backend.md
+      - Frontend Engineering: development/frontend.md
+      - Packaging & Releases: development/building-and-release.md

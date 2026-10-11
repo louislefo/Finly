@@ -70,7 +70,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 Type: filesandordirs; Name: "{app}"
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -Command ""try { $installer = Join-Path $env:TEMP 'OllamaSetup.exe'; Write-Host 'Telechargement d Ollama...'; (New-Object System.Net.WebClient).DownloadFile('https://ollama.com/download/OllamaSetup.exe', $installer); Start-Process -FilePath $installer -ArgumentList '/SILENT' -Wait } catch { Write-Warning $_ }"""; StatusMsg: "Telechargement et installation d Ollama..."; Flags: runhidden; Tasks: installollama
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -Command ""$p = [System.IO.Path]::Combine($env:TEMP, 'OllamaSetup.exe'); (New-Object System.Net.WebClient).DownloadFile('https://ollama.com/download/OllamaSetup.exe', $p); Start-Process -FilePath $p -ArgumentList '/SILENT' -Wait"""; StatusMsg: "Telechargement et installation d Ollama..."; Flags: runhidden; Tasks: installollama
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall
 
 [Code]

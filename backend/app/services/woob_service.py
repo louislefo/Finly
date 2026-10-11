@@ -80,6 +80,83 @@ class WoobService:
         {"id": "mafrenchbank", "name": "Ma French Bank", "desc": "Banque mobile", "color": "from-sky-500 to-blue-600", "logo": "MFB"},
     ]
 
+    FALLBACK_CONFIG_FIELDS = {
+        "cragr": [
+            {
+                "name": "website",
+                "label": "Caisse Régionale",
+                "type": "select",
+                "required": True,
+                "default": "www.ca-paris.fr",
+                "choices": [
+                    {"value": "www.ca-paris.fr", "label": "Île-de-France (Paris)"},
+                    {"value": "www.ca-alpesprovence.fr", "label": "Alpes Provence"},
+                    {"value": "www.ca-alsace-vosges.fr", "label": "Alsace Vosges"},
+                    {"value": "www.ca-anjou-maine.fr", "label": "Anjou Maine"},
+                    {"value": "www.ca-aquitaine.fr", "label": "Aquitaine"},
+                    {"value": "www.ca-atlantique-vendee.fr", "label": "Atlantique Vendée"},
+                    {"value": "www.ca-briepicardie.fr", "label": "Brie Picardie"},
+                    {"value": "www.ca-centreest.fr", "label": "Centre-Est"},
+                    {"value": "www.ca-centrefrance.fr", "label": "Centre France"},
+                    {"value": "www.ca-centreloire.fr", "label": "Centre Loire"},
+                    {"value": "www.ca-charente-maritime-deux-sevres.fr", "label": "Charente-Maritime Deux-Sèvres"},
+                    {"value": "www.ca-charente-perigord.fr", "label": "Charente-Périgord"},
+                    {"value": "www.ca-corse.fr", "label": "Corse"},
+                    {"value": "www.ca-cotesdarmor.fr", "label": "Côtes d'Armor"},
+                    {"value": "www.ca-des-savoie.fr", "label": "Des Savoie"},
+                    {"value": "www.ca-finistere.fr", "label": "Finistère"},
+                    {"value": "www.ca-franchecomte.fr", "label": "Franche-Comté"},
+                    {"value": "www.ca-illeetvilaine.fr", "label": "Ille-et-Vilaine"},
+                    {"value": "www.ca-languedoc.fr", "label": "Languedoc"},
+                    {"value": "www.ca-loire-haute-loire.fr", "label": "Loire Haute-Loire"},
+                    {"value": "www.ca-lorraine.fr", "label": "Lorraine"},
+                    {"value": "www.ca-morbihan.fr", "label": "Morbihan"},
+                    {"value": "www.ca-norddefrance.fr", "label": "Nord de France"},
+                    {"value": "www.ca-nord-est.fr", "label": "Nord Est"},
+                    {"value": "www.ca-nord-midi-pyrenees.fr", "label": "Nord Midi-Pyrénées"},
+                    {"value": "www.ca-normandie.fr", "label": "Normandie"},
+                    {"value": "www.ca-normandie-seine.fr", "label": "Normandie Seine"},
+                    {"value": "www.ca-pyrenees-gascogne.fr", "label": "Pyrénées Gascogne"},
+                    {"value": "www.ca-sudmed.fr", "label": "Sud Méditerranée"},
+                    {"value": "www.ca-sudrhonealpes.fr", "label": "Sud Rhône Alpes"},
+                    {"value": "www.ca-touraine-poitou.fr", "label": "Touraine Poitou"},
+                    {"value": "www.ca-valdefrance.fr", "label": "Val de France"},
+                ],
+            }
+        ],
+        "banquepopulaire": [
+            {
+                "name": "cdetab",
+                "label": "Établissement Régional",
+                "type": "select",
+                "required": True,
+                "default": "10207",
+                "choices": [
+                    {"value": "10207", "label": "BP Rives de Paris"},
+                    {"value": "10107", "label": "BP Val de France"},
+                    {"value": "13807", "label": "BP Alsace Lorraine Champagne"},
+                    {"value": "14507", "label": "BP Aquitaine Centre Atlantique"},
+                    {"value": "14607", "label": "BP Atlantique"},
+                    {"value": "14707", "label": "BP Bourgogne Franche-Comté"},
+                    {"value": "13907", "label": "BP Auvergne Rhône Alpes"},
+                    {"value": "17807", "label": "BP du Sud"},
+                    {"value": "16907", "label": "BP Occitane"},
+                    {"value": "13507", "label": "BRED Banque Populaire"},
+                    {"value": "18206", "label": "CASDEN Banque Populaire"},
+                ],
+            }
+        ],
+        "bforbank": [
+            {
+                "name": "birthdate",
+                "label": "Date de naissance (JJ/MM/AAAA)",
+                "type": "text",
+                "required": False,
+                "placeholder": "Ex: 15/04/1990",
+            }
+        ],
+    }
+
     def __init__(self):
         self.woob_dir = os.environ.get("WOOB_WORKDIR") or os.path.join(settings.DATA_DIR, "woob_data")
         try:
@@ -168,6 +245,9 @@ class WoobService:
                             })
             except Exception as e:
                 self.log(f"Note inspection config {mod_id}: {e}")
+
+            if not config_fields and mod_id in self.FALLBACK_CONFIG_FIELDS:
+                config_fields = [dict(f) for f in self.FALLBACK_CONFIG_FIELDS[mod_id]]
 
             b_copy["config_fields"] = config_fields
             banks.append(b_copy)
