@@ -136,12 +136,12 @@ export function UpdateModal({ isOpen, onClose, updateInfo }: UpdateModalProps) {
                 {isUpdating ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                    <span>Lancement de l'installateur...</span>
+                    <span>{t.update.downloadingUpdate}</span>
                   </>
                 ) : (
                   <>
                     <ArrowUpCircle className="w-4 h-4" />
-                    <span>Mettre à jour maintenant</span>
+                    <span>{t.update.downloadAndInstall}</span>
                   </>
                 )}
               </Button>

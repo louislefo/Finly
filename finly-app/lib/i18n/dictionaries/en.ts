@@ -97,6 +97,12 @@ export const en: TranslationDictionary = {
     close: "Close",
     dismiss: "Later",
     upToDate: "Finly is up to date",
+    upToDateDesc: "You are running the latest available version of Finly.",
+    checkForUpdates: "Check for Updates",
+    checkingForUpdates: "Checking for updates...",
+    updateFound: "New version available",
+    errorChecking: "Unable to check for updates.",
+    systemCardTitle: "Application Updates",
   },
   auth: {
     loginTitle: "Log in to your workspace",

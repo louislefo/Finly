@@ -2,6 +2,16 @@
 
 All notable updates, new features, enhancements, and bug fixes for Finly are documented in reverse chronological order on this page.
 
+## Release v1.0.36 — October 11, 2026
+
+### Bug Fixes & Refinements
+
+- **Resilient Application Update Checker**:
+  - Added an unmetered GitHub web redirect fallback (`HEAD https://github.com/louislefo/Finly/releases/latest`) in the update checker to eliminate silent failures caused by GitHub REST API unauthenticated rate limits (HTTP 403).
+  - Added authenticated header support when `GITHUB_TOKEN` is present in the environment for 5,000 requests/hour quota.
+  - Configured automatic user update prompt modal on startup with dismissal state tracking in `localStorage` (`finly_dismissed_update_version`).
+  - Standardized internationalization dictionary keys in the update dialog across French and English.
+
 ---
 
 ## Release v1.0.26 — October 11, 2026

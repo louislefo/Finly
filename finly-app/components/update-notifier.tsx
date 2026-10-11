@@ -21,6 +21,14 @@ export function UpdateNotifier() {
         const info = await FinlyAPI.checkAppVersion()
         if (isMounted && info && info.has_update) {
           setUpdateInfo(info)
+          try {
+            const dismissed = localStorage.getItem("finly_dismissed_update_version")
+            if (dismissed !== info.latest_version) {
+              setIsModalOpen(true)
+            }
+          } catch {
+            setIsModalOpen(true)
+          }
         }
       } catch {
         // Silently fail if offline or API unavailable
@@ -99,7 +107,16 @@ export function UpdateNotifier() {
       {/* Update Detail & Action Modal */}
       <UpdateModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          if (updateInfo) {
+            try {
+              localStorage.setItem("finly_dismissed_update_version", updateInfo.latest_version)
+            } catch {
+              // ignore
+            }
+          }
+          setIsModalOpen(false)
+        }}
         updateInfo={updateInfo}
       />
     </>
