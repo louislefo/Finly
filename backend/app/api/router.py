@@ -19,4 +19,3 @@ api_router.include_router(real_estate.router, prefix="/real-estate", tags=["Real
 api_router.include_router(investments.router, prefix="/investments", tags=["Investments & Stocks"])
 api_router.include_router(sync.router, prefix="/sync", tags=["Sync"])
 api_router.include_router(system.router, prefix="/system", tags=["System & Updates"])
-
