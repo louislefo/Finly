@@ -13,5 +13,6 @@ class BankConnection(Base):
     password = Column(String, nullable=True)  # Stocké chiffré en AES-256 Fernet
     backend_name = Column(String, nullable=False, unique=True)
     status = Column(String, default="connected")
+    custom_params = Column(String, nullable=True)  # JSON-encoded parameters (e.g. regional website/cdetab)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_synced_at = Column(DateTime, nullable=True)

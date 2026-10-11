@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useState, useMemo, useRef } from "react"
+import React, { useState, useMemo, useRef, useEffect } from "react"
 import {
   CheckCircle2,
   RefreshCw,
-  ArrowRight,
   AlertCircle,
   Smartphone,
   Search,
@@ -14,11 +13,9 @@ import {
   ShieldCheck,
   ChevronRight,
   X,
-  FileCode,
   FileSpreadsheet,
-  Upload,
-  Database,
   Check,
+  MapPin,
 } from "lucide-react"
 import {
   Dialog,
@@ -33,6 +30,7 @@ import { BankLogo } from "@/components/ui/bank-icons"
 import { CsvImportModal } from "@/components/modals/csv-import-modal"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { useI18n } from "@/components/i18n-context"
+import { BankChallengeField } from "@/lib/types/finance"
 
 interface BankItem {
   id: string
@@ -48,16 +46,81 @@ interface WoobModalProps {
   onBankConnected?: (account?: any) => void
 }
 
+const CRAGR_REGIONS = [
+  { value: "www.ca-paris.fr", label: "Île-de-France" },
+  { value: "www.ca-alpesprovence.fr", label: "Alpes Provence" },
+  { value: "www.ca-alsace-vosges.fr", label: "Alsace-Vosges" },
+  { value: "www.ca-anjou-maine.fr", label: "Anjou Maine" },
+  { value: "www.ca-aquitaine.fr", label: "Aquitaine" },
+  { value: "www.ca-atlantique-vendee.fr", label: "Atlantique Vendée" },
+  { value: "www.ca-briepicardie.fr", label: "Brie Picardie" },
+  { value: "www.ca-cb.fr", label: "Champagne Bourgogne" },
+  { value: "www.ca-centrefrance.fr", label: "Centre France" },
+  { value: "www.ca-centreloire.fr", label: "Centre Loire" },
+  { value: "www.ca-centreouest.fr", label: "Centre Ouest" },
+  { value: "www.ca-centrest.fr", label: "Centre Est" },
+  { value: "www.ca-charente-perigord.fr", label: "Charente Périgord" },
+  { value: "www.ca-cmds.fr", label: "Charente-Maritime Deux-Sèvres" },
+  { value: "www.ca-corse.fr", label: "Corse" },
+  { value: "www.ca-cotesdarmor.fr", label: "Côtes d'Armor" },
+  { value: "www.ca-des-savoie.fr", label: "Des Savoie" },
+  { value: "www.ca-finistere.fr", label: "Finistère" },
+  { value: "www.ca-franchecomte.fr", label: "Franche-Comté" },
+  { value: "www.ca-guadeloupe.fr", label: "Guadeloupe" },
+  { value: "www.ca-illeetvilaine.fr", label: "Ille-et-Vilaine" },
+  { value: "www.ca-languedoc.fr", label: "Languedoc" },
+  { value: "www.ca-loirehauteloire.fr", label: "Loire Haute-Loire" },
+  { value: "www.ca-lorraine.fr", label: "Lorraine" },
+  { value: "www.ca-martinique.fr", label: "Martinique Guyane" },
+  { value: "www.ca-morbihan.fr", label: "Morbihan" },
+  { value: "www.ca-nmp.fr", label: "Nord Midi-Pyrénées" },
+  { value: "www.ca-nord-est.fr", label: "Nord Est" },
+  { value: "www.ca-norddefrance.fr", label: "Nord de France" },
+  { value: "www.ca-normandie-seine.fr", label: "Normandie Seine" },
+  { value: "www.ca-normandie.fr", label: "Normandie" },
+  { value: "www.ca-pca.fr", label: "Provence Côte d'Azur" },
+  { value: "www.ca-pyrenees-gascogne.fr", label: "Pyrénées Gascogne" },
+  { value: "www.ca-reunion.fr", label: "La Réunion" },
+  { value: "www.ca-sudmed.fr", label: "Sud Méditerranée" },
+  { value: "www.ca-sudrhonealpes.fr", label: "Sud Rhône Alpes" },
+  { value: "www.ca-toulouse31.fr", label: "Toulouse 31" },
+  { value: "www.ca-tourainepoitou.fr", label: "Touraine Poitou" },
+  { value: "www.ca-valdefrance.fr", label: "Val de France" },
+]
+
+const BP_REGIONS = [
+  { value: "10207", label: "Banque Populaire Rives de Paris" },
+  { value: "14707", label: "Alsace Lorraine Champagne" },
+  { value: "10907", label: "Aquitaine Centre Atlantique" },
+  { value: "16807", label: "Auvergne Rhône Alpes" },
+  { value: "10807", label: "Bourgogne Franche Comté" },
+  { value: "13807", label: "Grand Ouest" },
+  { value: "14607", label: "Méditerranée" },
+  { value: "13507", label: "Nord" },
+  { value: "17807", label: "Occitane" },
+  { value: "16607", label: "Sud" },
+  { value: "18707", label: "Val de France" },
+]
+
 export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) {
   const { t } = useI18n()
   const tc = t.common
   const tm = t.woobModal
+
   const [step, setStep] = useState<"select" | "credentials" | "2fa" | "connecting" | "success" | "success_import">("select")
   const [selectedBank, setSelectedBank] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [login, setLogin] = useState<string>("")
   const [password, setPassword] = useState<string>("")
+  const [customParams, setCustomParams] = useState<Record<string, string>>({})
+
+  // 2FA state
+  const [challengeId, setChallengeId] = useState<string | null>(null)
+  const [challengeType, setChallengeType] = useState<"otp" | "app_validation" | null>(null)
+  const [challengeFields, setChallengeFields] = useState<BankChallengeField[]>([])
   const [otpCode, setOtpCode] = useState<string>("")
+  const [isVerifying2FA, setIsVerifying2FA] = useState<boolean>(false)
+
   const [errorMessage, setErrorMessage] = useState<string>("")
   const [statusMessage, setStatusMessage] = useState<string>("")
   const [isImporting, setIsImporting] = useState<boolean>(false)
@@ -71,9 +134,10 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
   const [isCsvModalOpen, setIsCsvModalOpen] = useState<boolean>(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const banks: BankItem[] = [
-    { id: "bourso", name: "BoursoBank", desc: "Banque en ligne", loginLabel: "Identifiant client (8 chiffres)", loginPlaceholder: "Ex: 12345678" },
+  const banks: BankItem[] = useMemo(() => [
+    { id: "bourso", name: "BoursoBank", desc: "Banque en ligne & Bourse", loginLabel: "Identifiant client (8 chiffres)", loginPlaceholder: "Ex: 12345678" },
     { id: "bnporc", name: "BNP Paribas", desc: "Banque de détail", loginLabel: "Numéro client (10 chiffres)", loginPlaceholder: "Ex: 0123456789" },
     { id: "fortuneo", name: "Fortuneo", desc: "Banque en ligne & Bourse", loginLabel: "Identifiant d'accès", loginPlaceholder: "Identifiant Fortuneo" },
     { id: "cragr", name: "Crédit Agricole", desc: "Banque régionale", loginLabel: "Identifiant à 11 chiffres", loginPlaceholder: "Ex: 12345678901" },
@@ -87,10 +151,11 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     { id: "lcl", name: "LCL", desc: "Banque de détail", loginLabel: "Identifiant client LCL", loginPlaceholder: "Ex: 12345678" },
     { id: "labanquepostale", name: "La Banque Postale", desc: "Banque publique", loginLabel: "Identifiant (10 chiffres)", loginPlaceholder: "Ex: 0123456789" },
     { id: "bforbank", name: "BforBank", desc: "Banque 100% en ligne", loginLabel: "Identifiant client", loginPlaceholder: "Identifiant BforBank" },
-    { id: "monabanq", name: "Monabanq", desc: "Banque en ligne", loginLabel: "Identifiant client", loginPlaceholder: "Identifiant Monabanq" },
-    { id: "shine", name: "Shine", desc: "Compte pro & indépendant", loginLabel: "Numéro de mobile", loginPlaceholder: "+33 6 12 34 56 78" },
-    { id: "qonto", name: "Qonto", desc: "Compte pro & PME", loginLabel: "Adresse email Qonto", loginPlaceholder: "email@entreprise.fr" },
-  ]
+    { id: "axabanque", name: "AXA Banque", desc: "Banque & Assurance", loginLabel: "Identifiant client AXA", loginPlaceholder: "Identifiant client" },
+    { id: "creditcooperatif", name: "Crédit Coopératif", desc: "Banque solidaire", loginLabel: "Identifiant client", loginPlaceholder: "Identifiant Crédit Coopératif" },
+    { id: "ccf", name: "CCF", desc: "Banque patrimoniale", loginLabel: "Identifiant CCF", loginPlaceholder: "Identifiant client" },
+    { id: "mafrenchbank", name: "Ma French Bank", desc: "Banque mobile", loginLabel: "Adresse email ou identifiant", loginPlaceholder: "nom@exemple.com" },
+  ], [])
 
   const filteredBanks = useMemo(() => {
     if (!searchQuery.trim()) return banks
@@ -100,57 +165,34 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
         b.name.toLowerCase().includes(q) ||
         (b.desc && b.desc.toLowerCase().includes(q))
     )
-  }, [searchQuery])
+  }, [banks, searchQuery])
 
   const currentBankObj = banks.find((b) => b.id === selectedBank)
+
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      stopPolling()
+    }
+  }, [])
 
   const handleStartConnect = (bankId: string) => {
     setSelectedBank(bankId)
     setErrorMessage("")
-    setStatusMessage("")
+    if (bankId === "cragr") {
+      setCustomParams({ website: "www.ca-paris.fr" })
+    } else if (bankId === "bp") {
+      setCustomParams({ cdetab: "10207" })
+    } else {
+      setCustomParams({})
+    }
     setStep("credentials")
-  }
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setIsImporting(true)
-    setErrorMessage("")
-
-    const reader = new FileReader()
-    reader.onload = async (event) => {
-      try {
-        const content = event.target?.result as string
-        const parsed = JSON.parse(content)
-
-        if (!parsed || (!parsed.accounts && !parsed.transactions)) {
-          throw new Error("Format de sauvegarde JSON non reconnu.")
-        }
-
-        const res = await FinlyAPI.importJsonBackup(parsed)
-        setImportSummary(res.imported)
-        if (res.pending_connections && res.pending_connections.length > 0) {
-          setPendingImportedBanks(res.pending_connections)
-        }
-        setStep("success_import")
-        if (onBankConnected) {
-          onBankConnected()
-        }
-      } catch (err: any) {
-        setErrorMessage(err.message || "Fichier JSON invalide ou corrompu.")
-      } finally {
-        setIsImporting(false)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ""
-        }
-      }
-    }
-    reader.onerror = () => {
-      setErrorMessage("Erreur lors de la lecture du fichier.")
-      setIsImporting(false)
-    }
-    reader.readAsText(file)
   }
 
   const handleSubmitCredentials = async (e: React.FormEvent) => {
@@ -158,7 +200,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     if (!login || !selectedBank) return
 
     setErrorMessage("")
-    setStatusMessage("Connexion sécurisée en cours avec la banque...")
+    setStatusMessage(tm.descConnecting)
     setStep("connecting")
 
     try {
@@ -166,17 +208,22 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
         module: selectedBank,
         login: login.trim(),
         password,
+        custom_params: customParams,
       })
 
       if (res.status === "2fa_required") {
-        setStatusMessage(
-          res.message || "Veuillez valider la notification sur l'application mobile de votre banque."
-        )
+        setChallengeId(res.challenge_id || null)
+        setChallengeType(res.challenge_type || "app_validation")
+        setChallengeFields(res.fields || [])
+        setStatusMessage(res.message || tm.desc2fa)
         setStep("2fa")
-      } else {
-        if (onBankConnected) {
-          onBankConnected()
+
+        // Start polling for decoupled app push
+        if (res.challenge_type === "app_validation" && res.challenge_id) {
+          startAppPushPolling(res.challenge_id)
         }
+      } else {
+        if (onBankConnected) onBankConnected()
         setStep("success")
       }
     } catch (err: any) {
@@ -185,29 +232,76 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     }
   }
 
-  const handleSubmit2FA = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setStep("connecting")
-    setStatusMessage("Synchronisation des comptes après validation...")
+  const startAppPushPolling = (cid: string) => {
+    stopPolling()
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await FinlyAPI.pollBankChallenge(cid)
+        if (res.status === "connected") {
+          stopPolling()
+          if (onBankConnected) onBankConnected()
+          setStep("success")
+        } else if (res.status === "expired" || res.status === "cancelled") {
+          stopPolling()
+          setErrorMessage(res.message || "Session de validation expirée.")
+          setStep("credentials")
+        }
+      } catch {
+        // Continue polling silently
+      }
+    }, 4000)
+  }
+
+  const handleSubmit2FA = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!challengeId) return
+
+    stopPolling()
+    setIsVerifying2FA(true)
+    setErrorMessage("")
+    setStatusMessage("Vérification de la validation auprès de votre banque...")
 
     try {
-      await FinlyAPI.triggerSync()
-      if (onBankConnected) {
-        onBankConnected()
+      let res
+      if (otpCode.trim()) {
+        const key = challengeFields[0]?.id || "code"
+        res = await FinlyAPI.respondToBankChallenge(challengeId, { [key]: otpCode.trim() })
+      } else {
+        res = await FinlyAPI.pollBankChallenge(challengeId)
       }
-      setStep("success")
+
+      if (res.status === "connected") {
+        if (onBankConnected) onBankConnected()
+        setStep("success")
+      } else if (res.status === "pending" || res.status === "2fa_required") {
+        setStatusMessage(res.message || "Validation en attente sur votre application bancaire...")
+        if (res.challenge_type === "app_validation") {
+          startAppPushPolling(challengeId)
+        }
+      } else {
+        setErrorMessage(res.message || "Validation non confirmée.")
+      }
     } catch (err: any) {
-      setErrorMessage(err.message || "Validation non confirmée.")
-      setStep("2fa")
+      setErrorMessage(err.message || "Code incorrect ou validation non confirmée.")
+    } finally {
+      setIsVerifying2FA(false)
     }
   }
 
   const handleReset = () => {
+    stopPolling()
+    if (challengeId) {
+      FinlyAPI.cancelBankChallenge(challengeId).catch(() => {})
+    }
     setStep("select")
     setSelectedBank(null)
     setSearchQuery("")
     setLogin("")
     setPassword("")
+    setCustomParams({})
+    setChallengeId(null)
+    setChallengeType(null)
+    setChallengeFields([])
     setOtpCode("")
     setErrorMessage("")
     setStatusMessage("")
@@ -218,346 +312,398 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleReset}>
-      <DialogContent className="bg-[#18181B] border-white/10 text-white rounded-3xl p-5 sm:p-7 max-w-lg sm:max-w-2xl w-[94vw] sm:w-full max-h-[90vh] overflow-y-auto overscroll-contain flex flex-col gap-4">
-        {/* Header */}
-        <DialogHeader className="p-0 text-left shrink-0">
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col pr-4">
-              <DialogTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-indigo-400 shrink-0" />
-                {step === "select" && tm.titleSelect}
-                {step === "credentials" && `${currentBankObj?.name}`}
-                {step === "2fa" && tm.title2fa}
-                {step === "connecting" && tm.titleConnecting}
-                {step === "success" && tm.titleSuccess}
-                {step === "success_import" && tm.titleSuccessImport}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-zinc-400 mt-1">
-                {step === "select" && tm.descSelect}
-                {step === "credentials" && tm.descCredentials}
-                {step === "2fa" && tm.desc2fa}
-                {step === "connecting" && tm.descConnecting}
-                {step === "success" && tm.descSuccess}
-                {step === "success_import" && tm.descSuccessImport}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        {errorMessage && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2 shrink-0">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* STEP 1: Select Bank or Import CSV */}
-        {step === "select" && (
-          <div className="flex flex-col gap-3.5">
-            {/* Search Input */}
-            <div className="relative shrink-0">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <Input
-                type="text"
-                placeholder={tm.searchBankPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-9 bg-zinc-950 border-white/10 text-white text-xs h-10 sm:h-11 rounded-xl"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Banks List */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[38vh] sm:max-h-[290px] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
-              {filteredBanks.map((bank) => (
-                <button
-                  key={bank.id}
-                  onClick={() => handleStartConnect(bank.id)}
-                  className="flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-zinc-950/60 border border-white/5 hover:border-indigo-500/50 hover:bg-zinc-900/90 transition-all text-left cursor-pointer group touch-pan-y"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <BankLogo bankId={bank.id} className="w-9 h-9 sm:w-10 sm:h-10 shrink-0" />
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-sm font-semibold text-white group-hover:text-indigo-300 truncate">
-                        {bank.name}
-                      </span>
-                      <span className="text-xs text-zinc-500 truncate">
-                        {bank.desc}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 shrink-0 sm:hidden" />
-                </button>
-              ))}
-
-              {filteredBanks.length === 0 && (
-                <div className="col-span-full py-8 text-center text-xs text-zinc-500">
-                  {tm.noBanksFound}
-                </div>
-              )}
-            </div>
-
-            {/* CSV Import Button Below Banks */}
-            <button
-              type="button"
-              onClick={() => setIsCsvModalOpen(true)}
-              className="w-full p-3.5 rounded-2xl bg-zinc-950 border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-zinc-900 transition-all flex items-center justify-between cursor-pointer group shadow-lg shadow-emerald-950/20"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                  <FileSpreadsheet className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold text-white group-hover:text-emerald-300">
-                    {tm.importCsvBtn}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 leading-relaxed">
-                    {tm.importCsvDesc}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 shrink-0" />
-            </button>
-
-            <div className="shrink-0 p-2.5 sm:p-3 rounded-xl bg-zinc-950/50 border border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                {tm.localEncryption}
-              </span>
-              <span className="text-zinc-500">
-                {banks.length} {tm.certifiedBanks}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: Credentials Form */}
-        {step === "credentials" && currentBankObj && (
-          <form onSubmit={handleSubmitCredentials} className="flex flex-col flex-1 min-h-0 mt-4 gap-4 overflow-y-auto pr-1">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-950 border border-white/10 shrink-0">
-              <div className="flex items-center gap-3">
-                <BankLogo bankId={currentBankObj.id} className="w-10 h-10 shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-white">{currentBankObj.name}</span>
-                  <span className="text-xs text-zinc-400">{currentBankObj.desc}</span>
-                </div>
+        <DialogContent className="bg-[#18181B] border-white/10 text-white rounded-3xl p-5 sm:p-7 max-w-lg sm:max-w-2xl w-[94vw] sm:w-full max-h-[90vh] overflow-y-auto overscroll-contain flex flex-col gap-4">
+          {/* Header */}
+          <DialogHeader className="p-0 text-left shrink-0">
+            <div className="flex justify-between items-start">
+              <div className="flex flex-col pr-4">
+                <DialogTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                  {step === "select" && tm.titleSelect}
+                  {step === "credentials" && `${currentBankObj?.name}`}
+                  {step === "2fa" && tm.title2fa}
+                  {step === "connecting" && tm.titleConnecting}
+                  {step === "success" && tm.titleSuccess}
+                  {step === "success_import" && tm.titleSuccessImport}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-zinc-400 mt-1">
+                  {step === "select" && tm.descSelect}
+                  {step === "credentials" && tm.descCredentials}
+                  {step === "2fa" && tm.desc2fa}
+                  {step === "connecting" && tm.descConnecting}
+                  {step === "success" && tm.descSuccess}
+                  {step === "success_import" && tm.descSuccessImport}
+                </DialogDescription>
               </div>
             </div>
+          </DialogHeader>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-300">
-                {currentBankObj.loginLabel}
-              </label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          {errorMessage && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2 shrink-0">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* STEP 1: Select Bank */}
+          {step === "select" && (
+            <div className="flex flex-col gap-3.5">
+              <div className="relative shrink-0">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <Input
                   type="text"
-                  required
-                  placeholder={currentBankObj.loginPlaceholder}
-                  value={login}
-                  onChange={(e) => setLogin(e.target.value)}
-                  className="pl-10 bg-zinc-950 border-white/10 text-white text-xs h-11 rounded-xl font-mono"
+                  placeholder={tm.searchBankPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-9 bg-zinc-950 border-white/10 text-white text-xs h-10 sm:h-11 rounded-xl"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-300">
-                {tm.passwordLabel}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                <Input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-zinc-950 border-white/10 text-white text-xs h-11 rounded-xl"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 max-h-[38vh] sm:max-h-[320px] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
+                {filteredBanks.map((bank) => (
+                  <button
+                    key={bank.id}
+                    onClick={() => handleStartConnect(bank.id)}
+                    className="flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-zinc-950/60 border border-white/5 hover:border-indigo-500/50 hover:bg-zinc-900/90 transition-all text-left cursor-pointer group touch-pan-y"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <BankLogo bankId={bank.id} className="w-9 h-9 sm:w-10 sm:h-10 shrink-0" />
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-sm font-semibold text-white group-hover:text-indigo-300 truncate">
+                          {bank.name}
+                        </span>
+                        <span className="text-xs text-zinc-500 truncate">
+                          {bank.desc}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 shrink-0 sm:hidden" />
+                  </button>
+                ))}
+
+                {filteredBanks.length === 0 && (
+                  <div className="col-span-full py-8 text-center text-xs text-zinc-500">
+                    {tm.noBanksFound}
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row gap-2.5 mt-auto pt-2">
-              <Button
-                type="submit"
-                className="w-full sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
-              >
-                {tm.connectBtn}
-              </Button>
-              <Button
+              {/* CSV Import Button */}
+              <button
                 type="button"
-                variant="outline"
-                onClick={() => setStep("select")}
-                className="w-full sm:w-auto border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 rounded-xl cursor-pointer"
+                onClick={() => setIsCsvModalOpen(true)}
+                className="w-full p-3.5 rounded-2xl bg-zinc-950 border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-zinc-900 transition-all flex items-center justify-between cursor-pointer group shadow-lg shadow-emerald-950/20"
               >
-                {tc.back}
-              </Button>
-            </div>
-          </form>
-        )}
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white group-hover:text-emerald-300">
+                      {tm.importCsvBtn}
+                    </span>
+                    <span className="text-[11px] text-zinc-400 leading-relaxed">
+                      {tm.importCsvDesc}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 shrink-0" />
+              </button>
 
-        {/* STEP 3: 2FA Validation */}
-        {step === "2fa" && (
-          <form onSubmit={handleSubmit2FA} className="flex flex-col flex-1 min-h-0 mt-4 gap-4 overflow-y-auto pr-1">
-            <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs flex items-start gap-3">
-              <Smartphone className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold text-white">{tm.validationRequiredTitle}</span>
-                <span className="text-zinc-300 text-[11px] leading-relaxed">
-                  {statusMessage || tm.desc2fa}
+              <div className="shrink-0 p-2.5 sm:p-3 rounded-xl bg-zinc-950/50 border border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  {tm.localEncryption}
+                </span>
+                <span className="text-zinc-500">
+                  {banks.length} {tm.certifiedBanks}
                 </span>
               </div>
             </div>
+          )}
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-300">
-                {tm.otpCodeLabel}
-              </label>
-              <Input
-                type="text"
-                placeholder={tm.otpPlaceholder}
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
-                className="bg-zinc-950 border-white/10 text-white text-center font-mono text-sm h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2.5 mt-auto pt-2">
-              <Button
-                type="submit"
-                className="w-full sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
-              >
-                {tm.validatedOnPhoneBtn}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep("credentials")}
-                className="w-full sm:w-auto border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 rounded-xl cursor-pointer"
-              >
-                {tc.back}
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* STEP 4: Connecting */}
-        {step === "connecting" && (
-          <div className="flex flex-col items-center justify-center flex-1 py-10 gap-3 text-center">
-            <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
-            <span className="text-sm font-semibold text-white">
-              {statusMessage || tm.titleConnecting}
-            </span>
-            <span className="text-xs text-zinc-500">
-              {tm.syncingWait}
-            </span>
-          </div>
-        )}
-
-        {/* STEP 5: Success Live Connection */}
-        {step === "success" && (
-          <div className="flex flex-col items-center justify-center flex-1 py-8 gap-3 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <span className="text-base font-bold text-white">{tm.bankConnectedSuccess}</span>
-            <p className="text-xs text-zinc-400 max-w-sm">
-              {tm.bankConnectedDesc}
-            </p>
-
-            <Button
-              onClick={handleReset}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
-            >
-              {tm.viewMyAccounts}
-            </Button>
-          </div>
-        )}
-
-        {/* STEP 6: Success JSON Import */}
-        {step === "success_import" && (
-          <div className="flex flex-col items-center justify-center flex-1 py-8 gap-3 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Check className="w-6 h-6" />
-            </div>
-            <span className="text-base font-bold text-white">{tm.backupRestoredSuccess}</span>
-            <p className="text-xs text-zinc-400 max-w-sm">
-              {tm.backupRestoredDesc}
-            </p>
-
-            {importSummary && (
-              <div className="grid grid-cols-2 gap-2 w-full max-w-xs my-2 text-left">
-                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">{t.admin.accountsColumn}</span>
-                  <span className="text-sm font-bold text-white font-mono">{importSummary.accounts}</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">{t.admin.transactionsColumn}</span>
-                  <span className="text-sm font-bold text-white font-mono">{importSummary.transactions}</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">{t.projects.title}</span>
-                  <span className="text-sm font-bold text-white font-mono">{importSummary.projects}</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
-                  <span className="text-[10px] text-zinc-500">{t.budgets.title}</span>
-                  <span className="text-sm font-bold text-white font-mono">{importSummary.budgets}</span>
+          {/* STEP 2: Credentials Form */}
+          {step === "credentials" && currentBankObj && (
+            <form onSubmit={handleSubmitCredentials} className="flex flex-col flex-1 min-h-0 mt-4 gap-4 overflow-y-auto pr-1">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-950 border border-white/10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <BankLogo bankId={currentBankObj.id} className="w-10 h-10 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white">{currentBankObj.name}</span>
+                    <span className="text-xs text-zinc-400">{currentBankObj.desc}</span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {pendingImportedBanks.length > 0 ? (
-              <div className="w-full max-w-xs flex flex-col gap-2 my-2">
+              {/* Regional selector for Crédit Agricole */}
+              {currentBankObj.id === "cragr" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                    {tm.regionalBranchLabel}
+                  </label>
+                  <select
+                    value={customParams.website || "www.ca-paris.fr"}
+                    onChange={(e) => setCustomParams({ ...customParams, website: e.target.value })}
+                    className="w-full bg-zinc-950 border border-white/10 text-white text-xs h-11 px-3 rounded-xl focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {CRAGR_REGIONS.map((reg) => (
+                      <option key={reg.value} value={reg.value} className="bg-zinc-900 text-white">
+                        {reg.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Regional selector for Banque Populaire */}
+              {currentBankObj.id === "bp" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                    {tm.regionalBranchLabel}
+                  </label>
+                  <select
+                    value={customParams.cdetab || "10207"}
+                    onChange={(e) => setCustomParams({ ...customParams, cdetab: e.target.value })}
+                    className="w-full bg-zinc-950 border border-white/10 text-white text-xs h-11 px-3 rounded-xl focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {BP_REGIONS.map((reg) => (
+                      <option key={reg.value} value={reg.value} className="bg-zinc-900 text-white">
+                        {reg.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-300">
+                  {currentBankObj.loginLabel}
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <Input
+                    type="text"
+                    required
+                    placeholder={currentBankObj.loginPlaceholder}
+                    value={login}
+                    onChange={(e) => setLogin(e.target.value)}
+                    className="pl-10 bg-zinc-950 border-white/10 text-white text-xs h-11 rounded-xl font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-300">
+                  {tm.passwordLabel}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <Input
+                    type="password"
+                    required
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-zinc-950 border-white/10 text-white text-xs h-11 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5 mt-auto pt-2">
                 <Button
+                  type="submit"
+                  className="w-full sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
+                >
+                  {tm.connectBtn}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep("select")}
+                  className="w-full sm:w-auto border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 rounded-xl cursor-pointer"
+                >
+                  {tc.back}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* STEP 3: 2FA Validation */}
+          {step === "2fa" && (
+            <form onSubmit={handleSubmit2FA} className="flex flex-col flex-1 min-h-0 mt-4 gap-4 overflow-y-auto pr-1">
+              <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs flex items-start gap-3">
+                <Smartphone className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-white">{tm.validationRequiredTitle}</span>
+                  <span className="text-zinc-300 text-[11px] leading-relaxed">
+                    {statusMessage || tm.appPushValidationPrompt}
+                  </span>
+                </div>
+              </div>
+
+              {/* Show code input if challenge type is OTP or code is received */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-300">
+                  {challengeFields[0]?.label || tm.otpCodeLabel}
+                </label>
+                <Input
+                  type="text"
+                  placeholder={tm.otpPlaceholder}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className="bg-zinc-950 border-white/10 text-white text-center font-mono text-sm h-11 rounded-xl"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5 mt-auto pt-2">
+                <Button
+                  type="submit"
+                  disabled={isVerifying2FA}
+                  className="w-full sm:flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isVerifying2FA ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{tm.syncingWait}</span>
+                    </>
+                  ) : (
+                    <span>{otpCode.trim() ? tc.save : tm.appPushRefreshBtn}</span>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
-                    const first = pendingImportedBanks[0]
-                    setSelectedBank(first.module_name)
-                    setLogin(first.login || "")
-                    setPassword("")
+                    stopPolling()
                     setStep("credentials")
                   }}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
+                  className="w-full sm:w-auto border-white/10 bg-zinc-900 text-zinc-300 text-xs h-11 rounded-xl cursor-pointer"
                 >
-                  {tm.activateSync} ({pendingImportedBanks[0].bank_name})
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  className="w-full border-white/10 bg-zinc-900 text-zinc-400 hover:text-white text-xs h-9 rounded-xl cursor-pointer"
-                >
-                  {tm.finishWithoutSync}
+                  {tc.back}
                 </Button>
               </div>
-            ) : (
+            </form>
+          )}
+
+          {/* STEP 4: Connecting */}
+          {step === "connecting" && (
+            <div className="flex flex-col items-center justify-center flex-1 py-10 gap-3 text-center">
+              <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+              <span className="text-sm font-semibold text-white">
+                {statusMessage || tm.titleConnecting}
+              </span>
+              <span className="text-xs text-zinc-500">
+                {tm.syncingWait}
+              </span>
+            </div>
+          )}
+
+          {/* STEP 5: Success Live Connection */}
+          {step === "success" && (
+            <div className="flex flex-col items-center justify-center flex-1 py-8 gap-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <span className="text-base font-bold text-white">{tm.bankConnectedSuccess}</span>
+              <p className="text-xs text-zinc-400 max-w-sm">
+                {tm.bankConnectedDesc}
+              </p>
+
               <Button
                 onClick={handleReset}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
               >
-                {tm.finishAndGoDashboard}
+                {tm.viewMyAccounts}
               </Button>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+            </div>
+          )}
 
-    <CsvImportModal
-      isOpen={isCsvModalOpen}
-      onClose={() => setIsCsvModalOpen(false)}
-      onImportSuccess={() => {
-        setIsCsvModalOpen(false)
-        handleReset()
-        if (onBankConnected) onBankConnected()
-      }}
-    />
-  </>
+          {/* STEP 6: Success JSON Import */}
+          {step === "success_import" && (
+            <div className="flex flex-col items-center justify-center flex-1 py-8 gap-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <Check className="w-6 h-6" />
+              </div>
+              <span className="text-base font-bold text-white">{tm.backupRestoredSuccess}</span>
+              <p className="text-xs text-zinc-400 max-w-sm">
+                {tm.backupRestoredDesc}
+              </p>
+
+              {importSummary && (
+                <div className="grid grid-cols-2 gap-2 w-full max-w-xs my-2 text-left">
+                  <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
+                    <span className="text-[10px] text-zinc-500">{t.admin.accountsColumn}</span>
+                    <span className="text-sm font-bold text-white font-mono">{importSummary.accounts}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
+                    <span className="text-[10px] text-zinc-500">{t.admin.transactionsColumn}</span>
+                    <span className="text-sm font-bold text-white font-mono">{importSummary.transactions}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
+                    <span className="text-[10px] text-zinc-500">{t.projects.title}</span>
+                    <span className="text-sm font-bold text-white font-mono">{importSummary.projects}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/5 flex flex-col">
+                    <span className="text-[10px] text-zinc-500">{t.budgets.title}</span>
+                    <span className="text-sm font-bold text-white font-mono">{importSummary.budgets}</span>
+                  </div>
+                </div>
+              )}
+
+              {pendingImportedBanks.length > 0 ? (
+                <div className="w-full max-w-xs flex flex-col gap-2 my-2">
+                  <Button
+                    onClick={() => {
+                      const first = pendingImportedBanks[0]
+                      setSelectedBank(first.module_name)
+                      setLogin(first.login || "")
+                      setPassword("")
+                      setStep("credentials")
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 rounded-xl shadow-md shadow-indigo-600/25 cursor-pointer"
+                  >
+                    {tm.activateSync} ({pendingImportedBanks[0].bank_name})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleReset}
+                    className="w-full border-white/10 bg-zinc-900 text-zinc-400 hover:text-white text-xs h-9 rounded-xl cursor-pointer"
+                  >
+                    {tm.finishWithoutSync}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleReset}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 px-8 rounded-xl mt-2 cursor-pointer shadow-md shadow-indigo-600/25"
+                >
+                  {tm.finishAndGoDashboard}
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <CsvImportModal
+        isOpen={isCsvModalOpen}
+        onClose={() => setIsCsvModalOpen(false)}
+        onImportSuccess={() => {
+          setIsCsvModalOpen(false)
+          handleReset()
+          if (onBankConnected) onBankConnected()
+        }}
+      />
+    </>
   )
 }

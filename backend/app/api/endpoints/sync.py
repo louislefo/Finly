@@ -20,6 +20,7 @@ from app.services.sync_service import sync_service
 from app.services.cleaner_service import CleanerService
 from app.services.categorizer_service import CategorizerService
 from app.services.reconciliation_service import ReconciliationService
+from app.services.woob_service import woob_service
 
 router = APIRouter()
 
@@ -646,4 +647,62 @@ async def import_json_backup(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Erreur lors de l'import de la sauvegarde JSON: {str(e)}")
+
+@router.get("/health")
+def get_bank_sync_health(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Report health and status of all connected bank institutions for current user."""
+    connections = db.query(BankConnection).filter(BankConnection.user_id == current_user.id).all()
+    reports = []
+    modules_status = {m["id"]: m.get("version", "latest") for m in woob_service.get_modules_status()}
+
+    for conn in connections:
+        has_pwd = bool(conn.password)
+        effective_status = conn.status
+        if not has_pwd:
+            effective_status = "reconnect_required"
+
+        reports.append({
+            "connection_id": conn.id,
+            "bank_name": conn.bank_name,
+            "module_name": conn.module_name,
+            "login": conn.login,
+            "status": effective_status,
+            "has_password": has_pwd,
+            "module_version": modules_status.get(conn.module_name, "installé"),
+            "last_synced_at": conn.last_synced_at.isoformat() if conn.last_synced_at else None,
+        })
+
+    return {
+        "status": "ok",
+        "total_connections": len(connections),
+        "connections": reports,
+    }
+
+@router.post("/test/{connection_id}")
+def test_bank_connection(
+    connection_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Test connectivity for a single bank connection and return detailed diagnostic."""
+    conn = db.query(BankConnection).filter(
+        (BankConnection.id == connection_id) & (BankConnection.user_id == current_user.id)
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connexion bancaire introuvable")
+
+    result = woob_service.test_single_connection(conn)
+    if result.get("status") in ["connected", "2fa_pending", "reconnect_required"]:
+        conn.status = result.get("status")
+        db.commit()
+
+    return {
+        "connection_id": conn.id,
+        "bank_name": conn.bank_name,
+        "module_name": conn.module_name,
+        **result,
+    }
 

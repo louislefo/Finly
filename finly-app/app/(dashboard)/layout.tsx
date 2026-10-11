@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppHeader } from "@/components/app-header"
 import { MobileNav } from "@/components/mobile-nav"
+import { FloatingAssistantButton } from "@/components/assistant/floating-assistant-button"
 
 export default function DashboardLayout({
   children,
@@ -23,6 +24,9 @@ export default function DashboardLayout({
         <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto pb-24 md:pb-8">
           {children}
         </main>
+
+        {/* Local AI Assistant Floating Pill */}
+        <FloatingAssistantButton />
 
         {/* Mobile Bottom Navigation Bar (Synthèse, Budget, Analyse, Projet) */}
         <MobileNav />

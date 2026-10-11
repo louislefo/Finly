@@ -33,6 +33,16 @@ import {
   FolderTree,
   Upload,
   Wand2,
+  Activity,
+  Bot,
+  Cpu,
+  Cloud,
+  Key,
+  Eye,
+  EyeOff,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { usePrivacy } from "@/components/privacy-context"
@@ -41,6 +51,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { AssistantAPI } from "@/lib/api/assistant-api"
+import { AIProviderType, AISettingsConfig, AssistantStatus } from "@/lib/types/finance"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Dialog,
@@ -257,6 +270,146 @@ export function AccountView() {
   const [pendingBankConnections, setPendingBankConnections] = useState<PendingBankConnection[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  // AI Assistant Multi-Provider State
+  const [aiMode, setAiMode] = useState<"disabled" | "local" | "cloud">("disabled")
+  const [aiProvider, setAiProvider] = useState<AIProviderType>("ollama")
+  const [aiApiKey, setAiApiKey] = useState<string>("")
+  const [aiModel, setAiModel] = useState<string>("")
+  const [aiBaseUrl, setAiBaseUrl] = useState<string>("")
+  const [showApiKey, setShowApiKey] = useState<boolean>(false)
+  const [ollamaStatus, setOllamaStatus] = useState<AssistantStatus | null>(null)
+  const [isTestingKey, setIsTestingKey] = useState<boolean>(false)
+  const [testKeyFeedback, setTestKeyFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const [isInstallingOllama, setIsInstallingOllama] = useState<boolean>(false)
+  const [installOllamaFeedback, setInstallOllamaFeedback] = useState<string | null>(null)
+  const [isPullingStarterModel, setIsPullingStarterModel] = useState<boolean>(false)
+  const [pullProgress, setPullProgress] = useState<number>(0)
+  const [aiSettingsSavedFeedback, setAiSettingsSavedFeedback] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("finly_ai_settings")
+      if (stored) {
+        try {
+          const parsed: AISettingsConfig = JSON.parse(stored)
+          setAiMode(parsed.mode || (parsed.enabled ? (parsed.provider === "ollama" ? "local" : "cloud") : "disabled"))
+          setAiProvider(parsed.provider || "ollama")
+          setAiApiKey(parsed.apiKey || "")
+          setAiModel(parsed.model || "")
+          setAiBaseUrl(parsed.baseUrl || "")
+        } catch {}
+      } else {
+        const legacyEnabled = localStorage.getItem("finly_assistant_enabled") === "true"
+        if (legacyEnabled) {
+          setAiMode("local")
+          setAiProvider("ollama")
+        }
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (aiMode === "local") {
+      AssistantAPI.getStatus()
+        .then((res) => {
+          if (res?.ollama) setOllamaStatus(res.ollama)
+        })
+        .catch(() => {})
+    }
+  }, [aiMode])
+
+  const handleSaveAISettings = (newMode?: "disabled" | "local" | "cloud", newProvider?: AIProviderType) => {
+    const targetMode = newMode !== undefined ? newMode : aiMode
+    const targetProvider = newProvider !== undefined ? newProvider : aiProvider
+    const isEnabled = targetMode !== "disabled"
+
+    const config: AISettingsConfig = {
+      enabled: isEnabled,
+      mode: targetMode,
+      provider: targetMode === "local" ? "ollama" : (targetProvider === "ollama" ? "openai" : targetProvider),
+      apiKey: aiApiKey,
+      model: aiModel,
+      baseUrl: aiBaseUrl,
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("finly_ai_settings", JSON.stringify(config))
+      localStorage.setItem("finly_assistant_enabled", isEnabled ? "true" : "false")
+      window.dispatchEvent(new Event("finly_assistant_toggled"))
+    }
+
+    setAiSettingsSavedFeedback(t.assistant.settingsSaved)
+    setTimeout(() => setAiSettingsSavedFeedback(null), 3500)
+  }
+
+  const handleTestApiKey = async () => {
+    setIsTestingKey(true)
+    setTestKeyFeedback(null)
+    try {
+      const res = await AssistantAPI.testProvider({
+        provider: aiProvider,
+        apiKey: aiApiKey,
+        model: aiModel,
+        baseUrl: aiBaseUrl,
+      })
+      if (res.success) {
+        setTestKeyFeedback({
+          type: "success",
+          message: res.message || t.assistant.apiKeyValid,
+        })
+      } else {
+        setTestKeyFeedback({
+          type: "error",
+          message: res.error || t.assistant.apiKeyInvalid,
+        })
+      }
+    } catch (err: any) {
+      setTestKeyFeedback({
+        type: "error",
+        message: err.message || t.assistant.apiKeyInvalid,
+      })
+    } finally {
+      setIsTestingKey(false)
+    }
+  }
+
+  const handleInstallOllama = async () => {
+    setIsInstallingOllama(true)
+    setInstallOllamaFeedback(t.assistant.installingOllama)
+    try {
+      const res = await AssistantAPI.installEngine()
+      setInstallOllamaFeedback(res.message || "Lancement de l'installeur...")
+      setTimeout(async () => {
+        try {
+          const st = await AssistantAPI.getStatus()
+          if (st?.ollama) setOllamaStatus(st.ollama)
+        } catch {}
+      }, 5000)
+    } catch (err: any) {
+      setInstallOllamaFeedback(err.message || "Erreur lors de l'installation")
+    } finally {
+      setIsInstallingOllama(false)
+    }
+  }
+
+  const handleDownloadStarterModel = async () => {
+    setIsPullingStarterModel(true)
+    setPullProgress(0)
+    try {
+      await AssistantAPI.streamPullModel("qwen2.5:1.5b", (p) => {
+        setPullProgress(p.percent)
+        if (p.done) {
+          setIsPullingStarterModel(false)
+          AssistantAPI.getStatus().then((st) => {
+            if (st?.ollama) setOllamaStatus(st.ollama)
+          })
+        }
+      })
+    } catch {
+      setIsPullingStarterModel(false)
+    }
+  }
+
   // Load Data
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -368,6 +521,28 @@ export function AccountView() {
       },
     ])
     setIsCredentialsModalOpen(true)
+  }
+
+  const [testingConnId, setTestingConnId] = useState<string | null>(null)
+
+  const handleTestConnection = async (connId: string) => {
+    setTestingConnId(connId)
+    try {
+      const res = await FinlyAPI.testBankConnection(connId)
+      setSyncFeedback({
+        type: res.status === "connected" ? "success" : "error",
+        message: res.bank_name ? `${res.bank_name} : ${res.message}` : res.message,
+      })
+      await loadData()
+    } catch (err: any) {
+      setSyncFeedback({
+        type: "error",
+        message: err.message || (language === "fr" ? "Erreur lors du test de connexion." : "Connection test failed."),
+      })
+    } finally {
+      setTestingConnId(null)
+      setTimeout(() => setSyncFeedback(null), 6000)
+    }
   }
 
   // Edit Account
@@ -1441,6 +1616,351 @@ export function AccountView() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Assistant IA Multi-Fournisseurs */}
+                <Card className="p-6 sm:p-8 border-white/10 bg-[#18181B] rounded-3xl shadow-xl">
+                  <CardHeader className="p-0 pb-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                          <Bot className="w-4 h-4 text-indigo-400" />
+                          {t.assistant.preferencesCardTitle}
+                        </CardTitle>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {t.assistant.preferencesCardDesc}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs px-2.5 py-0.5 font-medium border",
+                          aiMode !== "disabled"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-800 text-zinc-400 border-white/5"
+                        )}
+                      >
+                        {aiMode !== "disabled"
+                          ? t.assistant.preferencesEnabledBadge
+                          : t.assistant.preferencesDisabledBadge}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-0 pt-2 flex flex-col gap-5">
+                    {/* Mode Selector */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiMode("disabled")
+                          handleSaveAISettings("disabled", aiProvider)
+                        }}
+                        className={cn(
+                          "flex flex-col items-start p-3.5 rounded-2xl border transition-all text-left cursor-pointer",
+                          aiMode === "disabled"
+                            ? "bg-zinc-800 border-white/20 text-white font-semibold shadow-sm"
+                            : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/10"
+                        )}
+                      >
+                        <span className="text-xs font-bold text-white">{t.assistant.modeDisabled}</span>
+                        <span className="text-[11px] text-zinc-400 mt-0.5">Aucune IA active</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiMode("local")
+                          setAiProvider("ollama")
+                          handleSaveAISettings("local", "ollama")
+                        }}
+                        className={cn(
+                          "flex flex-col items-start p-3.5 rounded-2xl border transition-all text-left cursor-pointer",
+                          aiMode === "local"
+                            ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
+                            : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/10"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                          <span className="text-xs font-bold text-white">{t.assistant.modeLocal}</span>
+                        </div>
+                        <span className="text-[11px] text-zinc-400 mt-0.5">100% privé sur votre PC</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiMode("cloud")
+                          const prov = aiProvider === "ollama" ? "openai" : aiProvider
+                          setAiProvider(prov)
+                          handleSaveAISettings("cloud", prov)
+                        }}
+                        className={cn(
+                          "flex flex-col items-start p-3.5 rounded-2xl border transition-all text-left cursor-pointer",
+                          aiMode === "cloud"
+                            ? "bg-indigo-600/15 border-indigo-500 text-white font-semibold shadow-sm"
+                            : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/10"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Cloud className="w-3.5 h-3.5 text-indigo-400" />
+                          <span className="text-xs font-bold text-white">{t.assistant.modeCloud}</span>
+                        </div>
+                        <span className="text-[11px] text-zinc-400 mt-0.5">OpenAI, Claude, Mistral...</span>
+                      </button>
+                    </div>
+
+                    {/* LOCAL OLLAMA CONFIGURATION */}
+                    {aiMode === "local" && (
+                      <div className="flex flex-col gap-4 p-4 rounded-2xl bg-zinc-900/60 border border-white/10">
+                        {/* Hardware Disclaimer Notice */}
+                        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 text-xs leading-relaxed">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-semibold block text-amber-300">
+                              {t.assistant.hardwareDisclaimerTitle}
+                            </span>
+                            <span className="text-[11px] text-zinc-300/80">
+                              {t.assistant.hardwareDisclaimerDesc}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status & Quick Action */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-900 border border-white/5">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={cn(
+                                "size-2.5 rounded-full shrink-0",
+                                ollamaStatus?.connected ? "bg-emerald-400" : "bg-amber-400 animate-pulse"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-white">
+                                {ollamaStatus?.connected
+                                  ? t.assistant.ollamaInstalledNotice
+                                  : t.assistant.ollamaNotInstalledNotice}
+                              </span>
+                              <span className="text-[11px] text-zinc-400">
+                                {ollamaStatus?.connected
+                                  ? `Modèles détectés : ${ollamaStatus.models?.length || 0}`
+                                  : "Ollama doit être installé pour faire tourner l'IA en local."}
+                              </span>
+                            </div>
+                          </div>
+
+                          {!ollamaStatus?.connected ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleInstallOllama}
+                              disabled={isInstallingOllama}
+                              className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl h-8 px-3 shrink-0 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5 mr-1.5" />
+                              <span>{isInstallingOllama ? t.assistant.installingOllama : t.assistant.installOllamaBtn}</span>
+                            </Button>
+                          ) : !ollamaStatus.is_model_available ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleDownloadStarterModel}
+                              disabled={isPullingStarterModel}
+                              className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-8 px-3 shrink-0 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5 mr-1.5" />
+                              <span>{isPullingStarterModel ? `${pullProgress}%` : t.assistant.downloadStarterModelBtn}</span>
+                            </Button>
+                          ) : null}
+                        </div>
+
+                        {installOllamaFeedback && (
+                          <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300">
+                            {installOllamaFeedback}
+                          </div>
+                        )}
+
+                        {isPullingStarterModel && (
+                          <div className="space-y-1.5 p-3 rounded-xl bg-zinc-900 border border-white/5">
+                            <div className="flex justify-between text-xs text-zinc-300">
+                              <span>Téléchargement du modèle compact Qwen 2.5 1.5B...</span>
+                              <span className="font-mono">{pullProgress}%</span>
+                            </div>
+                            <Progress value={pullProgress} className="h-1.5 bg-zinc-800" />
+                          </div>
+                        )}
+
+                        {/* Ollama Base URL */}
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                            {t.assistant.baseUrlLabel}
+                          </label>
+                          <Input
+                            type="text"
+                            value={aiBaseUrl}
+                            onChange={(e) => setAiBaseUrl(e.target.value)}
+                            placeholder="http://127.0.0.1:11434"
+                            className="bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CLOUD API KEY CONFIGURATION */}
+                    {aiMode === "cloud" && (
+                      <div className="flex flex-col gap-4 p-4 rounded-2xl bg-zinc-900/60 border border-white/10">
+                        {/* Provider Selection */}
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                            {t.assistant.providerSelectLabel}
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            {(
+                              [
+                                { id: "openai", label: "OpenAI" },
+                                { id: "anthropic", label: "Claude" },
+                                { id: "mistral", label: "Mistral" },
+                                { id: "deepseek", label: "DeepSeek" },
+                                { id: "custom", label: "Custom" },
+                              ] as const
+                            ).map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setAiProvider(p.id)
+                                  if (!aiModel || p.id !== aiProvider) {
+                                    if (p.id === "openai") setAiModel("gpt-4o-mini")
+                                    if (p.id === "anthropic") setAiModel("claude-3-5-haiku-latest")
+                                    if (p.id === "mistral") setAiModel("mistral-small-latest")
+                                    if (p.id === "deepseek") setAiModel("deepseek-chat")
+                                  }
+                                }}
+                                className={cn(
+                                  "py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer",
+                                  aiProvider === p.id
+                                    ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                                    : "bg-zinc-900 text-zinc-400 border-white/5 hover:text-white hover:border-white/10"
+                                )}
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* API Key Input */}
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                            {t.assistant.apiKeyLabel}
+                          </label>
+                          <div className="relative flex items-center">
+                            <Input
+                              type={showApiKey ? "text" : "password"}
+                              value={aiApiKey}
+                              onChange={(e) => setAiApiKey(e.target.value)}
+                              placeholder={t.assistant.apiKeyPlaceholder}
+                              className="bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl pr-10 font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="absolute right-3 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                              title={showApiKey ? "Masquer" : "Afficher"}
+                            >
+                              {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Model & Base URL */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                              {t.assistant.modelLabel}
+                            </label>
+                            <Input
+                              type="text"
+                              value={aiModel}
+                              onChange={(e) => setAiModel(e.target.value)}
+                              placeholder={
+                                aiProvider === "anthropic"
+                                  ? "claude-3-5-haiku-latest"
+                                  : aiProvider === "mistral"
+                                  ? "mistral-small-latest"
+                                  : aiProvider === "deepseek"
+                                  ? "deepseek-chat"
+                                  : "gpt-4o-mini"
+                              }
+                              className="bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl font-mono"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                              {t.assistant.baseUrlLabel}
+                            </label>
+                            <Input
+                              type="text"
+                              value={aiBaseUrl}
+                              onChange={(e) => setAiBaseUrl(e.target.value)}
+                              placeholder="https://api.openai.com/v1"
+                              className="bg-zinc-900 border-white/10 text-white text-xs h-9 rounded-xl font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Test Button & Feedback */}
+                        <div className="flex items-center gap-3 pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleTestApiKey}
+                            disabled={isTestingKey || !aiApiKey.trim()}
+                            className="text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10 rounded-xl h-8 px-3 cursor-pointer"
+                          >
+                            <Key className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                            <span>{isTestingKey ? t.assistant.testingApiKey : t.assistant.testApiKeyBtn}</span>
+                          </Button>
+
+                          {testKeyFeedback && (
+                            <span
+                              className={cn(
+                                "text-xs px-2.5 py-1 rounded-lg border",
+                                testKeyFeedback.type === "success"
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                  : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                              )}
+                            >
+                              {testKeyFeedback.message}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Save Button for Local/Cloud Settings */}
+                    {aiMode !== "disabled" && (
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleSaveAISettings()}
+                          className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl h-9 px-4 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                          <span>{t.assistant.saveSettingsBtn}</span>
+                        </Button>
+
+                        {aiSettingsSavedFeedback && (
+                          <span className="text-xs text-emerald-400 font-medium">
+                            {aiSettingsSavedFeedback}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             )}
 
@@ -1615,6 +2135,22 @@ export function AccountView() {
                                   {t.syncFeedback.updateCredentialsBtn}
                                 </Button>
                               )}
+
+                            {group.connection && (
+                              <Button
+                                onClick={() => handleTestConnection(group.connection!.id)}
+                                disabled={testingConnId === group.connection.id}
+                                variant="ghost"
+                                size="sm"
+                                className="text-zinc-400 hover:text-white hover:bg-zinc-800 h-8 px-2.5 rounded-xl text-xs gap-1.5 cursor-pointer"
+                                title={t.woobModal.testConnectionBtn}
+                              >
+                                <Activity className={`w-3.5 h-3.5 ${testingConnId === group.connection.id ? "animate-pulse text-indigo-400" : ""}`} />
+                                <span className="hidden sm:inline">
+                                  {testingConnId === group.connection.id ? t.woobModal.testingConnection : t.woobModal.testConnectionBtn}
+                                </span>
+                              </Button>
+                            )}
 
                             <Button
                               onClick={() => setBankToDelete(group.bankName)}

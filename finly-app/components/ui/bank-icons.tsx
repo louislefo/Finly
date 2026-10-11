@@ -32,6 +32,12 @@ const BANK_DOMAINS: Record<string, string> = {
   banquepopulaire: "banquepopulaire.fr",
   lcl: "lcl.fr",
   hellobank: "hellobank.fr",
+  labanquepostale: "labanquepostale.fr",
+  bforbank: "bforbank.com",
+  axabanque: "axa.fr",
+  creditcooperatif: "credit-cooperatif.coop",
+  ccf: "ccf.fr",
+  mafrenchbank: "mafrenchbank.fr",
 }
 
 export function BankLogo({ bankId, bankName, className = "w-10 h-10", size = 128 }: BankLogoProps) {

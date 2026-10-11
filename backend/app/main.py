@@ -22,6 +22,8 @@ def auto_migrate_sqlite():
                 conn.execute(text("ALTER TABLE bank_connections ADD COLUMN password TEXT"))
             if "user_id" not in cols:
                 conn.execute(text("ALTER TABLE bank_connections ADD COLUMN user_id TEXT"))
+            if "custom_params" not in cols:
+                conn.execute(text("ALTER TABLE bank_connections ADD COLUMN custom_params TEXT"))
 
             # Check accounts
             res = conn.execute(text("PRAGMA table_info(accounts)")).fetchall()

@@ -46,9 +46,16 @@ french.UninstallDataPrompt=Souhaitez-vous également supprimer vos données loca
 english.UninstallDataPrompt=Do you also want to remove your local data and Finly database (%APPDATA%\Finly)?
 french.UninstallShortCutName=Désinstaller Finly
 english.UninstallShortCutName=Uninstall Finly
+french.AIAssistantGroup=Assistant IA Optionnel
+english.AIAssistantGroup=Optional AI Assistant
+french.InstallOllamaDescription=Installer le moteur IA local Ollama (100% privé, optionnel - nécessite 8 Go RAM min)
+english.InstallOllamaDescription=Install local Ollama AI engine (100% private, optional - requires 8 GB RAM min)
+french.OllamaDisclaimer=Note : L'IA locale dépend de votre matériel. Les clés API cloud (OpenAI, Claude, Mistral) restent configurables dans l'application.
+english.OllamaDisclaimer=Note: Local AI depends on your hardware. Cloud API keys (OpenAI, Claude, Mistral) remain configurable in the app.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "installollama"; Description: "{cm:InstallOllamaDescription}"; GroupDescription: "{cm:AIAssistantGroup}"; Flags: unchecked; Check: ShouldOfferOllamaInstall
 
 [Files]
 ; Source compiled folder from PyInstaller --onedir
@@ -63,9 +70,22 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 Type: filesandordirs; Name: "{app}"
 
 [Run]
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -Command ""$p = [System.IO.Path]::Combine($env:TEMP, 'OllamaSetup.exe'); (New-Object System.Net.WebClient).DownloadFile('https://ollama.com/download/OllamaSetup.exe', $p); Start-Process -FilePath $p -ArgumentList '/SILENT' -Wait"""; StatusMsg: "Telechargement et installation d Ollama..."; Flags: runhidden; Tasks: installollama
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall
 
 [Code]
+function IsOllamaInstalled(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{localappdata}\Programs\Ollama\ollama.exe')) or
+            FileExists(ExpandConstant('{pf}\Ollama\ollama.exe')) or
+            FileExists(ExpandConstant('{pf64}\Ollama\ollama.exe'));
+end;
+
+function ShouldOfferOllamaInstall(): Boolean;
+begin
+  Result := not IsOllamaInstalled();
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;

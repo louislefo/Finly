@@ -13,22 +13,26 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Layers,
+  Landmark,
 } from "lucide-react"
 import { usePrivacy } from "@/components/privacy-context"
 import { useI18n } from "@/components/i18n-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { WoobModal } from "@/components/modals/woob-modal"
 import { NewProjectModal } from "@/components/modals/new-project-modal"
 import { AddHoldingModal } from "@/components/modals/add-holding-modal"
+import { LoanModal } from "@/components/modals/loan-modal"
+import { LoanDetailsModal } from "@/components/modals/loan-details-modal"
 import { StockLogo } from "@/components/ui/stock-logo"
 import { FinlyAPI } from "@/lib/api/finly-api"
 import { StockAPI } from "@/lib/api/stock-api"
 import { cn } from "@/lib/utils"
-import { Account, Project, BankConnection, RealEstateData, InvestmentHolding, PortfolioSummary } from "@/lib/types/finance"
+import { Account, Project, BankConnection, RealEstateData, InvestmentHolding, PortfolioSummary, Loan, LoansSummary } from "@/lib/types/finance"
 
-export type WealthCategoryMode = "all" | "liquidities" | "savings" | "investments" | "crypto" | "real_estate"
+export type WealthCategoryMode = "all" | "liquidities" | "savings" | "investments" | "crypto" | "real_estate" | "loans"
 
 export function PatrimoineView() {
   const router = useRouter()
@@ -41,6 +45,11 @@ export function PatrimoineView() {
   const [bankConnections, setBankConnections] = useState<BankConnection[]>([])
   const [holdings, setHoldings] = useState<InvestmentHolding[]>([])
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null)
+  const [loans, setLoans] = useState<Loan[]>([])
+  const [loansSummary, setLoansSummary] = useState<LoansSummary | null>(null)
+  const [isLoanModalOpen, setIsLoanModalOpen] = useState<boolean>(false)
+  const [loanToEdit, setLoanToEdit] = useState<Loan | null>(null)
+  const [selectedLoanForDetails, setSelectedLoanForDetails] = useState<Loan | null>(null)
   const [totalBalance, setTotalBalance] = useState<number>(0)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isSyncing, setIsSyncing] = useState<boolean>(false)
@@ -60,12 +69,14 @@ export function PatrimoineView() {
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [accRes, projRes, connsRes, holdingsRes, summaryRes] = await Promise.all([
+      const [accRes, projRes, connsRes, holdingsRes, summaryRes, loansRes, loansSumRes] = await Promise.all([
         FinlyAPI.getAccounts(),
         FinlyAPI.getProjects(),
         FinlyAPI.getBankConnections(),
         StockAPI.getHoldings(),
         StockAPI.getPortfolioSummary(),
+        FinlyAPI.getLoans(),
+        FinlyAPI.getLoansSummary(),
       ])
       setAccounts(accRes.accounts || [])
       setTotalBalance(accRes.total_balance || 0)
@@ -73,6 +84,8 @@ export function PatrimoineView() {
       setBankConnections(connsRes || [])
       setHoldings(holdingsRes || [])
       setPortfolioSummary(summaryRes || null)
+      setLoans(loansRes || [])
+      setLoansSummary(loansSumRes || null)
     } catch {
       // Fallback
     } finally {
@@ -87,6 +100,19 @@ export function PatrimoineView() {
       loadData()
     } catch {
       // Handle error
+    }
+  }
+
+  const handleDeleteLoan = async (loanId: string) => {
+    if (!confirm(t.loans.deleteLoanConfirm)) return
+    try {
+      await FinlyAPI.deleteLoan(loanId)
+      if (selectedLoanForDetails?.id === loanId) {
+        setSelectedLoanForDetails(null)
+      }
+      loadData()
+    } catch (err: any) {
+      alert(err.message || (language === "fr" ? "Erreur suppression de l'emprunt." : "Failed to delete loan."))
     }
   }
 
@@ -152,9 +178,18 @@ export function PatrimoineView() {
       realEstateNetEquity += Math.max(0, val - debt)
     }
 
+    // Direct standalone loans & debt
+    let totalDirectLoansDebt = 0
+    let totalMonthlyLoanPayments = 0
+    for (const l of loans) {
+      totalDirectLoansDebt += l.remaining_balance || 0
+      totalMonthlyLoanPayments += l.monthly_payment || 0
+    }
+
+    const totalLiabilities = totalDirectLoansDebt + totalRealEstateDebt
     const financialAssets = liquidities + savings + investments + crypto
     const grossAssets = financialAssets + realEstateGrossValue
-    const netWorth = financialAssets + realEstateNetEquity
+    const netWorth = Math.max(0, grossAssets - totalLiabilities)
 
     return {
       liquidities,
@@ -168,11 +203,14 @@ export function PatrimoineView() {
       financialAssets,
       realEstateGrossValue,
       totalRealEstateDebt,
+      totalDirectLoansDebt,
+      totalMonthlyLoanPayments,
+      totalLiabilities,
       realEstateNetEquity,
       grossAssets,
       netWorth,
     }
-  }, [accounts, realEstateProjects, portfolioSummary])
+  }, [accounts, realEstateProjects, portfolioSummary, loans])
 
   // Bank Breakdown
   const bankBreakdown = useMemo(() => {
@@ -215,6 +253,8 @@ export function PatrimoineView() {
         return assetCategories.crypto
       case "real_estate":
         return assetCategories.realEstateNetEquity
+      case "loans":
+        return assetCategories.totalLiabilities
       default:
         return assetCategories.netWorth
     }
@@ -227,6 +267,7 @@ export function PatrimoineView() {
     { id: "investments" as const, label: language === "fr" ? "Investissements" : "Investments" },
     { id: "crypto" as const, label: "Crypto" },
     { id: "real_estate" as const, label: language === "fr" ? "Immobilier" : "Real Estate" },
+    { id: "loans" as const, label: language === "fr" ? "Emprunts & Dettes" : "Loans & Debt" },
   ], [language])
 
   // Synchronize All
@@ -362,7 +403,19 @@ export function PatrimoineView() {
             <span>{isSyncing ? t.common.syncing : t.common.refresh}</span>
           </Button>
 
-          {selectedCategory === "all" || selectedCategory === "real_estate" ? (
+          {selectedCategory === "loans" ? (
+            <Button
+              onClick={() => {
+                setLoanToEdit(null)
+                setIsLoanModalOpen(true)
+              }}
+              size="sm"
+              className="h-9 px-3.5 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer text-xs font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t.loans.addLoan}</span>
+            </Button>
+          ) : selectedCategory === "all" || selectedCategory === "real_estate" ? (
             <Button
               onClick={() => {
                 setProjectToEdit(null)
@@ -399,6 +452,7 @@ export function PatrimoineView() {
               {selectedCategory === "investments" && (language === "fr" ? "Total Investissements" : "Total Investments")}
               {selectedCategory === "crypto" && (language === "fr" ? "Total Crypto-actifs" : "Total Crypto")}
               {selectedCategory === "real_estate" && (language === "fr" ? "Équité Nette Immobilière" : "Real Estate Net Equity")}
+              {selectedCategory === "loans" && t.loans.totalDebt}
             </span>
             <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">
               {selectedCategory === "all" && formatAmount(assetCategories.netWorth)}
@@ -407,14 +461,16 @@ export function PatrimoineView() {
               {selectedCategory === "investments" && formatAmount(assetCategories.investments)}
               {selectedCategory === "crypto" && formatAmount(assetCategories.crypto)}
               {selectedCategory === "real_estate" && formatAmount(assetCategories.realEstateNetEquity)}
+              {selectedCategory === "loans" && formatAmount(assetCategories.totalLiabilities)}
             </span>
             <span className="text-[11px] text-zinc-500 font-mono mt-0.5">
-              {selectedCategory === "all" && `${t.wealth.grossAssets} : ${formatAmount(assetCategories.grossAssets)}`}
+              {selectedCategory === "all" && `${t.wealth.grossAssets} : ${formatAmount(assetCategories.grossAssets)} • ${t.loans.totalDebt} : -${formatAmount(assetCategories.totalLiabilities)}`}
               {selectedCategory === "liquidities" && `${Math.round((assetCategories.liquidities / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.liquiditiesAccs.length} comptes`}
               {selectedCategory === "savings" && `${Math.round((assetCategories.savings / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.savingsAccs.length} livrets`}
               {selectedCategory === "investments" && `${Math.round((assetCategories.investments / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.investmentsAccs.length} comptes`}
               {selectedCategory === "crypto" && `${Math.round((assetCategories.crypto / (assetCategories.grossAssets || 1)) * 100)}% de l'actif brut • ${assetCategories.cryptoAccs.length} comptes`}
               {selectedCategory === "real_estate" && `${language === "fr" ? "Valeur brute" : "Gross value"}: ${formatAmount(assetCategories.realEstateGrossValue)} • ${language === "fr" ? "Dettes" : "Debt"}: -${formatAmount(assetCategories.totalRealEstateDebt)}`}
+              {selectedCategory === "loans" && `${loans.length} ${language === "fr" ? "prêts enregistrés" : "loans recorded"} • ${t.loans.monthlyPayment}: ${assetCategories.totalMonthlyLoanPayments.toLocaleString("fr-FR")} €/m`}
             </span>
           </div>
 
@@ -595,8 +651,36 @@ export function PatrimoineView() {
                     </span>
                   </div>
                 </button>
+
+                {/* Emprunts & Dettes */}
+                {assetCategories.totalLiabilities > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory("loans")}
+                    className={cn(
+                      "flex items-center justify-between py-2 text-xs w-full text-left rounded-lg transition-colors px-1 cursor-pointer",
+                      selectedCategory === "loans" ? "bg-white/10" : "hover:bg-white/5"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                      <span className={selectedCategory === "loans" ? "text-white font-semibold" : "text-zinc-300"}>
+                        {t.loans.totalDebt}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] text-zinc-500 font-mono">
+                        {loans.length} {language === "fr" ? "prêts" : "loans"}
+                      </span>
+                      <span className="font-mono font-bold text-rose-400">
+                        -{formatAmount(assetCategories.totalLiabilities)}
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
+
           )}
 
           {/* Linked Bank Accounts */}
@@ -926,6 +1010,169 @@ export function PatrimoineView() {
               </Button>
             </div>
           </Card>
+        ) : selectedCategory === "loans" ? (
+          <Card className="lg:col-span-7 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div>
+                <h2 className="text-sm font-semibold text-white tracking-tight">
+                  {t.loans.title}
+                </h2>
+                <span className="text-xs text-zinc-500 font-mono">
+                  {loans.length} {language === "fr" ? `emprunt${loans.length > 1 ? "s" : ""}` : `loan${loans.length > 1 ? "s" : ""}`}
+                </span>
+              </div>
+              <Button
+                onClick={() => {
+                  setLoanToEdit(null)
+                  setIsLoanModalOpen(true)
+                }}
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3 font-semibold cursor-pointer"
+              >
+                + {t.loans.addLoan}
+              </Button>
+            </div>
+
+            {/* Summary Mini KPIs if loans exist */}
+            {loans.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.loans.totalDebt}</span>
+                  <span className="text-sm font-bold text-rose-400 font-mono mt-0.5 block">
+                    -{formatAmount(assetCategories.totalDirectLoansDebt)}
+                  </span>
+                </div>
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.loans.monthlyPayment}</span>
+                  <span className="text-sm font-bold text-indigo-400 font-mono mt-0.5 block">
+                    {assetCategories.totalMonthlyLoanPayments.toLocaleString("fr-FR")} €/m
+                  </span>
+                </div>
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.loans.totalAmortized}</span>
+                  <span className="text-sm font-bold text-emerald-400 font-mono mt-0.5 block">
+                    {formatAmount(loans.reduce((s, l) => s + (l.capital_amortized || 0), 0))}
+                  </span>
+                </div>
+                <div className="bg-[#09090B] p-2.5 rounded-xl border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block">{t.loans.averageRate}</span>
+                  <span className="text-sm font-bold text-white font-mono mt-0.5 block">
+                    {loansSummary?.average_interest_rate ? `${loansSummary.average_interest_rate}%` : "-"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Loans list */}
+            {loans.length === 0 ? (
+              <div className="py-12 text-center flex flex-col items-center justify-center gap-2 text-zinc-500">
+                <span className="text-sm font-medium text-zinc-300">{t.loans.noLoansTitle}</span>
+                <p className="text-xs max-w-sm">{t.loans.noLoansDesc}</p>
+                <Button
+                  onClick={() => {
+                    setLoanToEdit(null)
+                    setIsLoanModalOpen(true)
+                  }}
+                  size="sm"
+                  className="mt-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs h-8 px-3.5 font-semibold cursor-pointer"
+                >
+                  + {t.loans.addLoan}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-white/5">
+                {loans.map((l) => (
+                  <div key={l.id} className="py-3.5 flex flex-col gap-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-white">{l.name}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-white/10 text-zinc-300 bg-white/5">
+                            {l.loan_type}
+                          </Badge>
+                          {l.lender_name && (
+                            <span className="text-[11px] text-zinc-400 font-mono">{l.lender_name}</span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                          {l.interest_rate}% • {Math.round(l.duration_months / 12)} ans • {l.monthly_payment.toLocaleString("fr-FR")} €/mois
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          onClick={() => setSelectedLoanForDetails(l)}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 gap-1 border-white/10 bg-zinc-900 text-indigo-400 hover:text-white rounded-lg text-xs cursor-pointer font-medium"
+                        >
+                          <Sparkles className="w-3 h-3 text-indigo-400" />
+                          <span>{language === "fr" ? "Amortissement & Simulateur" : "Schedule & Simulator"}</span>
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setLoanToEdit(l)
+                            setIsLoanModalOpen(true)
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteLoan(l.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-lg text-zinc-400 hover:text-rose-400 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Progress bar and metrics */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-zinc-500">{t.loans.remainingBalance}</span>
+                        <span className="font-bold text-white">{formatAmount(l.remaining_balance)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-zinc-500">{t.loans.principalAmount}</span>
+                        <span className="text-zinc-400">{formatAmount(l.principal_amount)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-zinc-500">{t.loans.capitalAmortized}</span>
+                        <span className="font-bold text-emerald-400">{formatAmount(l.capital_amortized)}</span>
+                      </div>
+                      <div className="flex flex-col justify-center">
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1">
+                          <span>{t.loans.progress}</span>
+                          <span className="font-bold text-zinc-200">{l.completion_percentage}%</span>
+                        </div>
+                        <Progress value={l.completion_percentage} className="h-1.5 bg-zinc-800" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
+              <span>{loans.length} {language === "fr" ? "prêts en cours" : "active loans"}</span>
+              <Button
+                onClick={() => {
+                  setLoanToEdit(null)
+                  setIsLoanModalOpen(true)
+                }}
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+              >
+                + {t.loans.addLoan}
+              </Button>
+            </div>
+          </Card>
         ) : (
           <Card className="lg:col-span-7 p-5 sm:p-6 rounded-2xl border-white/10 bg-[#18181B] flex flex-col justify-between gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
@@ -1124,6 +1371,31 @@ export function PatrimoineView() {
         onSuccess={loadData}
         accounts={accounts}
       />
+
+      {/* Loan Create / Edit Modal */}
+      <LoanModal
+        isOpen={isLoanModalOpen}
+        onClose={() => {
+          setIsLoanModalOpen(false)
+          setLoanToEdit(null)
+        }}
+        onSuccess={loadData}
+        loanToEdit={loanToEdit}
+      />
+
+      {/* Loan Details, Schedule & Simulator Modal */}
+      <LoanDetailsModal
+        isOpen={!!selectedLoanForDetails}
+        loan={selectedLoanForDetails}
+        onClose={() => setSelectedLoanForDetails(null)}
+        onEdit={(l) => {
+          setSelectedLoanForDetails(null)
+          setLoanToEdit(l)
+          setIsLoanModalOpen(true)
+        }}
+        onDelete={handleDeleteLoan}
+      />
     </div>
   )
 }
+

@@ -17,6 +17,15 @@ import {
   CategorizationRule,
   RuleTestResponse,
   BatchApplyRulesResponse,
+  SupportedBank,
+  BankChallengeResponse,
+  BankHealthReport,
+  BankModuleStatus,
+  Loan,
+  LoanScheduleResponse,
+  EarlyRepaymentSimulationRequest,
+  EarlyRepaymentSimulationResult,
+  LoansSummary,
 } from "@/lib/types/finance"
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -503,12 +512,25 @@ export const FinlyAPI = {
   },
 
   // 6. Connect Bank via Woob Local Engine
+  async getSupportedBanks(): Promise<SupportedBank[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/woob/banks`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) throw new Error("Erreur lors de la récupération des banques supportées")
+      return await res.json()
+    } catch {
+      return []
+    }
+  },
+
   async connectWoobBank(params: {
     module: string
     login: string
     password?: string
     custom_params?: Record<string, string>
-  }): Promise<{ status: string; message?: string }> {
+  }): Promise<BankChallengeResponse> {
     try {
       const res = await fetch(`${API_BASE_URL}/woob/connect`, {
         method: "POST",
@@ -526,6 +548,87 @@ export const FinlyAPI = {
       }
       throw err
     }
+  },
+
+  async respondToBankChallenge(
+    challengeId: string,
+    answers: Record<string, string> = {}
+  ): Promise<BankChallengeResponse> {
+    const res = await fetch(`${API_BASE_URL}/woob/challenge/respond`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        challenge_id: challengeId,
+        answers,
+      }),
+    })
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.detail || "Code de validation incorrect ou expiré.")
+    }
+    return await res.json()
+  },
+
+  async pollBankChallenge(challengeId: string): Promise<BankChallengeResponse> {
+    const res = await fetch(`${API_BASE_URL}/woob/challenge/poll`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ challenge_id: challengeId }),
+    })
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.detail || "Erreur lors de la vérification de validation.")
+    }
+    return await res.json()
+  },
+
+  async cancelBankChallenge(challengeId: string): Promise<void> {
+    await fetch(`${API_BASE_URL}/woob/challenge/${challengeId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    }).catch(() => {})
+  },
+
+  async getBankConnectionHealth(): Promise<BankHealthReport> {
+    const res = await fetch(`${API_BASE_URL}/sync/health`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) throw new Error("Erreur lors de la vérification de santé des connexions bancaires.")
+    return await res.json()
+  },
+
+  async testBankConnection(connectionId: string): Promise<{ status: string; message: string; accounts_count?: number; bank_name?: string }> {
+    const res = await fetch(`${API_BASE_URL}/sync/test/${connectionId}`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors du test de connexion.")
+    }
+    return await res.json()
+  },
+
+  async getWoobModulesStatus(): Promise<BankModuleStatus[]> {
+    const res = await fetch(`${API_BASE_URL}/woob/modules/status`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) return []
+    return await res.json()
+  },
+
+  async updateWoobModules(): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/woob/modules/update`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour des modules.")
+    }
+    return await res.json()
   },
 
   // 7. Trigger Immediate Sync
@@ -868,6 +971,22 @@ export const FinlyAPI = {
     return await res.json()
   },
 
+  async triggerAdminSeedDemoData(): Promise<{
+    status: string
+    message: string
+    total_transactions: number
+  }> {
+    const res = await fetch(`${API_BASE_URL}/admin/maintenance/seed-demo-data`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la génération des données de démonstration.")
+    }
+    return await res.json()
+  },
+
   async impersonateUser(userId: string): Promise<{
     status: string
     access_token: string
@@ -1083,4 +1202,125 @@ export const FinlyAPI = {
     }
     return await res.json()
   },
+
+  // 17. Loans & Liabilities API
+  async getLoans(): Promise<Loan[]> {
+    const res = await fetch(`${API_BASE_URL}/loans`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) return []
+    return await res.json()
+  },
+
+  async getLoansSummary(): Promise<LoansSummary> {
+    const res = await fetch(`${API_BASE_URL}/loans/summary`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      return {
+        total_loans_count: 0,
+        total_initial_principal: 0,
+        total_remaining_balance: 0,
+        total_capital_amortized: 0,
+        total_monthly_payments: 0,
+        total_interest_remaining: 0,
+        total_insurance_remaining: 0,
+        average_interest_rate: 0,
+        breakdown_by_type: {},
+      }
+    }
+    return await res.json()
+  },
+
+  async getLoan(loanId: string): Promise<Loan | null> {
+    const res = await fetch(`${API_BASE_URL}/loans/${loanId}`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  },
+
+  async createLoan(payload: Partial<Loan>): Promise<Loan> {
+    const res = await fetch(`${API_BASE_URL}/loans`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la création de l'emprunt.")
+    }
+    return await res.json()
+  },
+
+  async updateLoan(loanId: string, payload: Partial<Loan>): Promise<Loan> {
+    const res = await fetch(`${API_BASE_URL}/loans/${loanId}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la mise à jour de l'emprunt.")
+    }
+    return await res.json()
+  },
+
+  async deleteLoan(loanId: string): Promise<{ status: string; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/loans/${loanId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la suppression de l'emprunt.")
+    }
+    return await res.json()
+  },
+
+  async getLoanSchedule(loanId: string): Promise<LoanScheduleResponse> {
+    const res = await fetch(`${API_BASE_URL}/loans/${loanId}/schedule`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) {
+      throw new Error("Impossible de récupérer le tableau d'amortissement.")
+    }
+    return await res.json()
+  },
+
+  async simulateLoanEarlyRepayment(
+    loanId: string,
+    params: EarlyRepaymentSimulationRequest
+  ): Promise<EarlyRepaymentSimulationResult> {
+    const res = await fetch(`${API_BASE_URL}/loans/${loanId}/simulate-repayment`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la simulation de remboursement.")
+    }
+    return await res.json()
+  },
+
+  async simulateStandaloneLoan(params: {
+    principal_amount: number
+    interest_rate: number
+    duration_months: number
+    insurance_rate?: number
+    start_date?: string
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/loans/simulate`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Erreur lors de la simulation de l'emprunt.")
+    }
+    return await res.json()
+  },
 }
+

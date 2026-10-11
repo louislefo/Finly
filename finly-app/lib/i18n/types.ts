@@ -509,6 +509,9 @@ export interface TranslationDictionary {
     sqliteMaintenanceTitle: string
     sqliteMaintenanceDesc: string
     vacuumBtn: string
+    seedDemoDataTitle: string
+    seedDemoDataDesc: string
+    seedDemoDataBtn: string
     resetPasswordModalTitle: string
     deleteUserModalTitle: string
     deleteUserModalDesc: string
@@ -611,6 +614,12 @@ export interface TranslationDictionary {
     activateSync: string
     finishWithoutSync: string
     finishAndGoDashboard: string
+    regionalBranchLabel: string
+    appPushValidationPrompt: string
+    appPushRefreshBtn: string
+    testConnectionBtn: string
+    testingConnection: string
+    connectionHealthy: string
   }
   connectedAccountsModal: {
     title: string
@@ -977,5 +986,152 @@ export interface TranslationDictionary {
     ruleToggledSuccess: string
     createRuleFromTx: string
   }
+  assistant: {
+    title: string
+    subtitle: string
+    floatingTooltip: string
+    inputPlaceholder: string
+    sendBtn: string
+    quickPromptsTitle: string
+    engineDisconnectedTitle: string
+    engineDisconnectedDesc: string
+    engineMissingModelTitle: string
+    engineMissingModelDesc: string
+    downloadModelBtn: string
+    downloadingModel: string
+    installEngineBtn: string
+    copyCommand: string
+    copiedCommand: string
+    refreshStatus: string
+    modelReadyBadge: string
+    setupPromptTitle: string
+    setupPromptDesc: string
+    enableAssistantBtn: string
+    laterBtn: string
+    clearHistoryBtn: string
+    newChatBtn: string
+    chatHistorySaved: string
+    thinking: string
+    errorStreaming: string
+    settingsTitle: string
+    selectModel: string
+    selectModelDesc: string
+    noModelsInstalled: string
+    startDaemonBtn: string
+    startingDaemon: string
+    reindexBtn: string
+    reindexing: string
+    reindexSuccess: string
+    statusConnected: string
+    statusDisconnected: string
+    statusMissingModel: string
+    autoStartTitle: string
+    autoStartDesc: string
+    downloadModelTitle: string
+    downloadModelSubtitle: string
+    closeSettings: string
+    openSettings: string
+    privacyBadge: string
+    preferencesCardTitle: string
+    preferencesCardDesc: string
+    preferencesEnabledBadge: string
+    preferencesDisabledBadge: string
+    preferencesToggleEnable: string
+    preferencesToggleDisable: string
+    preferencesToggleTitle: string
+    preferencesToggleDesc: string
+    modeDisabled: string
+    modeLocal: string
+    modeCloud: string
+    providerSelectLabel: string
+    apiKeyLabel: string
+    apiKeyPlaceholder: string
+    modelLabel: string
+    modelPlaceholder: string
+    baseUrlLabel: string
+    testApiKeyBtn: string
+    testingApiKey: string
+    apiKeyValid: string
+    apiKeyInvalid: string
+    saveSettingsBtn: string
+    settingsSaved: string
+    hardwareDisclaimerTitle: string
+    hardwareDisclaimerDesc: string
+    installOllamaBtn: string
+    installingOllama: string
+    downloadStarterModelBtn: string
+    ollamaNotInstalledNotice: string
+    ollamaInstalledNotice: string
+  }
+  loans: {
+    title: string
+    subtitle: string
+    addLoan: string
+    editLoan: string
+    deleteLoan: string
+    deleteLoanConfirm: string
+    noLoansTitle: string
+    noLoansDesc: string
+    totalDebt: string
+    monthlyPayment: string
+    totalAmortized: string
+    interestRemaining: string
+    averageRate: string
+    loanType: string
+    mortgage: string
+    student: string
+    auto: string
+    consumer: string
+    personal: string
+    other: string
+    lender: string
+    principalAmount: string
+    interestRate: string
+    insuranceRate: string
+    duration: string
+    durationMonths: string
+    durationYears: string
+    startDate: string
+    endDate: string
+    rateType: string
+    fixedRate: string
+    variableRate: string
+    remainingBalance: string
+    capitalAmortized: string
+    progress: string
+    scheduleTitle: string
+    viewSchedule: string
+    period: string
+    date: string
+    beginningBalance: string
+    principalPayment: string
+    interestPayment: string
+    insurancePayment: string
+    endingBalance: string
+    cumulativePrincipal: string
+    cumulativeInterest: string
+    simulatorTitle: string
+    simulatorSubtitle: string
+    repaymentAmount: string
+    strategy: string
+    reduceDuration: string
+    reducePayment: string
+    reduceDurationDesc: string
+    reducePaymentDesc: string
+    penaltyRate: string
+    penaltyAmount: string
+    monthsSaved: string
+    yearsSaved: string
+    interestSaved: string
+    insuranceSaved: string
+    netSavings: string
+    newMonthlyPayment: string
+    monthlyDrop: string
+    saveLoan: string
+    cancel: string
+    loanSaved: string
+    loanDeleted: string
+  }
   categories: Record<string, string>
 }
+
