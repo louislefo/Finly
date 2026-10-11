@@ -361,3 +361,34 @@ def trigger_database_vacuum(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erreur lors de l'exécution de VACUUM : {str(e)}",
         )
+
+@router.post("/maintenance/seed-demo-data")
+def trigger_seed_demo_data(
+    user_id: Optional[str] = None,
+    force: bool = True,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_current_admin_user),
+):
+    """Génère ou réinitialise les données de démonstration complètes sur tous les mois pour le compte administrateur ou un utilisateur ciblé."""
+    try:
+        from app.core.seed import seed_demo_data_for_user
+        target_user = admin_user
+        if user_id:
+            found = db.query(User).filter(User.id == user_id).first()
+            if not found:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable.")
+            target_user = found
+        tx_count = seed_demo_data_for_user(db, target_user, force=force)
+        return {
+            "status": "success",
+            "message": f"Données de démonstration générées avec succès ({tx_count} transactions réparties sur tous les mois).",
+            "total_transactions": tx_count,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la génération des données de démo : {str(e)}",
+        )
+

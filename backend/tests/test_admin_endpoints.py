@@ -49,6 +49,13 @@ def test_admin_access_granted_for_admin():
     response = client.post("/api/v1/admin/maintenance/vacuum", headers=headers)
     assert response.status_code == 200
 
+    # 4. Seed Demo Data
+    response = client.post("/api/v1/admin/maintenance/seed-demo-data", headers=headers)
+    assert response.status_code == 200
+    seed_res = response.json()
+    assert seed_res["status"] == "success"
+    assert seed_res["total_transactions"] >= 300
+
 def test_login_shorthand_admin():
     response = client.post("/api/v1/auth/login", json={"email": "admin", "password": "admin"})
     assert response.status_code == 200

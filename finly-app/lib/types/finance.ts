@@ -110,8 +110,79 @@ export interface BankConnection {
   status: string
   has_password?: boolean
   error_message?: string
+  custom_params?: Record<string, string>
   created_at?: string
   last_synced_at?: string
+}
+
+export interface BankConfigFileChoice {
+  value: string
+  label: string
+}
+
+export interface BankConfigField {
+  name: string
+  label: string
+  type: "text" | "select"
+  required?: boolean
+  default?: string
+  placeholder?: string
+  choices?: BankConfigFileChoice[]
+}
+
+export interface SupportedBank {
+  id: string
+  name: string
+  desc?: string
+  color?: string
+  logo?: string
+  config_fields?: BankConfigField[]
+}
+
+export interface BankChallengeField {
+  id: string
+  label: string
+  type?: string
+}
+
+export interface BankChallengeResponse {
+  status: "connected" | "2fa_required" | "pending" | "expired" | "cancelled" | "error"
+  challenge_id?: string
+  challenge_type?: "otp" | "app_validation"
+  backend_name?: string
+  module?: string
+  bank_name?: string
+  message?: string
+  fields?: BankChallengeField[]
+  accounts_count?: number
+  extracted_data?: any[]
+  custom_params?: Record<string, string>
+  sync?: SyncResult
+}
+
+export interface BankHealthItem {
+  connection_id: string
+  bank_name: string
+  module_name: string
+  login?: string
+  status: string
+  has_password: boolean
+  module_version?: string
+  last_synced_at?: string
+}
+
+export interface BankHealthReport {
+  status: string
+  total_connections: number
+  connections: BankHealthItem[]
+}
+
+export interface BankModuleStatus {
+  id: string
+  name: string
+  installed: boolean
+  version: string
+  logo: string
 }
 
 export interface BankSyncError {
@@ -450,5 +521,169 @@ export interface PortfolioSummary {
   allocation_by_sector: { sector: string; value: number; percent: number }[]
 }
 
+export interface OllamaStatus {
+  connected: boolean
+  base_url: string
+  version?: string | null
+  models: string[]
+  default_model: string
+  fallback_model: string
+  active_model?: string | null
+  is_model_available: boolean
+  is_installed_locally?: boolean
+  os: string
+}
 
+export type AssistantStatus = OllamaStatus
 
+export interface OllamaInstallGuide {
+  os: string
+  title: string
+  download_url: string
+  command: string
+  instructions: string
+}
+
+export interface AssistantStatusResponse {
+  status: string
+  ollama: OllamaStatus
+  install_guide: OllamaInstallGuide
+}
+
+export interface AssistantMessage {
+  id: string
+  role: "user" | "assistant" | "system"
+  content: string
+  timestamp: string
+}
+
+export interface QuickPrompt {
+  label: string
+  prompt: string
+}
+
+export type AIProviderType = "ollama" | "openai" | "anthropic" | "mistral" | "deepseek" | "custom"
+
+export interface AISettingsConfig {
+  enabled: boolean
+  mode: "disabled" | "local" | "cloud"
+  provider: AIProviderType
+  apiKey?: string
+  model?: string
+  baseUrl?: string
+}
+
+export interface ProviderTestResponse {
+  success: boolean
+  provider?: string
+  model?: string
+  message?: string
+  error?: string
+  status_code?: number
+}
+
+export interface EngineInstallResponse {
+  status: string
+  os: string
+  message?: string
+  manual_url?: string
+  error?: string
+}
+
+export type LoanType = "mortgage" | "student" | "auto" | "consumer" | "personal" | "other"
+export type LoanRateType = "fixed" | "variable"
+
+export interface Loan {
+  id: string
+  name: string
+  loan_type: LoanType
+  lender_name?: string
+  principal_amount: number
+  interest_rate: number
+  insurance_rate: number
+  duration_months: number
+  start_date: string
+  end_date?: string
+  monthly_payment: number
+  monthly_principal_interest?: number
+  monthly_insurance?: number
+  rate_type: LoanRateType
+  linked_project_id?: string
+  linked_account_id?: string
+  notes?: string
+  created_at?: string
+  updated_at?: string
+  // Live computed status
+  elapsed_months: number
+  remaining_months: number
+  remaining_balance: number
+  capital_amortized: number
+  interest_paid_to_date: number
+  interest_remaining: number
+  insurance_paid_to_date: number
+  insurance_remaining: number
+  total_interest: number
+  total_insurance: number
+  total_cost: number
+  completion_percentage: number
+}
+
+export interface AmortizationScheduleItem {
+  period: number
+  date: string
+  beginning_balance: number
+  principal_payment: number
+  interest_payment: number
+  insurance_payment: number
+  total_payment: number
+  ending_balance: number
+  cumulative_principal: number
+  cumulative_interest: number
+  is_past: boolean
+}
+
+export interface LoanScheduleResponse {
+  loan_id: string
+  loan_name: string
+  total_periods: number
+  schedule: AmortizationScheduleItem[]
+}
+
+export interface EarlyRepaymentSimulationRequest {
+  repayment_amount: number
+  repayment_month?: number
+  strategy?: "reduce_duration" | "reduce_payment"
+  penalty_rate_pct?: number
+}
+
+export interface EarlyRepaymentSimulationResult {
+  strategy: "reduce_duration" | "reduce_payment"
+  repayment_amount: number
+  repayment_month: number
+  penalty_amount: number
+  balance_before: number
+  balance_after: number
+  original_remaining_months: number
+  new_remaining_months: number
+  months_saved: number
+  years_saved: number
+  current_monthly_payment: number
+  new_monthly_payment: number
+  monthly_payment_change: number
+  interest_saved: number
+  insurance_saved: number
+  total_gross_savings: number
+  net_savings: number
+}
+
+export interface LoansSummary {
+  total_loans_count: number
+  total_initial_principal: number
+  total_remaining_balance: number
+  total_capital_amortized: number
+  total_monthly_payments: number
+  total_interest_remaining: number
+  total_insurance_remaining: number
+  average_interest_rate: number
+  breakdown_by_type: Record<string, { count: number; total_remaining: number; monthly_payment: number }>
+}

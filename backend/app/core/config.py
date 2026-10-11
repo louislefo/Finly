@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_PASSWORD: str = "admin"
     FIRST_SUPERUSER_NAME: str = "Administrateur"
 
+    # Local AI (Ollama)
+    ENABLE_LOCAL_AI: bool = os.getenv("ENABLE_LOCAL_AI", "true").lower() in ("true", "1", "yes")
+    OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    OLLAMA_DEFAULT_MODEL: str = os.getenv("OLLAMA_DEFAULT_MODEL", "qwen2.5:1.5b")
+    OLLAMA_FALLBACK_MODEL: str = os.getenv("OLLAMA_FALLBACK_MODEL", "llama3.2:1b")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

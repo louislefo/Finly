@@ -8,6 +8,7 @@ from app.models.merchant_rule import MerchantRule
 from app.models.categorization_rule import CategorizationRule
 from app.models.budget import Budget
 from app.models.investment import InvestmentHolding
+from app.models.loan import Loan
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "CategorizationRule",
     "Budget",
     "InvestmentHolding",
+    "Loan",
 ]

@@ -56,6 +56,7 @@ export function AdminView() {
   // Maintenance actions loading states
   const [isSyncingAll, setIsSyncingAll] = useState<boolean>(false)
   const [isVacuuming, setIsVacuuming] = useState<boolean>(false)
+  const [isSeedingDemoData, setIsSeedingDemoData] = useState<boolean>(false)
 
   // User Modals State
   const [userToResetPassword, setUserToResetPassword] = useState<AdminUserItem | null>(null)
@@ -252,6 +253,29 @@ export function AdminView() {
       setIsVacuuming(false)
     }
   }
+
+  const handleTriggerSeedDemoData = async () => {
+    setIsSeedingDemoData(true)
+    try {
+      const res = await FinlyAPI.triggerAdminSeedDemoData()
+      setActionFeedback({
+        type: "success",
+        message:
+          language === "fr"
+            ? `Données de démo générées (${res.total_transactions} transactions sur tous les mois).`
+            : `Demo data seeded (${res.total_transactions} transactions across all months).`,
+      })
+      await loadData()
+    } catch (err: any) {
+      setActionFeedback({
+        type: "error",
+        message: err.message || (language === "fr" ? "Erreur lors de la génération des données de démo." : "Error generating demo data."),
+      })
+    } finally {
+      setIsSeedingDemoData(false)
+    }
+  }
+
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-6">
@@ -635,7 +659,7 @@ export function AdminView() {
 
       {/* Tab 3: Maintenance & Tools */}
       {activeTab === "maintenance" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Card 1: Bank Sync Trigger */}
           <Card className="p-6 bg-[#18181B] border-white/10 rounded-2xl flex flex-col justify-between">
             <div className="flex flex-col gap-2">
@@ -679,6 +703,30 @@ export function AdminView() {
               >
                 <HardDrive className={`w-3.5 h-3.5 ${isVacuuming ? "animate-spin" : ""}`} />
                 <span>{isVacuuming ? t.common.loading : t.admin.vacuumBtn}</span>
+              </Button>
+            </div>
+          </Card>
+
+          {/* Card 3: Seed Demo Data */}
+          <Card className="p-6 bg-[#18181B] border-white/10 rounded-2xl flex flex-col justify-between">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2.5">
+                <RotateCcw className="w-4 h-4 text-violet-400" />
+                <h3 className="text-sm font-bold text-white">{t.admin.seedDemoDataTitle}</h3>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                {t.admin.seedDemoDataDesc}
+              </p>
+            </div>
+            <div className="mt-6">
+              <Button
+                onClick={handleTriggerSeedDemoData}
+                disabled={isSeedingDemoData}
+                variant="outline"
+                className="w-full border-white/10 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold h-9 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isSeedingDemoData ? "animate-spin" : ""}`} />
+                <span>{isSeedingDemoData ? t.common.loading : t.admin.seedDemoDataBtn}</span>
               </Button>
             </div>
           </Card>
