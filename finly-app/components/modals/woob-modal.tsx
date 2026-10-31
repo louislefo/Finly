@@ -145,7 +145,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     { id: "n26", name: "N26 Bank", desc: "Néobanque européenne", loginLabel: "Adresse email N26", loginPlaceholder: "nom@exemple.com" },
     { id: "creditmutuel", name: "Crédit Mutuel", desc: "Banque coopérative", loginLabel: "Identifiant de connexion", loginPlaceholder: "Identifiant Crédit Mutuel" },
     { id: "cic", name: "CIC", desc: "Banque de détail", loginLabel: "Identifiant client", loginPlaceholder: "Identifiant CIC" },
-    { id: "bp", name: "Banque Populaire", desc: "Banque coopérative", loginLabel: "Identifiant Cyberplus", loginPlaceholder: "Identifiant Cyberplus" },
+    { id: "banquepopulaire", name: "Banque Populaire", desc: "Banque coopérative", loginLabel: "Identifiant Cyberplus", loginPlaceholder: "Identifiant Cyberplus" },
     { id: "ce", name: "Caisse d'Épargne", desc: "Banque régionale", loginLabel: "Identifiant client", loginPlaceholder: "Ex: 12345678" },
     { id: "hellobank", name: "Hello bank!", desc: "Banque mobile", loginLabel: "Numéro client (10 chiffres)", loginPlaceholder: "Ex: 0123456789" },
     { id: "lcl", name: "LCL", desc: "Banque de détail", loginLabel: "Identifiant client LCL", loginPlaceholder: "Ex: 12345678" },
@@ -187,7 +187,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
     setErrorMessage("")
     if (bankId === "cragr") {
       setCustomParams({ website: "www.ca-paris.fr" })
-    } else if (bankId === "bp") {
+    } else if (bankId === "banquepopulaire") {
       setCustomParams({ cdetab: "10207" })
     } else {
       setCustomParams({})
@@ -465,7 +465,7 @@ export function WoobModal({ isOpen, onClose, onBankConnected }: WoobModalProps) 
               )}
 
               {/* Regional selector for Banque Populaire */}
-              {currentBankObj.id === "bp" && (
+              {currentBankObj.id === "banquepopulaire" && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-indigo-400" />
